@@ -201,8 +201,8 @@ export default function ItemIndex({ build, rows, loading }: Props) {
             {pageRows.map((r) => (
               <li key={r.id} className="entity-index-row">
                 {r.icon
-                  ? <Icon src={r.icon} alt={r.name} size={28} />
-                  : <span className="icon icon-empty" aria-hidden style={{ width: 28, height: 28 }} />}
+                  ? <Icon src={r.icon} alt={r.name} size={112} />
+                  : <span className="icon icon-empty" aria-hidden style={{ width: 112, height: 112 }} />}
                 <span className="entity-index-main">
                   <Link to={`/${build}/items/${r.id}`}>{r.name}</Link>
                   <span className="muted">

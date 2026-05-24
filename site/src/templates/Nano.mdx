@@ -5,7 +5,7 @@ import Icon from '../components/Icon';
 # {props.data.name}
 
 <p className="entity-meta muted">
-  {props.data.icon ? <Icon src={props.data.icon} alt={props.data.name} size={48} /> : null}
+  {props.data.icon ? <Icon src={props.data.icon} alt={props.data.name} size={192} /> : null}
   {props.data.nanoType && <span className="badge badge-category">{props.data.nanoType}</span>}
 </p>
 
@@ -19,7 +19,7 @@ import Icon from '../components/Icon';
     {props.data.powers.map((p) => (
       <section key={p.id} className="nano-power">
         <h3>
-          {p.icon && <Icon src={p.icon} alt={p.name} size={28} />}
+          {p.icon && <Icon src={p.icon} alt={p.name} size={112} />}
           {' '}{p.skillName || p.name}
           {p.typeName && <span className="muted"> · {p.typeName}</span>}
         </h3>

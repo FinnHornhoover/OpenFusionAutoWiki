@@ -13,6 +13,7 @@ site/public/builds.json
 site/public/sitemap.xml
 site/public/sitemaps/
 site/public/robots.txt
+site/public/minimap/
 
 # download/extract cache
 .cache/

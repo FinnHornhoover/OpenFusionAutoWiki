@@ -7,7 +7,7 @@ import SimilarItems from '../components/SimilarItems';
 # {props.data.name}
 
 <p className="entity-meta muted">
-  {props.data.icon ? <Icon src={props.data.icon} alt={props.data.name} size={48} /> : null}
+  {props.data.icon ? <Icon src={props.data.icon} alt={props.data.name} size={192} /> : null}
   <span className="badge badge-category">{props.data.type}{props.data.displayType && props.data.displayType !== props.data.type ? ` · ${props.data.displayType}` : ''}</span>
   {props.data.rarity && <span className="badge badge-category">{props.data.rarity}</span>}
   {props.data.contentLevel > 0 && <span className="muted">{' · '}Lv {props.data.contentLevel}</span>}

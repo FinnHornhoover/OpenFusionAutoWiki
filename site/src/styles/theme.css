@@ -357,6 +357,50 @@ details.dropdown > .dropdown-body {
   padding: 0 var(--space-4) var(--space-4);
 }
 
+/* Minimap viewport */
+.minimap {
+  display: inline-block;
+  position: relative;
+  vertical-align: middle;
+  background-color: var(--color-bg-subtle);
+  background-repeat: no-repeat;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  image-rendering: pixelated;
+}
+.minimap-pin {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 8px;
+  height: 8px;
+  margin: -4px 0 0 -4px;
+  border-radius: 50%;
+  background: var(--color-accent);
+  border: 2px solid #fff;
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.6);
+  pointer-events: none;
+}
+.minimap-bbox {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  border: 2px solid var(--color-accent);
+  background: rgba(244, 162, 97, 0.15);
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.5);
+  pointer-events: none;
+}
+.area-map {
+  margin: var(--space-4) 0;
+}
+.task-row-waypoint {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
 /* Icons */
 .icon {
   display: inline-block;

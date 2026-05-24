@@ -50,6 +50,7 @@ export interface MissionTask {
   nextTaskOnEnd: number;
   timeLimitSeconds: number;
   waypointNPC: Ref | null;
+  waypointPoint: { x: number; y: number; areaZone: string } | null;
   escortNPC: Ref | null;
   requiredInstance: Ref | null;
   monsterRequirements: Array<{ ref: Ref; killCount: number }>;

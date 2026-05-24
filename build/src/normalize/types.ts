@@ -57,6 +57,8 @@ export interface MissionTask {
   nextTaskOnEnd: number;
   timeLimitSeconds: number;
   waypointNPC: Ref | null;
+  /** Pre-baked spawn point of waypointNPC's canonical type — used for the in-task minimap. */
+  waypointPoint: { x: number; y: number; areaZone: string } | null;
   escortNPC: Ref | null;
   requiredInstance: Ref | null;
   monsterRequirements: Array<{ ref: Ref; killCount: number }>;

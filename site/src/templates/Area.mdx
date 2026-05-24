@@ -1,5 +1,6 @@
 import Dropdown from '../components/Dropdown';
 import EntityLink from '../components/EntityLink';
+import Minimap from '../components/Minimap';
 
 # {props.data.name}
 
@@ -12,6 +13,20 @@ import EntityLink from '../components/EntityLink';
     <span>{' · '}{props.data.missionsStarting.length} mission{props.data.missionsStarting.length === 1 ? '' : 's'} start here</span>
   )}
 </p>
+
+{props.data.width > 0 && props.data.height > 0 && (
+  <div className="area-map">
+    <Minimap
+      x={props.data.x + props.data.width / 2}
+      y={props.data.y + props.data.height / 2}
+      width={props.data.width}
+      height={props.data.height}
+      size={960}
+      extent={Math.max(props.data.width, props.data.height) / 2 + 16384}
+      title={props.data.fullName}
+    />
+  </div>
+)}
 
 {props.data.infectedZone && (
   <Dropdown summary="Infected Zone" open>

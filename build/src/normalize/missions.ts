@@ -3,6 +3,7 @@ import AdmZip from 'adm-zip';
 import { chunkOf, writeChunks, writeIndex } from '../chunk.js';
 import type { IconMap } from '../icons.js';
 import type { NpcGrouping } from './npcGrouping.js';
+import type { NpcLocationMap } from './npcLocations.js';
 import type { NpcNameIndex } from './npcNameIndex.js';
 import {
   instanceRef,
@@ -151,7 +152,13 @@ function normalizeGuideEmails(raw: RawTask, npcNameIndex: NpcNameIndex): GuideEm
   return out;
 }
 
-function normalizeTask(raw: RawTask, iconMap: IconMap, npcNameIndex: NpcNameIndex, grouping: NpcGrouping): MissionTask {
+function normalizeTask(
+  raw: RawTask,
+  iconMap: IconMap,
+  npcNameIndex: NpcNameIndex,
+  grouping: NpcGrouping,
+  npcLocations: NpcLocationMap,
+): MissionTask {
   const monsterRequirements = Object.entries(raw.QuestItemMonsterRequirements ?? {})
     .map(([key, val]) => {
       const { id, name } = parseCompoundKey(key);
@@ -161,6 +168,15 @@ function normalizeTask(raw: RawTask, iconMap: IconMap, npcNameIndex: NpcNameInde
     })
     .filter((x): x is { ref: Ref; killCount: number } => x !== null);
 
+  const wpRef = npcRef(
+    raw.WaypointNPCID ?? 0,
+    raw.WaypointNPCName ?? '',
+    raw.WaypointNPCIcon ?? '',
+    iconMap,
+    grouping,
+  );
+  const wpPoint = wpRef ? npcLocations.get(wpRef.id as number) ?? null : null;
+
   return {
     id: raw.ID,
     type: raw.Type,
@@ -168,13 +184,8 @@ function normalizeTask(raw: RawTask, iconMap: IconMap, npcNameIndex: NpcNameInde
     onEndObjective: raw.OnEndTaskObjective ?? '',
     nextTaskOnEnd: raw.OnEndNextTaskID ?? 0,
     timeLimitSeconds: raw.TimeLimitSeconds ?? 0,
-    waypointNPC: npcRef(
-      raw.WaypointNPCID ?? 0,
-      raw.WaypointNPCName ?? '',
-      raw.WaypointNPCIcon ?? '',
-      iconMap,
-      grouping,
-    ),
+    waypointNPC: wpRef,
+    waypointPoint: wpPoint,
     escortNPC: npcRef(
       raw.EscortNPCID ?? 0,
       raw.EscortNPCName ?? '',
@@ -193,7 +204,13 @@ function normalizeTask(raw: RawTask, iconMap: IconMap, npcNameIndex: NpcNameInde
   };
 }
 
-function normalizeMission(raw: RawMission, iconMap: IconMap, npcNameIndex: NpcNameIndex, grouping: NpcGrouping): Mission {
+function normalizeMission(
+  raw: RawMission,
+  iconMap: IconMap,
+  npcNameIndex: NpcNameIndex,
+  grouping: NpcGrouping,
+  npcLocations: NpcLocationMap,
+): Mission {
   const startNPC = npcRef(raw.MissionStartNPCID ?? 0, raw.MissionStartNPCName ?? '', raw.MissionStartNPCIcon ?? '', iconMap, grouping);
   const journalNPC = npcRef(raw.MissionJournalNPCID ?? 0, raw.MissionJournalNPCName ?? '', raw.MissionJournalNPCIcon ?? '', iconMap, grouping);
   const endNPC = npcRef(raw.MissionEndNPCID ?? 0, raw.MissionEndNPCName ?? '', raw.MissionEndNPCIcon ?? '', iconMap, grouping);
@@ -238,7 +255,7 @@ function normalizeMission(raw: RawMission, iconMap: IconMap, npcNameIndex: NpcNa
     .filter((x): x is { npc: Ref; text: string } => x !== null);
 
   const tasks = Object.values(raw.Tasks ?? {})
-    .map((t) => normalizeTask(t, iconMap, npcNameIndex, grouping))
+    .map((t) => normalizeTask(t, iconMap, npcNameIndex, grouping, npcLocations))
     .sort((a, b) => a.id - b.id);
 
   return {
@@ -318,6 +335,7 @@ export async function normalizeMissions(
   iconMap: IconMap,
   npcNameIndex: NpcNameIndex,
   grouping: NpcGrouping,
+  npcLocations: NpcLocationMap,
 ): Promise<{
   count: number;
   chunks: number;
@@ -336,7 +354,7 @@ export async function normalizeMissions(
   const raw = JSON.parse(entry.getData().toString('utf8')) as Record<string, RawMission>;
 
   const missions: Mission[] = Object.values(raw)
-    .map((m) => normalizeMission(m, iconMap, npcNameIndex, grouping))
+    .map((m) => normalizeMission(m, iconMap, npcNameIndex, grouping, npcLocations))
     .sort((a, b) => a.id - b.id);
 
   // Build the inverted indexes:
@@ -355,6 +373,9 @@ export async function normalizeMissions(
 
     for (const req of m.requiredMissions) {
       const target = byId.get(req.id as number);
+      // If this ref came from RequiredMissionIDs[] alone, it was created with a
+      // placeholder name ("Mission #N"). Patch it now that all missions are known.
+      if (target) req.name = target.name;
       if (target && !target.requiredByMissions.some((r) => r.id === m.id)) {
         target.requiredByMissions.push(missionAsRef);
       }

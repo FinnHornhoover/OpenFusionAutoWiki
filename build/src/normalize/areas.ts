@@ -134,11 +134,26 @@ function canonNpcId(id: number, grouping: NpcGrouping): number {
   return grouping.memberToCanonical.get(id) ?? id;
 }
 
+/** True when a region has at least one piece of in-area content. */
+function isPopulated(r: RawAreaInfo): boolean {
+  return (
+    Object.keys(r.NPCs ?? {}).length > 0 ||
+    Object.keys(r.Mobs ?? {}).length > 0 ||
+    Object.keys(r.Vendors ?? {}).length > 0 ||
+    Object.keys(r.Eggs ?? {}).length > 0 ||
+    Object.keys(r.Transportation ?? {}).length > 0 ||
+    Object.keys(r.InstanceWarps ?? {}).length > 0
+  );
+}
+
 /**
  * area_info.json keys a list of regions per name — some areas are described
- * as multiple disjoint rectangles (e.g., "Marquee Row - Downtown" ships two
- * regions, only one of them populated). Merge them all into a single logical
- * area record before extracting NPCs/Mobs/Vendors/etc.
+ * as multiple disjoint rectangles where only some of them carry content
+ * (e.g. "Bravo Beach - Downtown" ships an empty region 0 plus a populated
+ * region 1 in a different tile). Merge content from all regions, but take
+ * the geometry from the union of POPULATED regions so the area's minimap
+ * frames the part that actually has stuff in it. Falls back to the union
+ * of all regions when none are populated.
  */
 function mergeRegions(regions: RawAreaInfo[]): RawAreaInfo {
   const merged: RawAreaInfo = {
@@ -155,12 +170,27 @@ function mergeRegions(regions: RawAreaInfo[]): RawAreaInfo {
     InstanceWarps: {},
     InfectedZone: null,
   };
-  // Geometry: take the first region's bbox; per-region geometry isn't surfaced today.
+
+  // Geometry: union of the bbox of every region that carries content.
+  const populated = regions.filter(isPopulated);
+  const geomSource = populated.length > 0 ? populated : regions;
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  for (const r of geomSource) {
+    if (r.X === undefined || r.Y === undefined || r.Width === undefined || r.Height === undefined) continue;
+    if (r.X < minX) minX = r.X;
+    if (r.Y < minY) minY = r.Y;
+    if (r.X + r.Width > maxX) maxX = r.X + r.Width;
+    if (r.Y + r.Height > maxY) maxY = r.Y + r.Height;
+  }
+  if (Number.isFinite(minX)) {
+    merged.X = minX;
+    merged.Y = minY;
+    merged.Width = maxX - minX;
+    merged.Height = maxY - minY;
+  }
+
+  // Content: union across every region regardless of population.
   for (const r of regions) {
-    if (merged.X === undefined && r.X !== undefined) merged.X = r.X;
-    if (merged.Y === undefined && r.Y !== undefined) merged.Y = r.Y;
-    if (merged.Width === undefined && r.Width !== undefined) merged.Width = r.Width;
-    if (merged.Height === undefined && r.Height !== undefined) merged.Height = r.Height;
     Object.assign(merged.NPCs!, r.NPCs ?? {});
     Object.assign(merged.NPCTypes!, r.NPCTypes ?? {});
     Object.assign(merged.Mobs!, r.Mobs ?? {});

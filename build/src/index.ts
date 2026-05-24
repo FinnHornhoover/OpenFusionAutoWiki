@@ -10,6 +10,7 @@ import { join } from 'node:path';
 import { downloadAll, fetchRelease } from './download.js';
 import { dedupeIcons } from './icons.js';
 import { slugForZip, writeManifest } from './manifest.js';
+import { downloadMinimap } from './minimap.js';
 import { normalizeAreas } from './normalize/areas.js';
 import { normalizeItems } from './normalize/items.js';
 import { normalizeMissions } from './normalize/missions.js';
@@ -17,6 +18,7 @@ import { normalizeMobs } from './normalize/mobs.js';
 import { normalizeNanos } from './normalize/nanos.js';
 import { normalizeNpcs } from './normalize/npcs.js';
 import { buildNpcGrouping } from './normalize/npcGrouping.js';
+import { buildNpcLocationMap } from './normalize/npcLocations.js';
 import { buildNpcNameIndex } from './normalize/npcNameIndex.js';
 import { writeSearchIndex } from './normalize/search.js';
 import { writeSitemapAndRobots } from './normalize/sitemap.js';
@@ -82,8 +84,9 @@ async function main(): Promise<void> {
     // Group duplicate NPCs by (category, name) first; mission/npc/item normalizers all use it.
     const grouping = buildNpcGrouping(d.path);
     const npcNameIndex = buildNpcNameIndex(d.path, iconMap, grouping);
+    const npcLocations = buildNpcLocationMap(d.path, grouping);
 
-    const m = await normalizeMissions(d.path, slug, iconMap, npcNameIndex, grouping);
+    const m = await normalizeMissions(d.path, slug, iconMap, npcNameIndex, grouping, npcLocations);
     totalMissions += m.count;
     totalMissionChunks += m.chunks;
 
@@ -130,6 +133,10 @@ async function main(): Promise<void> {
   log.done(`areas: ${totalAreas} → ${totalAreaChunks} chunks; ${totalAreasWithMissions} host missions; ${totalAreasWithTransport} have transport`);
   log.done(`nanos: ${totalNanos} → ${totalNanoChunks} chunks; ${totalLinkedNanos} link to missions`);
   log.done(`search: ${totalSearchRows} rows across ${downloaded.length} builds (${(totalSearchBytes / (1024 * 1024)).toFixed(1)} MB total raw)`);
+
+  log.step('fetching world minimap');
+  const mm = await downloadMinimap();
+  log.done(`minimap: ${mm.cached ? 'cached' : 'downloaded'} ${(mm.bytes / 1024).toFixed(1)} KB`);
 
   log.step('writing sitemap + robots.txt');
   const slugs = downloaded.map((d) => slugForZip(d.asset.name));

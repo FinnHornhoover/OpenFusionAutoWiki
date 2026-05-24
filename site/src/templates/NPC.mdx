@@ -1,11 +1,12 @@
 import Dropdown from '../components/Dropdown';
 import EntityLink from '../components/EntityLink';
 import Icon from '../components/Icon';
+import Minimap from '../components/Minimap';
 
 # {props.data.name}
 
 <p className="entity-meta muted">
-  {props.data.icon ? <Icon src={props.data.icon} alt={props.data.name} size={48} /> : null}
+  {props.data.icon ? <Icon src={props.data.icon} alt={props.data.name} size={192} /> : null}
   {props.data.category && <span className="badge badge-category">{props.data.category}</span>}
   {props.data.inGame === false && <span className="badge badge-warn">cut from final build</span>}
   {props.data.locations.length > 0 && (
@@ -101,6 +102,7 @@ import Icon from '../components/Icon';
     <table className="location-table">
       <thead>
         <tr>
+          <th>Map</th>
           <th>Area</th>
           <th>Coordinates</th>
           <th>Instance</th>
@@ -109,6 +111,7 @@ import Icon from '../components/Icon';
       <tbody>
         {props.data.locations.map((loc, i) => (
           <tr key={i}>
+            <td><Minimap x={loc.x} y={loc.y} size={256} title={loc.areaZone} /></td>
             <td>{loc.areaZone || <span className="muted">—</span>}</td>
             <td className="muted">{loc.x}, {loc.y}, {loc.z}</td>
             <td className="muted">{loc.instanceID || '—'}</td>

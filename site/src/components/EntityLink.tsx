@@ -25,7 +25,7 @@ interface EntityLinkProps {
  * for the current build, otherwise as plain text. Always shows the icon if
  * one is known.
  */
-export default function EntityLink({ entity, withIcon = true, iconSize = 24 }: EntityLinkProps) {
+export default function EntityLink({ entity, withIcon = true, iconSize = 96 }: EntityLinkProps) {
   const { build } = useParams();
   const meta = useBuildMeta(build);
   if (!entity) return null;
