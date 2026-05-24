@@ -24,7 +24,7 @@ import Minimap from '../components/Minimap';
   <Dropdown summary={`Gives ${props.data.startedMissions.length} mission${props.data.startedMissions.length === 1 ? '' : 's'}`} open>
     <ul className="ref-list">
       {props.data.startedMissions.map((m) => (
-        <li key={m.id}><EntityLink entity={m} withIcon={false} /></li>
+        <li key={m.id}><EntityLink entity={m} /></li>
       ))}
     </ul>
   </Dropdown>
@@ -34,7 +34,7 @@ import Minimap from '../components/Minimap';
   <Dropdown summary={`Journals ${props.data.journaledMissions.length} mission${props.data.journaledMissions.length === 1 ? '' : 's'}`}>
     <ul className="ref-list">
       {props.data.journaledMissions.map((m) => (
-        <li key={m.id}><EntityLink entity={m} withIcon={false} /></li>
+        <li key={m.id}><EntityLink entity={m} /></li>
       ))}
     </ul>
   </Dropdown>
@@ -44,7 +44,7 @@ import Minimap from '../components/Minimap';
   <Dropdown summary={`Ends ${props.data.endedMissions.length} mission${props.data.endedMissions.length === 1 ? '' : 's'}`}>
     <ul className="ref-list">
       {props.data.endedMissions.map((m) => (
-        <li key={m.id}><EntityLink entity={m} withIcon={false} /></li>
+        <li key={m.id}><EntityLink entity={m} /></li>
       ))}
     </ul>
   </Dropdown>
