@@ -1,6 +1,7 @@
 import Dropdown from '../components/Dropdown';
 import EntityLink from '../components/EntityLink';
 import Icon from '../components/Icon';
+import { formatDurationSeconds } from '../data/formatTime';
 
 # {props.data.name}
 
@@ -25,7 +26,7 @@ import Icon from '../components/Icon';
         </h3>
         {p.comment && <p>{p.comment}</p>}
         <dl className="stat-grid">
-          {p.skillCoolTime > 0 && <><dt>Cooldown</dt><dd>{p.skillCoolTime}s</dd></>}
+          {p.skillCoolTime > 0 && <><dt>Cooldown</dt><dd>{formatDurationSeconds(p.skillCoolTime)}</dd></>}
           {p.skillRange > 0 && <><dt>Range</dt><dd>{p.skillRange}</dd></>}
           {p.skillArea > 0 && <><dt>Area</dt><dd>{p.skillArea}</dd></>}
           {p.skillAngle > 0 && <><dt>Angle</dt><dd>{p.skillAngle}°</dd></>}

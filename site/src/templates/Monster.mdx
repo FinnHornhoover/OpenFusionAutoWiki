@@ -3,6 +3,7 @@ import DropChance from '../components/DropChance';
 import EntityLink from '../components/EntityLink';
 import Icon from '../components/Icon';
 import Minimap from '../components/Minimap';
+import { formatDurationSeconds } from '../data/formatTime';
 
 # {props.data.name}
 
@@ -31,7 +32,7 @@ import Minimap from '../components/Minimap';
   {props.data.sightRange > 0 && <><dt>Sight range</dt><dd>{props.data.sightRange}</dd></>}
   {props.data.walkSpeed > 0 && <><dt>Walk speed</dt><dd>{props.data.walkSpeed}</dd></>}
   {props.data.runSpeed > 0 && <><dt>Run speed</dt><dd>{props.data.runSpeed}</dd></>}
-  {props.data.respawnSeconds > 0 && <><dt>Respawn</dt><dd>{props.data.respawnSeconds}s</dd></>}
+  {(props.data.respawnTime || props.data.respawnSeconds > 0) && <><dt>Respawn</dt><dd>{props.data.respawnTime || formatDurationSeconds(props.data.respawnSeconds)}</dd></>}
 </dl>
 
 {(props.data.activeSkill || props.data.passiveBuff || props.data.supportSkill) && (
