@@ -40,11 +40,9 @@ async function exists(path: string): Promise<boolean> {
 }
 
 /**
- * Dedupe images from one ZIP. md5-hash each image entry and copy to
- * site/public/icons/<hash><ext> if not already present.
+ * Hash images from one ZIP and copy new files to site/public/icons/.
  *
- * Per-build icon maps are cached in .cache/iconmaps/<slug>.json so reruns
- * (and P2+ phases that need the map without re-walking ZIPs) are fast.
+ * Cache each build's icon map so later runs do not reopen every ZIP.
  */
 async function dedupeOne(
   zipPath: string,
@@ -53,13 +51,12 @@ async function dedupeOne(
   const slug = buildSlug(zipPath.split('/').pop() ?? '');
   const cachePath = join(CACHE_DIR, 'iconmaps', `${slug}.json`);
 
-  // Cached map fast-path. We still need to ensure each referenced hash
-  // exists on disk (in case site/public/icons was wiped).
+  // A cached map is only valid if every referenced icon still exists.
   if (await exists(cachePath)) {
     const cached = JSON.parse(await readFile(cachePath, 'utf8')) as IconMap;
     let missing = 0;
     for (const hash of new Set(Object.values(cached))) {
-      // hash here is "abcd1234.png" — extension included
+      // Values already include the extension, e.g. "abcd1234.png".
       const target = join(ICONS_OUT, hash);
       if (!written.has(hash) && !(await exists(target))) {
         missing++;
@@ -71,7 +68,7 @@ async function dedupeOne(
       log.info(`icons cached  ${slug} (${Object.keys(cached).length} refs)`);
       return { buildSlug: slug, iconMap: cached, totalImages: Object.keys(cached).length };
     }
-    // Fall through: cache exists but disk images were removed. Re-extract.
+    // Cache exists, but icons were removed. Re-extract below.
   }
 
   const zip = new AdmZip(zipPath);
@@ -108,12 +105,9 @@ async function dedupeOne(
 }
 
 /**
- * Walk every cached ZIP and dedupe its icons + help images into
- * site/public/icons/<md5><ext>. Returns aggregate stats and per-build maps.
+ * Dedupe icons and help images across all cached ZIPs.
  *
- * `slugFor` maps the ZIP basename to the public URL slug. The internal on-disk
- * iconmap cache is keyed by ZIP basename for stability across slug changes;
- * only the OUTPUT `maps` record is keyed by the public slug.
+ * The disk cache stays keyed by ZIP basename; the returned maps use public slugs.
  */
 export async function dedupeIcons(
   assets: DownloadedAsset[],

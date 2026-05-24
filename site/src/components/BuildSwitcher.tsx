@@ -2,8 +2,7 @@ import { useMatch, useNavigate } from 'react-router-dom';
 import { useManifest } from '../data/useManifest';
 
 export default function BuildSwitcher() {
-  // useParams returns {} outside a matched <Route>, and this component lives in the
-  // header next to QuickPicks. useMatch reads the current URL anywhere under <BrowserRouter>.
+  // This lives outside the route tree, so read the build from the current URL.
   const match = useMatch('/:build/*');
   const build = match?.params.build;
   const navigate = useNavigate();

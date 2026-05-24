@@ -1,8 +1,5 @@
-// openfusion-auto-wiki — build pipeline orchestrator.
-//
-// P1: download, icon dedupe, manifest.
-// P2: normalize missions per build → chunked JSON + per-type index.
-//     Each build also gets a meta.json declaring which entity types are populated.
+// Build pipeline: fetch FFInfoPacks, dedupe shared assets, normalize each build,
+// then write chunked JSON, indexes, search, sitemaps, and metadata.
 
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -81,7 +78,7 @@ async function main(): Promise<void> {
     const slug = slugForZip(d.asset.name);
     const iconMap = maps[slug] ?? {};
 
-    // Group duplicate NPCs by (category, name) first; mission/npc/item normalizers all use it.
+    // Shared NPC grouping used by missions, NPCs, items, and area pages.
     const grouping = buildNpcGrouping(d.path);
     const npcNameIndex = buildNpcNameIndex(d.path, iconMap, grouping);
     const npcLocations = buildNpcLocationMap(d.path, grouping);
