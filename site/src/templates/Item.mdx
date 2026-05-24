@@ -46,7 +46,7 @@ import SimilarItems from '../components/SimilarItems';
         return (mb - ma) || a.mob.name.localeCompare(b.mob.name);
       }),
     'Sold by': props.data.sources.filter((s) => s.kind === 'vendor'),
-    'Eggs / crates in world': props.data.sources.filter((s) => s.kind === 'egg'),
+    'Eggs': props.data.sources.filter((s) => s.kind === 'egg'),
     'Racing rewards': props.data.sources.filter((s) => s.kind === 'racing'),
     'Code redemptions': props.data.sources.filter((s) => s.kind === 'code'),
     'Event drops': props.data.sources
@@ -62,7 +62,7 @@ import SimilarItems from '../components/SimilarItems';
     .filter(([, list]) => list.length > 0)
     .map(([label, list]) => (
       <Dropdown key={label} summary={`${label} (${list.length})`} open={list.length <= 20}>
-        {label === 'Dropped by' ? (
+        {list[0]?.kind === 'mob' ? (
           <table className="location-table source-table">
             <thead>
               <tr>
@@ -81,34 +81,55 @@ import SimilarItems from '../components/SimilarItems';
               ))}
             </tbody>
           </table>
+        ) : list[0]?.kind === 'vendor' ? (
+          <table className="location-table source-table">
+            <thead>
+              <tr>
+                <th>Seller</th>
+                <th>Price</th>
+                <th>Location</th>
+              </tr>
+            </thead>
+            <tbody>
+              {list.map((s, i) => (
+                <tr key={i}>
+                  <td><EntityLink entity={s.npc} /></td>
+                  <td>{s.price > 0 ? `${s.price.toLocaleString()} Taros` : <span className="muted">—</span>}</td>
+                  <td>{s.areaZone || <span className="muted">—</span>}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : list[0]?.kind === 'egg' ? (
+          <table className="location-table source-table">
+            <thead>
+              <tr>
+                <th>Egg</th>
+                <th>Location</th>
+                <th>Drop chance</th>
+              </tr>
+            </thead>
+            <tbody>
+              {list.map((s, i) => (
+                <tr key={i}>
+                  <td>
+                    <strong>{s.eggName || 'Egg'}</strong>
+                  </td>
+                  <td>{s.areaZone || <span className="muted">—</span>}</td>
+                  <td><DropChance data={s} leadingSeparator={false} /></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         ) : (
         <ul className="ref-list">
           {list.map((s, i) => {
             if (s.kind === 'mission' || s.kind === 'mission-crate') {
               return (
                 <li key={i}>
-                  <EntityLink entity={s.mission} withIcon={false} />
-                  {s.npc && <span className="muted"> · from <EntityLink entity={s.npc} withIcon={false} /></span>}
-                  {s.kind === 'mission-crate' && <span className="muted"> · from reward crate</span>}
+                  <span className="task-label requirement-label">{s.kind === 'mission-crate' ? 'From Reward CRATE:' : 'Direct Reward:'}</span>
+                  <EntityLink entity={s.mission} />
                   {s.selectionNeeded && <span className="muted"> · choose one</span>}
-                </li>
-              );
-            }
-            if (s.kind === 'vendor') {
-              return (
-                <li key={i}>
-                  <EntityLink entity={s.npc} withIcon={false} />
-                  {s.price > 0 && <span className="muted"> · {s.price.toLocaleString()} Taros</span>}
-                  {s.areaZone && <span className="muted"> · {s.areaZone}</span>}
-                </li>
-              );
-            }
-            if (s.kind === 'egg') {
-              return (
-                <li key={i}>
-                  <strong>{s.eggName}</strong>
-                  {s.eggComment && <span className="muted"> · {s.eggComment}</span>}
-                  {s.areaZone && <span className="muted"> · {s.areaZone}</span>}
                 </li>
               );
             }

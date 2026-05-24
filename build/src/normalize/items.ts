@@ -140,6 +140,7 @@ function normalizeSource(
       const mission = missionRef(m.MissionID ?? 0, m.MissionName ?? '');
       if (!mission) return null;
       const npc = npcRef(m.NPCTypeID ?? 0, m.NPCName ?? '', m.NPCIcon ?? '', iconMap, grouping);
+      mission.icon = npc?.icon ?? '';
       return {
         kind: 'mission',
         mission,
@@ -153,6 +154,7 @@ function normalizeSource(
       const mission = missionRef(m.MissionID ?? 0, m.MissionName ?? '');
       if (!mission) return null;
       const npc = npcRef(m.NPCTypeID ?? 0, m.NPCName ?? '', m.NPCIcon ?? '', iconMap, grouping);
+      mission.icon = npc?.icon ?? '';
       return {
         kind: 'mission-crate',
         mission,
