@@ -62,17 +62,28 @@ import SimilarItems from '../components/SimilarItems';
     .filter(([, list]) => list.length > 0)
     .map(([label, list]) => (
       <Dropdown key={label} summary={`${label} (${list.length})`} open={list.length <= 20}>
+        {label === 'Dropped by' ? (
+          <table className="location-table source-table">
+            <thead>
+              <tr>
+                <th>Monster</th>
+                <th>Location</th>
+                <th>Drop chance</th>
+              </tr>
+            </thead>
+            <tbody>
+              {list.map((s, i) => (
+                <tr key={i}>
+                  <td><EntityLink entity={s.mob} /></td>
+                  <td>{s.areaZone || <span className="muted">—</span>}</td>
+                  <td><DropChance data={s} leadingSeparator={false} /></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : (
         <ul className="ref-list">
           {list.map((s, i) => {
-            if (s.kind === 'mob') {
-              return (
-                <li key={i}>
-                  <EntityLink entity={s.mob} withIcon={false} />
-                  {s.areaZone && <span className="muted"> · {s.areaZone}</span>}
-                  <DropChance data={s} />
-                </li>
-              );
-            }
             if (s.kind === 'mission' || s.kind === 'mission-crate') {
               return (
                 <li key={i}>
@@ -125,6 +136,7 @@ import SimilarItems from '../components/SimilarItems';
             return null;
           })}
         </ul>
+        )}
       </Dropdown>
     ));
 })()}

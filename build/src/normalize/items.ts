@@ -1,7 +1,7 @@
 import AdmZip from 'adm-zip';
 
 import { chunkOf, writeChunks, writeIndex } from '../chunk.js';
-import { itemChunkKey, missionRef, monsterRef, npcRef } from './refs.js';
+import { iconFor, itemChunkKey, missionRef, monsterRef, npcRef } from './refs.js';
 import type {
   Item,
   ItemIndexEntry,
@@ -54,6 +54,8 @@ interface RawMobSource {
   AreaZone?: string;
   MobTypeID?: number;
   MobName?: string;
+  MobIcon?: string;
+  Icon?: string;
 }
 interface RawMissionSource {
   AreaZone?: string;
@@ -125,6 +127,7 @@ function normalizeSource(
       const m = s as RawMobSource;
       const ref = monsterRef(m.MobTypeID ?? 0, m.MobName ?? '');
       if (!ref) return null;
+      ref.icon = iconFor(m.MobIcon ?? m.Icon ?? '', iconMap);
       return {
         kind: 'mob',
         mob: ref,
