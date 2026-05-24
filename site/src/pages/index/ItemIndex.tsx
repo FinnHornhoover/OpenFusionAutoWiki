@@ -51,18 +51,20 @@ export default function ItemIndex({ build, rows, loading }: Props) {
   const activeGender = pickTab<typeof GENDER_TABS[number]>(searchParams.get('gender'), GENDER_TABS);
   const [q, setQ] = useState('');
   const [page, setPage] = useState(0);
-  const [hideUnobtainable, setHideUnobtainable] = useState(false);
+  const [hideUnobtainable, setHideUnobtainable] = useState(true);
   const showSkeleton = useDelayedFlag(loading);
+  const nameNeedle = q.trim().toLowerCase();
+  const hasNameFilter = nameNeedle.length > 0;
+  const effectiveHideUnobtainable = hideUnobtainable && !hasNameFilter;
 
   // Each axis matcher; "All" passes through.
   const matchType = (r: ItemIndexEntry) => activeType === 'All' || r.type === activeType;
   const matchRarity = (r: ItemIndexEntry) => activeRarity === 'All' || r.rarity === activeRarity;
   const matchGender = (r: ItemIndexEntry) => activeGender === 'All' || r.gender === activeGender;
-  const matchName = (() => {
-    const needle = q.trim().toLowerCase();
-    return needle ? (r: ItemIndexEntry) => r.name.toLowerCase().includes(needle) : () => true;
-  })();
-  const matchObtainable = (r: ItemIndexEntry) => !hideUnobtainable || r.obtainable;
+  const matchName = hasNameFilter
+    ? (r: ItemIndexEntry) => r.name.toLowerCase().includes(nameNeedle)
+    : () => true;
+  const matchObtainable = (r: ItemIndexEntry) => !effectiveHideUnobtainable || r.obtainable;
 
   // Counts per option of an axis are computed against everything ELSE applied.
   const typeCounts = useMemo(() => {
@@ -76,7 +78,7 @@ export default function ItemIndex({ build, rows, loading }: Props) {
       if ((ITEM_TYPE_TABS as readonly string[]).includes(r.type)) acc[r.type as ItemTab]++;
     }
     return acc;
-  }, [rows, activeRarity, activeGender, q, hideUnobtainable]);
+  }, [rows, activeRarity, activeGender, q, effectiveHideUnobtainable]);
 
   const rarityCounts = useMemo(() => {
     const acc: Record<RarityTab, number> = {
@@ -88,7 +90,7 @@ export default function ItemIndex({ build, rows, loading }: Props) {
       if ((RARITY_TABS as readonly string[]).includes(r.rarity)) acc[r.rarity as RarityTab]++;
     }
     return acc;
-  }, [rows, activeType, activeGender, q, hideUnobtainable]);
+  }, [rows, activeType, activeGender, q, effectiveHideUnobtainable]);
 
   const genderCounts = useMemo(() => {
     const acc: Record<GenderTab, number> = { All: 0, Any: 0, Male: 0, Female: 0 };
@@ -98,7 +100,7 @@ export default function ItemIndex({ build, rows, loading }: Props) {
       if ((GENDER_TABS as readonly string[]).includes(r.gender)) acc[r.gender as GenderTab]++;
     }
     return acc;
-  }, [rows, activeType, activeRarity, q, hideUnobtainable]);
+  }, [rows, activeType, activeRarity, q, effectiveHideUnobtainable]);
 
   const filtered = useMemo(() => {
     const pool = rows.filter((r) =>
@@ -112,7 +114,7 @@ export default function ItemIndex({ build, rows, loading }: Props) {
       if (ra !== rb) return ra - rb;
       return a.name.localeCompare(b.name);
     });
-  }, [rows, activeType, activeRarity, activeGender, q, hideUnobtainable]);
+  }, [rows, activeType, activeRarity, activeGender, q, effectiveHideUnobtainable]);
 
   const start = page * PAGE_SIZE;
   const pageRows = filtered.slice(start, start + PAGE_SIZE);
@@ -186,7 +188,8 @@ export default function ItemIndex({ build, rows, loading }: Props) {
         <label className="checkbox">
           <input
             type="checkbox"
-            checked={hideUnobtainable}
+            checked={effectiveHideUnobtainable}
+            disabled={hasNameFilter}
             onChange={(e) => { setHideUnobtainable(e.target.checked); setPage(0); }}
           />
           <span>Hide unobtainable</span>
