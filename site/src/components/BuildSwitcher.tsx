@@ -7,8 +7,11 @@ export default function BuildSwitcher() {
   const match = useMatch('/:build/*');
   const build = match?.params.build;
   const navigate = useNavigate();
-  const { manifest, loading } = useManifest();
+  const { manifest, loading, error } = useManifest();
 
+  if (error) {
+    return <span className="muted" title={error}>Builds unavailable</span>;
+  }
   if (loading) {
     return <span className="muted">Loading builds…</span>;
   }

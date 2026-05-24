@@ -132,7 +132,11 @@ function normalizeMob(
     missionsRequiring: mobMissions.get(raw.ID) ?? [],
     drops: (mobItems.get(raw.ID) ?? [])
       .slice()
-      .sort((a, b) => (b.probability - a.probability) || a.item.name.localeCompare(b.item.name)),
+      .sort((a, b) => {
+        const ma = Math.max(a.boyProbability, a.girlProbability);
+        const mb = Math.max(b.boyProbability, b.girlProbability);
+        return (mb - ma) || a.item.name.localeCompare(b.item.name);
+      }),
 
     locations,
   };

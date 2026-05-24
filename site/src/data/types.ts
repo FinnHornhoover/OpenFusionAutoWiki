@@ -138,15 +138,22 @@ export interface NpcIndexEntry {
   inGame: boolean;
 }
 
+export interface DropChance {
+  boyProbability: number;
+  boyOdds: string;
+  girlProbability: number;
+  girlOdds: string;
+}
+
 export type ItemSource =
-  | { kind: 'mob'; mob: Ref; areaZone: string; probability: number; oddsText: string }
+  | ({ kind: 'mob'; mob: Ref; areaZone: string } & DropChance)
   | { kind: 'mission'; mission: Ref; npc: Ref | null; areaZone: string; selectionNeeded: boolean }
-  | { kind: 'mission-crate'; mission: Ref; npc: Ref | null; areaZone: string; selectionNeeded: boolean }
+  | ({ kind: 'mission-crate'; mission: Ref; npc: Ref | null; areaZone: string; selectionNeeded: boolean } & DropChance)
   | { kind: 'vendor'; npc: Ref; price: number; areaZone: string }
-  | { kind: 'egg'; eggName: string; eggComment: string; areaZone: string }
-  | { kind: 'racing'; npc: Ref | null; instanceName: string; areaZone: string; requiredScore: number; requiredStars: number }
+  | ({ kind: 'egg'; eggName: string; eggComment: string; areaZone: string } & DropChance)
+  | ({ kind: 'racing'; npc: Ref | null; instanceName: string; areaZone: string; requiredScore: number; requiredStars: number } & DropChance)
   | { kind: 'code'; code: string }
-  | { kind: 'event'; eventId: number; eventName: string; probability: number; oddsText: string };
+  | ({ kind: 'event'; eventId: number; eventName: string } & DropChance);
 
 export interface Item {
   id: string;
@@ -213,10 +220,8 @@ export interface MobLocation {
   groupId: string;
 }
 
-export interface MobDrop {
+export interface MobDrop extends DropChance {
   item: Ref;
-  probability: number;
-  oddsText: string;
   areaZone: string;
 }
 

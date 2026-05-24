@@ -1,8 +1,10 @@
 import { useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 
+import EntityIndexSkeleton from '../../components/EntityIndexSkeleton';
 import Icon from '../../components/Icon';
 import type { NpcIndexEntry } from '../../data/types';
+import { useDelayedFlag } from '../../data/useDelayedFlag';
 
 const PAGE_SIZE = 50;
 
@@ -43,6 +45,7 @@ export default function NpcIndex({ build, rows, loading }: Props) {
   const [q, setQ] = useState('');
   const [page, setPage] = useState(0);
   const [hideOutOfGame, setHideOutOfGame] = useState(true);
+  const showSkeleton = useDelayedFlag(loading);
 
   const counts = useMemo(() => {
     const acc: Record<NpcTab, number> = { All: 0, Quest: 0, Vendor: 0, Normal: 0, Combi: 0, Bank: 0, Warp: 0, Location: 0 };
@@ -125,7 +128,7 @@ export default function NpcIndex({ build, rows, loading }: Props) {
         </label>
       </div>
 
-      {loading && <p className="muted">Loading…</p>}
+      {loading && showSkeleton && <EntityIndexSkeleton />}
       {!loading && filtered.length === 0 && <p className="muted">No matches.</p>}
       {!loading && filtered.length > 0 && (
         <>

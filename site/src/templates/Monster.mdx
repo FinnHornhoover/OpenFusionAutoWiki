@@ -1,4 +1,5 @@
 import Dropdown from '../components/Dropdown';
+import DropChance from '../components/DropChance';
 import EntityLink from '../components/EntityLink';
 import Icon from '../components/Icon';
 
@@ -63,10 +64,7 @@ import Icon from '../components/Icon';
         <li key={`${d.item.id}-${i}`}>
           <EntityLink entity={d.item} />
           {d.areaZone && <span className="muted"> · {d.areaZone}</span>}
-          {d.oddsText && <span className="muted"> · {d.oddsText}</span>}
-          {d.probability > 0 && d.probability < 1 && (
-            <span className="muted"> · {(d.probability * 100).toFixed(2)}%</span>
-          )}
+          <DropChance data={d} />
         </li>
       ))}
     </ul>

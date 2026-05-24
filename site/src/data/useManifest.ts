@@ -18,36 +18,46 @@ async function loadManifest(): Promise<BuildEntry[]> {
   if (cache) return cache;
   if (inflight) return inflight;
   inflight = fetch('/builds.json')
-    .then((r) => (r.ok ? r.json() : []))
+    .then((r) => {
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      return r.json();
+    })
     .then((data: BuildEntry[]) => {
       cache = Array.isArray(data) ? data : [];
       return cache;
     })
-    .catch(() => {
-      cache = [];
-      return cache;
+    .finally(() => {
+      inflight = null;
     });
   return inflight;
 }
 
-export function useManifest() {
-  const [manifest, setManifest] = useState<BuildEntry[] | null>(cache);
-  const [loading, setLoading] = useState(cache === null);
+export interface UseManifestResult {
+  manifest: BuildEntry[] | null;
+  loading: boolean;
+  error: string | null;
+}
+
+export function useManifest(): UseManifestResult {
+  const [state, setState] = useState<UseManifestResult>({
+    manifest: cache,
+    loading: cache === null,
+    error: null,
+  });
 
   useEffect(() => {
+    if (cache !== null) return;
     let alive = true;
-    if (cache === null) {
-      loadManifest().then((m) => {
-        if (alive) {
-          setManifest(m);
-          setLoading(false);
-        }
-      });
-    }
-    return () => {
-      alive = false;
-    };
+    loadManifest().then(
+      (m) => { if (alive) setState({ manifest: m, loading: false, error: null }); },
+      (err: unknown) => {
+        if (!alive) return;
+        const msg = err instanceof Error ? err.message : 'Failed to load builds';
+        setState({ manifest: null, loading: false, error: msg });
+      },
+    );
+    return () => { alive = false; };
   }, []);
 
-  return { manifest, loading };
+  return state;
 }

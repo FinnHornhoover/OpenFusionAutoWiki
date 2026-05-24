@@ -1,7 +1,9 @@
 import { useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 
+import EntityIndexSkeleton from '../../components/EntityIndexSkeleton';
 import type { AreaIndexEntry } from '../../data/types';
+import { useDelayedFlag } from '../../data/useDelayedFlag';
 
 const PAGE_SIZE = 50;
 
@@ -16,6 +18,7 @@ export default function AreaIndex({ build, rows, loading }: Props) {
   const activeZone = searchParams.get('zone') ?? 'All';
   const [q, setQ] = useState('');
   const [page, setPage] = useState(0);
+  const showSkeleton = useDelayedFlag(loading);
 
   // Zones are derived from the data — every build can have a different set.
   const zoneTabs = useMemo(() => {
@@ -85,7 +88,7 @@ export default function AreaIndex({ build, rows, loading }: Props) {
         aria-label="Filter areas"
       />
 
-      {loading && <p className="muted">Loading…</p>}
+      {loading && showSkeleton && <EntityIndexSkeleton />}
       {!loading && filtered.length === 0 && <p className="muted">No matches.</p>}
       {!loading && filtered.length > 0 && (
         <>

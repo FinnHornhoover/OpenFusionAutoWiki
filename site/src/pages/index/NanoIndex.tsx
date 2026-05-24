@@ -1,8 +1,10 @@
 import { useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 
+import EntityIndexSkeleton from '../../components/EntityIndexSkeleton';
 import Icon from '../../components/Icon';
 import type { NanoIndexEntry } from '../../data/types';
+import { useDelayedFlag } from '../../data/useDelayedFlag';
 
 const PAGE_SIZE = 50;
 
@@ -29,6 +31,7 @@ export default function NanoIndex({ build, rows, loading }: Props) {
   const activeTab = tabFromParam(searchParams.get('type'));
   const [q, setQ] = useState('');
   const [page, setPage] = useState(0);
+  const showSkeleton = useDelayedFlag(loading);
 
   const counts = useMemo(() => {
     const acc: Record<NanoTab, number> = { All: 0, Adaptium: 0, Blastons: 0, Cosmix: 0 };
@@ -90,7 +93,7 @@ export default function NanoIndex({ build, rows, loading }: Props) {
         aria-label="Filter nanos"
       />
 
-      {loading && <p className="muted">Loading…</p>}
+      {loading && showSkeleton && <EntityIndexSkeleton />}
       {!loading && filtered.length === 0 && <p className="muted">No matches.</p>}
       {!loading && filtered.length > 0 && (
         <>

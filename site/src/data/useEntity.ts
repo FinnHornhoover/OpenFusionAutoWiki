@@ -33,13 +33,17 @@ async function loadChunk(slug: string, type: string, chunk: number): Promise<Rec
   let p = inflight.get(k);
   if (!p) {
     p = fetch(`/data/${slug}/${type}/${chunk}.json`)
-      .then((r) => (r.ok ? r.json() : {}))
+      .then((r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json();
+      })
       .then((obj: Record<string, unknown>) => {
         cache.set(k, obj);
         return obj;
       })
-      .catch(() => ({}))
-      .finally(() => inflight.delete(k));
+      .finally(() => {
+        inflight.delete(k);
+      });
     inflight.set(k, p);
   }
   return p;
@@ -49,6 +53,7 @@ export interface UseEntityResult<T> {
   entity: T | null;
   loading: boolean;
   notFound: boolean;
+  error: string | null;
 }
 
 interface InternalState<T> {
@@ -57,7 +62,10 @@ interface InternalState<T> {
 }
 
 function initialState<T>(key: string): InternalState<T> {
-  return { key, result: { entity: null, loading: !!key, notFound: !key } };
+  return {
+    key,
+    result: { entity: null, loading: !!key, notFound: !key, error: null },
+  };
 }
 
 export function useEntity<T>(
@@ -76,20 +84,27 @@ export function useEntity<T>(
     if (!key) return;
     const chunk = chunkFor(type!, id!);
     if (chunk < 0) {
-      setState({ key, result: { entity: null, loading: false, notFound: true } });
+      setState({ key, result: { entity: null, loading: false, notFound: true, error: null } });
       return;
     }
     let alive = true;
-    loadChunk(slug!, type!, chunk).then((bucket) => {
-      if (!alive) return;
-      const found = bucket[id!] as T | undefined;
-      setState({
-        key,
-        result: found
-          ? { entity: found, loading: false, notFound: false }
-          : { entity: null, loading: false, notFound: true },
-      });
-    });
+    loadChunk(slug!, type!, chunk).then(
+      (bucket) => {
+        if (!alive) return;
+        const found = bucket[id!] as T | undefined;
+        setState({
+          key,
+          result: found
+            ? { entity: found, loading: false, notFound: false, error: null }
+            : { entity: null, loading: false, notFound: true, error: null },
+        });
+      },
+      (err: unknown) => {
+        if (!alive) return;
+        const msg = err instanceof Error ? err.message : 'Failed to load entity';
+        setState({ key, result: { entity: null, loading: false, notFound: false, error: msg } });
+      },
+    );
     return () => {
       alive = false;
     };

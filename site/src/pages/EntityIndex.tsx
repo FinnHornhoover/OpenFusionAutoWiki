@@ -1,5 +1,6 @@
 import { useParams } from 'react-router-dom';
 
+import ErrorState from '../components/ErrorState';
 import type { AreaIndexEntry, ItemIndexEntry, MissionIndexEntry, MobIndexEntry, NanoIndexEntry, NpcIndexEntry } from '../data/types';
 import { useBuildEntry } from '../data/useBuildEntry';
 import { useBuildMeta } from '../data/useBuildMeta';
@@ -25,7 +26,7 @@ export default function EntityIndex() {
   const entry = useBuildEntry(build);
   const meta = useBuildMeta(build);
   const supported = meta?.builtTypes?.includes(type ?? '') ?? false;
-  const { rows, loading } = useIndex<MissionIndexEntry | NpcIndexEntry | ItemIndexEntry | MobIndexEntry | AreaIndexEntry | NanoIndexEntry>(
+  const { rows, loading, error } = useIndex<MissionIndexEntry | NpcIndexEntry | ItemIndexEntry | MobIndexEntry | AreaIndexEntry | NanoIndexEntry>(
     supported ? build : undefined,
     supported ? type : undefined,
   );
@@ -47,6 +48,15 @@ export default function EntityIndex() {
 
   const body = (() => {
     if (!build) return null;
+    if (error) {
+      return (
+        <ErrorState
+          title={`Couldn't load ${heading}`}
+          message="The index file failed to load."
+          detail={error}
+        />
+      );
+    }
     if (type === 'missions') {
       return <MissionIndex build={build} rows={(rows ?? []) as MissionIndexEntry[]} loading={loading} />;
     }

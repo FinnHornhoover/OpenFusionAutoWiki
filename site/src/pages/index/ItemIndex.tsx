@@ -1,8 +1,10 @@
 import { useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 
+import EntityIndexSkeleton from '../../components/EntityIndexSkeleton';
 import Icon from '../../components/Icon';
 import type { ItemIndexEntry } from '../../data/types';
+import { useDelayedFlag } from '../../data/useDelayedFlag';
 
 const PAGE_SIZE = 50;
 
@@ -50,6 +52,7 @@ export default function ItemIndex({ build, rows, loading }: Props) {
   const [q, setQ] = useState('');
   const [page, setPage] = useState(0);
   const [hideUnobtainable, setHideUnobtainable] = useState(false);
+  const showSkeleton = useDelayedFlag(loading);
 
   // Each axis matcher; "All" passes through.
   const matchType = (r: ItemIndexEntry) => activeType === 'All' || r.type === activeType;
@@ -190,7 +193,7 @@ export default function ItemIndex({ build, rows, loading }: Props) {
         </label>
       </div>
 
-      {loading && <p className="muted">Loading…</p>}
+      {loading && showSkeleton && <EntityIndexSkeleton />}
       {!loading && filtered.length === 0 && <p className="muted">No matches.</p>}
       {!loading && filtered.length > 0 && (
         <>

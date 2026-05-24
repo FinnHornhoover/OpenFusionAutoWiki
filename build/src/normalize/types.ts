@@ -154,15 +154,25 @@ export interface NpcIndexEntry {
 
 // ---- Items ------------------------------------------------------------------
 
+/**
+ * Probability of this specific item dropping per attempt, accounting for the
+ * full crate-rarity-gender chain. Boy and girl differ when items are
+ * gender-restricted (one is 0, the other gets the full share).
+ */
+export interface DropChance {
+  boyProbability: number;
+  boyOdds: string;
+  girlProbability: number;
+  girlOdds: string;
+}
+
 /** One place an item can be obtained — discriminated by `kind`. */
 export type ItemSource =
-  | {
+  | ({
       kind: 'mob';
       mob: Ref;
       areaZone: string;
-      probability: number;
-      oddsText: string;
-    }
+    } & DropChance)
   | {
       kind: 'mission';
       mission: Ref;
@@ -170,44 +180,42 @@ export type ItemSource =
       areaZone: string;
       selectionNeeded: boolean;
     }
-  | {
+  | ({
       kind: 'mission-crate';
       mission: Ref;
       npc: Ref | null;
       areaZone: string;
       selectionNeeded: boolean;
-    }
+    } & DropChance)
   | {
       kind: 'vendor';
       npc: Ref;
       price: number;
       areaZone: string;
     }
-  | {
+  | ({
       kind: 'egg';
       eggName: string;
       eggComment: string;
       areaZone: string;
-    }
-  | {
+    } & DropChance)
+  | ({
       kind: 'racing';
       npc: Ref | null;
       instanceName: string;
       areaZone: string;
       requiredScore: number;
       requiredStars: number;
-    }
+    } & DropChance)
   | {
       kind: 'code';
       code: string;
     }
-  | {
+  | ({
       kind: 'event';
       eventId: number;
       eventName: string;
-      probability: number;
-      oddsText: string;
-    };
+    } & DropChance);
 
 export interface Item {
   /** Compound URL id: "typeId-itemId". */
@@ -279,10 +287,8 @@ export interface MobLocation {
   groupId: string;
 }
 
-export interface MobDrop {
+export interface MobDrop extends DropChance {
   item: Ref;
-  probability: number;
-  oddsText: string;
   areaZone: string;
 }
 

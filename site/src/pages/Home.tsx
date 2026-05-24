@@ -1,8 +1,9 @@
 import { Link } from 'react-router-dom';
+import ErrorState from '../components/ErrorState';
 import { useManifest } from '../data/useManifest';
 
 export default function Home() {
-  const { manifest, loading } = useManifest();
+  const { manifest, loading, error } = useManifest();
 
   return (
     <section>
@@ -13,8 +14,15 @@ export default function Home() {
       </p>
 
       <h2>Builds</h2>
-      {loading && <p className="muted">Loading…</p>}
-      {!loading && (!manifest || manifest.length === 0) && (
+      {error && (
+        <ErrorState
+          title="Couldn't load builds"
+          message="The build manifest failed to load."
+          detail={error}
+        />
+      )}
+      {!error && loading && <p className="muted">Loading…</p>}
+      {!error && !loading && (!manifest || manifest.length === 0) && (
         <div className="placeholder">
           No builds available yet. Run <code>npm run build:data</code> to populate.
         </div>

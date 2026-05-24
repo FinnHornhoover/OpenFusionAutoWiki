@@ -54,8 +54,6 @@ interface RawMobSource {
   AreaZone?: string;
   MobTypeID?: number;
   MobName?: string;
-  Probability?: number;
-  Odds?: string;
 }
 interface RawMissionSource {
   AreaZone?: string;
@@ -90,13 +88,30 @@ interface RawRacingSource {
 interface RawEventSource {
   EventID?: number;
   EventName?: string;
-  Probability?: number;
-  Odds?: string;
 }
 
 interface RawSourceEntry {
   SourceType: string;
   Source?: RawMobSource | RawMissionSource | RawVendorSource | RawEggSource | RawRacingSource | RawEventSource | { Code?: string };
+  /** Per-character full-chain probability (mob → crate → rarity → gender). 0 when N/A. */
+  SourceBoyProbability?: number;
+  SourceBoyOdds?: string;
+  SourceGirlProbability?: number;
+  SourceGirlOdds?: string;
+}
+
+function chance(entry: RawSourceEntry): {
+  boyProbability: number;
+  boyOdds: string;
+  girlProbability: number;
+  girlOdds: string;
+} {
+  return {
+    boyProbability: entry.SourceBoyProbability ?? 0,
+    boyOdds: entry.SourceBoyOdds ?? '',
+    girlProbability: entry.SourceGirlProbability ?? 0,
+    girlOdds: entry.SourceGirlOdds ?? '',
+  };
 }
 
 function normalizeSource(
@@ -114,22 +129,34 @@ function normalizeSource(
         kind: 'mob',
         mob: ref,
         areaZone: m.AreaZone ?? '',
-        probability: m.Probability ?? 0,
-        oddsText: m.Odds ?? '',
+        ...chance(entry),
       };
     }
-    case 'MissionReward':
+    case 'MissionReward': {
+      const m = s as RawMissionSource;
+      const mission = missionRef(m.MissionID ?? 0, m.MissionName ?? '');
+      if (!mission) return null;
+      const npc = npcRef(m.NPCTypeID ?? 0, m.NPCName ?? '', m.NPCIcon ?? '', iconMap, grouping);
+      return {
+        kind: 'mission',
+        mission,
+        npc,
+        areaZone: m.AreaZone ?? '',
+        selectionNeeded: m.MissionItemRewardSelectionNeeded ?? false,
+      };
+    }
     case 'MissionRewardCrate': {
       const m = s as RawMissionSource;
       const mission = missionRef(m.MissionID ?? 0, m.MissionName ?? '');
       if (!mission) return null;
       const npc = npcRef(m.NPCTypeID ?? 0, m.NPCName ?? '', m.NPCIcon ?? '', iconMap, grouping);
       return {
-        kind: entry.SourceType === 'MissionRewardCrate' ? 'mission-crate' : 'mission',
+        kind: 'mission-crate',
         mission,
         npc,
         areaZone: m.AreaZone ?? '',
         selectionNeeded: m.MissionItemRewardSelectionNeeded ?? false,
+        ...chance(entry),
       };
     }
     case 'Vendor': {
@@ -150,6 +177,7 @@ function normalizeSource(
         eggName: e.EggName ?? '',
         eggComment: e.EggComment ?? '',
         areaZone: e.AreaZone ?? '',
+        ...chance(entry),
       };
     }
     case 'Racing': {
@@ -161,6 +189,7 @@ function normalizeSource(
         areaZone: r.AreaZone ?? '',
         requiredScore: r.RequiredScore ?? 0,
         requiredStars: r.RequiredStars ?? 0,
+        ...chance(entry),
       };
     }
     case 'CodeItem': {
@@ -173,8 +202,7 @@ function normalizeSource(
         kind: 'event',
         eventId: e.EventID ?? 0,
         eventName: e.EventName ?? '',
-        probability: e.Probability ?? 0,
-        oddsText: e.Odds ?? '',
+        ...chance(entry),
       };
     }
     default:
@@ -185,14 +213,14 @@ function normalizeSource(
 /** Dedup near-identical sources (same kind + same key fields). */
 function sourceDedupKey(s: ItemSource): string {
   switch (s.kind) {
-    case 'mob': return `mob:${(s.mob.id)}:${s.areaZone}:${s.oddsText}`;
+    case 'mob': return `mob:${(s.mob.id)}:${s.areaZone}:${s.boyOdds}:${s.girlOdds}`;
     case 'mission': return `mission:${s.mission.id}:${s.npc?.id ?? 0}`;
-    case 'mission-crate': return `mission-crate:${s.mission.id}:${s.npc?.id ?? 0}`;
+    case 'mission-crate': return `mission-crate:${s.mission.id}:${s.npc?.id ?? 0}:${s.boyOdds}:${s.girlOdds}`;
     case 'vendor': return `vendor:${s.npc.id}:${s.areaZone}`;
-    case 'egg': return `egg:${s.eggName}:${s.areaZone}`;
+    case 'egg': return `egg:${s.eggName}:${s.areaZone}:${s.boyOdds}:${s.girlOdds}`;
     case 'racing': return `racing:${s.npc?.id ?? 0}:${s.areaZone}:${s.requiredScore}`;
     case 'code': return `code:${s.code}`;
-    case 'event': return `event:${s.eventId}:${s.oddsText}`;
+    case 'event': return `event:${s.eventId}:${s.boyOdds}:${s.girlOdds}`;
   }
 }
 
@@ -312,8 +340,8 @@ export async function normalizeItems(
   const sourceCount = items.reduce((s, i) => s + i.sources.length, 0);
 
   // Inverted index: mob → drops, built from each item's mob-kind sources.
-  // Dedup by (item, areaZone, oddsText) so identical entries across spawn
-  // instances collapse, but different zones / odds remain distinct rows.
+  // Dedup by (item, areaZone, boyOdds, girlOdds) so identical entries across
+  // spawn instances collapse, but different zones / odds remain distinct rows.
   for (const item of items) {
     const itemAsRef: Ref = { type: 'item', id: item.id, name: item.name, icon: item.icon };
     for (const src of item.sources) {
@@ -325,14 +353,19 @@ export async function normalizeItems(
         mobItems.set(mobId, list);
       }
       const dupe = list.some(
-        (d) => d.item.id === item.id && d.areaZone === src.areaZone && d.oddsText === src.oddsText,
+        (d) => d.item.id === item.id
+          && d.areaZone === src.areaZone
+          && d.boyOdds === src.boyOdds
+          && d.girlOdds === src.girlOdds,
       );
       if (!dupe) {
         list.push({
           item: itemAsRef,
-          probability: src.probability,
-          oddsText: src.oddsText,
           areaZone: src.areaZone,
+          boyProbability: src.boyProbability,
+          boyOdds: src.boyOdds,
+          girlProbability: src.girlProbability,
+          girlOdds: src.girlOdds,
         });
       }
     }

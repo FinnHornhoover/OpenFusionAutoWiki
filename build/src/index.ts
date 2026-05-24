@@ -18,6 +18,7 @@ import { normalizeNanos } from './normalize/nanos.js';
 import { normalizeNpcs } from './normalize/npcs.js';
 import { buildNpcGrouping } from './normalize/npcGrouping.js';
 import { buildNpcNameIndex } from './normalize/npcNameIndex.js';
+import { writeSearchIndex } from './normalize/search.js';
 import { DATA_OUT } from './paths.js';
 import { log } from './log.js';
 
@@ -71,6 +72,8 @@ async function main(): Promise<void> {
   let totalNanos = 0;
   let totalNanoChunks = 0;
   let totalLinkedNanos = 0;
+  let totalSearchRows = 0;
+  let totalSearchBytes = 0;
   for (const d of downloaded) {
     const slug = d.asset.name.replace(/\.zip$/i, '');
     const iconMap = maps[slug] ?? {};
@@ -112,8 +115,12 @@ async function main(): Promise<void> {
     totalNanoChunks += na.chunks;
     totalLinkedNanos += na.linked;
 
+    const search = await writeSearchIndex(slug);
+    totalSearchRows += search.count;
+    totalSearchBytes += search.bytes;
+
     await writeBuildMeta(slug, ['missions', 'npcs', 'items', 'monsters', 'areas', 'nanos']);
-    log.info(`${slug.padEnd(46)} missions=${m.count} npcs=${n.count} items=${it.count} mobs=${mb.count} areas=${ar.count} nanos=${na.count}`);
+    log.info(`${slug.padEnd(46)} missions=${m.count} npcs=${n.count} items=${it.count} mobs=${mb.count} areas=${ar.count} nanos=${na.count} search=${search.count}`);
   }
   log.done(`missions: ${totalMissions} → ${totalMissionChunks} chunks`);
   log.done(`npcs: ${totalNpcs} → ${totalNpcChunks} chunks; ${totalLinkedNpcs} link to missions; ${totalVendors} vendors; ${totalMergedNpcs} merged groups`);
@@ -121,6 +128,7 @@ async function main(): Promise<void> {
   log.done(`mobs: ${totalMobs} → ${totalMobChunks} chunks; ${totalLinkedMobs} link to missions; ${totalDroppingMobs} drop items`);
   log.done(`areas: ${totalAreas} → ${totalAreaChunks} chunks; ${totalAreasWithMissions} host missions; ${totalAreasWithTransport} have transport`);
   log.done(`nanos: ${totalNanos} → ${totalNanoChunks} chunks; ${totalLinkedNanos} link to missions`);
+  log.done(`search: ${totalSearchRows} rows across ${downloaded.length} builds (${(totalSearchBytes / (1024 * 1024)).toFixed(1)} MB total raw)`);
 
   log.done('build complete');
 }

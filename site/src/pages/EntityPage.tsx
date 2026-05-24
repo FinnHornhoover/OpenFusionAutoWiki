@@ -1,7 +1,10 @@
 import { Link, useParams } from 'react-router-dom';
+import EntityPageSkeleton from '../components/EntityPageSkeleton';
+import ErrorState from '../components/ErrorState';
 import type { Area, Item, Mission, Mob, Nano, Npc } from '../data/types';
 import { useBuildEntry } from '../data/useBuildEntry';
 import { useBuildMeta } from '../data/useBuildMeta';
+import { useDelayedFlag } from '../data/useDelayedFlag';
 import { useEntity } from '../data/useEntity';
 import AreaTemplate from '../templates/Area.mdx';
 import ItemTemplate from '../templates/Item.mdx';
@@ -16,11 +19,12 @@ export default function EntityPage() {
   const meta = useBuildMeta(build);
   const supported = meta?.builtTypes?.includes(type ?? '') ?? false;
 
-  const { entity, loading, notFound } = useEntity<Mission | Npc | Item | Mob | Area | Nano>(
+  const { entity, loading, notFound, error } = useEntity<Mission | Npc | Item | Mob | Area | Nano>(
     supported ? build : undefined,
     supported ? type : undefined,
     supported ? id : undefined,
   );
+  const showSkeleton = useDelayedFlag(loading);
 
   const buildLabel = entry ? entry.displayName : build;
 
@@ -35,8 +39,21 @@ export default function EntityPage() {
       </section>
     );
   }
+  if (error) {
+    return (
+      <section>
+        <ErrorState
+          title={`Couldn't load this ${type?.replace(/s$/, '') ?? 'entity'}`}
+          message="The data file failed to load. This may be a temporary network issue."
+          detail={error}
+        />
+      </section>
+    );
+  }
   if (loading) {
-    return <section><p className="muted">Loading…</p></section>;
+    // Hide the skeleton entirely for fast/cache-hit loads — only show after
+    // ~200ms so the user doesn't see a flash.
+    return showSkeleton ? <EntityPageSkeleton /> : null;
   }
   if (notFound || !entity) {
     return (
