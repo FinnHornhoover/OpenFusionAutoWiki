@@ -16,8 +16,8 @@ import Minimap from '../components/Minimap';
   )}
 </p>
 
-{props.data.comment && (
-  <blockquote className="npc-comment">"{props.data.comment}"</blockquote>
+{props.data.comment.trim() && (
+  <blockquote className="npc-comment">"{props.data.comment.trim()}"</blockquote>
 )}
 
 {props.data.startedMissions.length > 0 && (

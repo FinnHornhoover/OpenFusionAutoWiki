@@ -88,6 +88,10 @@ function normalizeMissionBarkers(raw: RawNpcType): Array<{ mission: Ref; text: s
   return out;
 }
 
+function normalizeComment(raw: RawNpcType): string {
+  return (raw.Comment ?? '').trim();
+}
+
 /**
  * Merge raw members of a group into the canonical record. Unioned: idle barkers,
  * mission barkers (dedup by mission id), vendor items (dedup by item id), locations.
@@ -133,7 +137,7 @@ function buildMergedNpc(
     name: canonical.Name,
     icon: iconFor(canonical.Icon ?? '', iconMap),
     category: canonical.Category ?? '',
-    comment: canonical.Comment ?? '',
+    comment: normalizeComment(canonical),
     inGame: canonical.InGame ?? false,
     height: canonical.Height ?? 0,
     scale: canonical.Scale ?? 1,
@@ -166,7 +170,7 @@ function buildSoloNpc(
     name: raw.Name,
     icon: iconFor(raw.Icon ?? '', iconMap),
     category: raw.Category ?? '',
-    comment: raw.Comment ?? '',
+    comment: normalizeComment(raw),
     inGame: raw.InGame ?? false,
     height: raw.Height ?? 0,
     scale: raw.Scale ?? 1,
