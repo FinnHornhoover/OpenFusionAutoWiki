@@ -286,6 +286,9 @@ export interface NpcMissionsEntry {
 }
 export type NpcMissionsMap = Map<number, NpcMissionsEntry>;
 
+/** Back-reference: missions that require killing a specific mob type. */
+export type MobMissionsMap = Map<number, Ref[]>;
+
 function pushRole(map: NpcMissionsMap, npcId: number, role: keyof NpcMissionsEntry, ref: Ref): void {
   let entry = map.get(npcId);
   if (!entry) {
@@ -308,12 +311,13 @@ export async function normalizeMissions(
   iconMap: IconMap,
   npcNameIndex: NpcNameIndex,
   grouping: NpcGrouping,
-): Promise<{ count: number; chunks: number; npcMissions: NpcMissionsMap }> {
+): Promise<{ count: number; chunks: number; npcMissions: NpcMissionsMap; mobMissions: MobMissionsMap }> {
   const zip = new AdmZip(zipPath);
   const entry = zip.getEntry('info/mission_info.json');
   const npcMissions: NpcMissionsMap = new Map();
+  const mobMissions: MobMissionsMap = new Map();
   if (!entry) {
-    return { count: 0, chunks: 0, npcMissions };
+    return { count: 0, chunks: 0, npcMissions, mobMissions };
   }
   const raw = JSON.parse(entry.getData().toString('utf8')) as Record<string, RawMission>;
 
@@ -321,8 +325,10 @@ export async function normalizeMissions(
     .map((m) => normalizeMission(m, iconMap, npcNameIndex, grouping))
     .sort((a, b) => a.id - b.id);
 
-  // Build the inverted index of NPC → missions in the three giver roles, AND the
-  // back-index of mission → missions that name it as a prereq.
+  // Build the inverted indexes:
+  //   NPC → missions in the three giver roles
+  //   mob → missions that require killing it
+  //   mission → missions that name it as a prereq
   const byId = new Map<number, Mission>();
   for (const m of missions) byId.set(m.id, m);
 
@@ -339,6 +345,18 @@ export async function normalizeMissions(
         target.requiredByMissions.push(missionAsRef);
       }
     }
+
+    for (const task of m.tasks) {
+      for (const mr of task.monsterRequirements) {
+        const mobId = mr.ref.id as number;
+        let list = mobMissions.get(mobId);
+        if (!list) {
+          list = [];
+          mobMissions.set(mobId, list);
+        }
+        if (!list.some((r) => r.id === m.id)) list.push(missionAsRef);
+      }
+    }
   }
 
   const { chunks } = await writeChunks(slug, 'missions', missions, (m) => ({
@@ -347,7 +365,7 @@ export async function normalizeMissions(
   }));
   await writeIndex(slug, 'missions', missions.map(indexEntry));
 
-  return { count: missions.length, chunks, npcMissions };
+  return { count: missions.length, chunks, npcMissions, mobMissions };
 }
 
 /** Used by the orchestrator to advertise which entity types have data for a build. */

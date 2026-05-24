@@ -1,0 +1,111 @@
+import Dropdown from '../components/Dropdown';
+import EntityLink from '../components/EntityLink';
+import Icon from '../components/Icon';
+
+# {props.data.name}
+
+<p className="entity-meta muted">
+  {props.data.icon ? <Icon src={props.data.icon} alt={props.data.name} size={48} /> : null}
+  {props.data.colorType && <span className="badge badge-category">{props.data.colorType}</span>}
+  {props.data.level > 0 && <span className="muted">{' · '}Level {props.data.level}</span>}
+  {props.data.inGame === false && <span className="badge badge-warn">cut from final build</span>}
+  {props.data.locations.length > 0 && (
+    <span className="muted">{' · '}{props.data.locations.length} spawn{props.data.locations.length === 1 ? '' : 's'}</span>
+  )}
+</p>
+
+{props.data.comment && (
+  <blockquote className="npc-comment">{props.data.comment}</blockquote>
+)}
+
+<dl className="stat-grid">
+  {props.data.standardHP > 0 && <><dt>HP</dt><dd>{props.data.standardHP.toLocaleString()}</dd></>}
+  {props.data.attackPower > 0 && <><dt>Attack power</dt><dd>{props.data.attackPower.toLocaleString()}</dd></>}
+  {props.data.power !== 0 && <><dt>Power</dt><dd>{props.data.power.toLocaleString()}</dd></>}
+  {props.data.protection > 0 && <><dt>Protection</dt><dd>{props.data.protection.toLocaleString()}</dd></>}
+  {props.data.accuracy > 0 && <><dt>Accuracy</dt><dd>{props.data.accuracy}</dd></>}
+  {props.data.attackRange > 0 && <><dt>Attack range</dt><dd>{props.data.attackRange}</dd></>}
+  {props.data.combatRange > 0 && <><dt>Combat range</dt><dd>{props.data.combatRange}</dd></>}
+  {props.data.sightRange > 0 && <><dt>Sight range</dt><dd>{props.data.sightRange}</dd></>}
+  {props.data.walkSpeed > 0 && <><dt>Walk speed</dt><dd>{props.data.walkSpeed}</dd></>}
+  {props.data.runSpeed > 0 && <><dt>Run speed</dt><dd>{props.data.runSpeed}</dd></>}
+  {props.data.respawnSeconds > 0 && <><dt>Respawn</dt><dd>{props.data.respawnSeconds}s</dd></>}
+</dl>
+
+{(props.data.activeSkill || props.data.passiveBuff || props.data.supportSkill) && (
+  <Dropdown summary="Skills">
+    {props.data.activeSkill && (
+      <div className="task-row">
+        <span className="task-label">Active:</span>
+        {props.data.activeSkillIcon && <Icon src={props.data.activeSkillIcon} alt="active skill" size={20} />}
+        {' '}{props.data.activeSkill}
+      </div>
+    )}
+    {props.data.passiveBuff && (
+      <div className="task-row">
+        <span className="task-label">Passive:</span>
+        {props.data.passiveBuffIcon && <Icon src={props.data.passiveBuffIcon} alt="passive buff" size={20} />}
+        {' '}{props.data.passiveBuff}
+      </div>
+    )}
+    {props.data.supportSkill && (
+      <div className="task-row">
+        <span className="task-label">Support:</span> {props.data.supportSkill}
+      </div>
+    )}
+  </Dropdown>
+)}
+
+{props.data.drops.length > 0 && (
+  <Dropdown summary={`Drops ${props.data.drops.length} item entr${props.data.drops.length === 1 ? 'y' : 'ies'}`} open={props.data.drops.length <= 20}>
+    <ul className="ref-list">
+      {props.data.drops.map((d, i) => (
+        <li key={`${d.item.id}-${i}`}>
+          <EntityLink entity={d.item} />
+          {d.areaZone && <span className="muted"> · {d.areaZone}</span>}
+          {d.oddsText && <span className="muted"> · {d.oddsText}</span>}
+          {d.probability > 0 && d.probability < 1 && (
+            <span className="muted"> · {(d.probability * 100).toFixed(2)}%</span>
+          )}
+        </li>
+      ))}
+    </ul>
+  </Dropdown>
+)}
+
+{props.data.missionsRequiring.length > 0 && (
+  <Dropdown summary={`Required for ${props.data.missionsRequiring.length} mission${props.data.missionsRequiring.length === 1 ? '' : 's'}`}>
+    <ul className="ref-list">
+      {props.data.missionsRequiring.map((m) => (
+        <li key={m.id}><EntityLink entity={m} withIcon={false} /></li>
+      ))}
+    </ul>
+  </Dropdown>
+)}
+
+{props.data.locations.length > 0 && (
+  <Dropdown summary={`Spawn locations (${props.data.locations.length})`}>
+    <table className="location-table">
+      <thead>
+        <tr>
+          <th>Area</th>
+          <th>Coordinates</th>
+          <th>Instance</th>
+          <th>HP</th>
+        </tr>
+      </thead>
+      <tbody>
+        {props.data.locations.map((loc, i) => (
+          <tr key={i}>
+            <td>{loc.areaZone || <span className="muted">—</span>}</td>
+            <td className="muted">{loc.x}, {loc.y}, {loc.z}</td>
+            <td className="muted">{loc.instanceID || '—'}</td>
+            <td className="muted">{loc.hp ? loc.hp.toLocaleString() : '—'}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </Dropdown>
+)}
+
+<p className="muted alias-ids">Mob Type ID <code>{props.data.id}</code></p>

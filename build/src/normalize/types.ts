@@ -266,3 +266,77 @@ export interface ItemIndexEntry {
   requiredLevel: number;
   obtainable: boolean;
 }
+
+// ---- Monsters ---------------------------------------------------------------
+
+export interface MobLocation {
+  areaZone: string;
+  x: number;
+  y: number;
+  z: number;
+  instanceID: number;
+  hp: number;
+  groupId: string;
+}
+
+export interface MobDrop {
+  item: Ref;
+  probability: number;
+  oddsText: string;
+  areaZone: string;
+}
+
+export interface Mob {
+  id: number;
+  name: string;
+  icon: string;
+  category: string;       // typically "Monster"
+  colorType: string;      // "Adaptium" | "Blastons" | "Cosmix"
+  level: number;
+  inGame: boolean;
+  comment: string;
+  height: number;
+  scale: number;
+  radius: number;
+
+  // Combat
+  standardHP: number;
+  attackPower: number;
+  attackRange: number;
+  combatRange: number;
+  sightRange: number;
+  idleRange: number;
+  power: number;
+  protection: number;
+  accuracy: number;
+  walkSpeed: number;
+  runSpeed: number;
+  respawnSeconds: number;
+
+  // Skills (optional flavor)
+  activeSkill: string;
+  activeSkillIcon: string;
+  passiveBuff: string;
+  passiveBuffIcon: string;
+  supportSkill: string;
+  supportSkillIcon: string;
+
+  // Cross-refs computed at build time
+  missionsRequiring: Ref[];
+  drops: MobDrop[];
+
+  // Spawns
+  locations: MobLocation[];
+}
+
+export interface MobIndexEntry {
+  id: number;
+  name: string;
+  icon: string;
+  level: number;
+  standardHP: number;
+  colorType: string;
+  category: string;
+  instanceCount: number;
+  inGame: boolean;
+}

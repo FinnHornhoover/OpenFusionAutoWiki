@@ -36,12 +36,18 @@ import SimilarItems from '../components/SimilarItems';
 {(() => {
   const buckets = {
     'Mission rewards': props.data.sources.filter((s) => s.kind === 'mission' || s.kind === 'mission-crate'),
-    'Dropped by': props.data.sources.filter((s) => s.kind === 'mob'),
+    'Dropped by': props.data.sources
+      .filter((s) => s.kind === 'mob')
+      .slice()
+      .sort((a, b) => (b.probability - a.probability) || a.mob.name.localeCompare(b.mob.name)),
     'Sold by': props.data.sources.filter((s) => s.kind === 'vendor'),
     'Eggs / crates in world': props.data.sources.filter((s) => s.kind === 'egg'),
     'Racing rewards': props.data.sources.filter((s) => s.kind === 'racing'),
     'Code redemptions': props.data.sources.filter((s) => s.kind === 'code'),
-    'Event drops': props.data.sources.filter((s) => s.kind === 'event'),
+    'Event drops': props.data.sources
+      .filter((s) => s.kind === 'event')
+      .slice()
+      .sort((a, b) => (b.probability - a.probability) || a.eventName.localeCompare(b.eventName)),
   };
   return Object.entries(buckets)
     .filter(([, list]) => list.length > 0)
@@ -53,7 +59,11 @@ import SimilarItems from '../components/SimilarItems';
               return (
                 <li key={i}>
                   <EntityLink entity={s.mob} withIcon={false} />
-                  <span className="muted">{s.areaZone ? ` · ${s.areaZone}` : ''}{s.oddsText ? ` · ${s.oddsText}` : ''}</span>
+                  {s.areaZone && <span className="muted"> · {s.areaZone}</span>}
+                  {s.oddsText && <span className="muted"> · {s.oddsText}</span>}
+                  {s.probability > 0 && s.probability < 1 && (
+                    <span className="muted"> · {(s.probability * 100).toFixed(2)}%</span>
+                  )}
                 </li>
               );
             }
@@ -103,6 +113,9 @@ import SimilarItems from '../components/SimilarItems';
                 <li key={i}>
                   <strong>{s.eventName || `Event #${s.eventId}`}</strong>
                   {s.oddsText && <span className="muted"> · {s.oddsText}</span>}
+                  {s.probability > 0 && s.probability < 1 && (
+                    <span className="muted"> · {(s.probability * 100).toFixed(2)}%</span>
+                  )}
                 </li>
               );
             }

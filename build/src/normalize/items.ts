@@ -6,10 +6,14 @@ import type {
   Item,
   ItemIndexEntry,
   ItemSource,
+  MobDrop,
   Ref,
 } from './types.js';
 import type { IconMap } from '../icons.js';
 import type { NpcGrouping } from './npcGrouping.js';
+
+/** Back-reference: items dropped by a specific mob type, with full drop context. */
+export type MobItemsMap = Map<number, MobDrop[]>;
 
 interface RawItem {
   ID: string;
@@ -277,10 +281,11 @@ export async function normalizeItems(
   slug: string,
   iconMap: IconMap,
   grouping: NpcGrouping,
-): Promise<{ count: number; chunks: number; sourceCount: number }> {
+): Promise<{ count: number; chunks: number; sourceCount: number; mobItems: MobItemsMap }> {
   const zip = new AdmZip(zipPath);
   const itemEntry = zip.getEntry('info/item_info.json');
-  if (!itemEntry) return { count: 0, chunks: 0, sourceCount: 0 };
+  const mobItems: MobItemsMap = new Map();
+  if (!itemEntry) return { count: 0, chunks: 0, sourceCount: 0, mobItems };
 
   const rawItems = JSON.parse(itemEntry.getData().toString('utf8')) as Record<string, RawItem>;
 
@@ -306,6 +311,33 @@ export async function normalizeItems(
 
   const sourceCount = items.reduce((s, i) => s + i.sources.length, 0);
 
+  // Inverted index: mob → drops, built from each item's mob-kind sources.
+  // Dedup by (item, areaZone, oddsText) so identical entries across spawn
+  // instances collapse, but different zones / odds remain distinct rows.
+  for (const item of items) {
+    const itemAsRef: Ref = { type: 'item', id: item.id, name: item.name, icon: item.icon };
+    for (const src of item.sources) {
+      if (src.kind !== 'mob') continue;
+      const mobId = src.mob.id as number;
+      let list = mobItems.get(mobId);
+      if (!list) {
+        list = [];
+        mobItems.set(mobId, list);
+      }
+      const dupe = list.some(
+        (d) => d.item.id === item.id && d.areaZone === src.areaZone && d.oddsText === src.oddsText,
+      );
+      if (!dupe) {
+        list.push({
+          item: itemAsRef,
+          probability: src.probability,
+          oddsText: src.oddsText,
+          areaZone: src.areaZone,
+        });
+      }
+    }
+  }
+
   const { chunks } = await writeChunks(slug, 'items', items, (i) => ({
     url: i.id,
     chunk: chunkOf(itemChunkKey(i.typeId, i.itemId)),
@@ -315,5 +347,5 @@ export async function normalizeItems(
   // Suppress unused-helper warning when missionRef gets imported but unused; keep for forward-compat.
   void (null as unknown as Ref);
 
-  return { count: items.length, chunks, sourceCount };
+  return { count: items.length, chunks, sourceCount, mobItems };
 }

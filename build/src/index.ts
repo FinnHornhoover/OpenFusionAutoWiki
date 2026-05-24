@@ -12,6 +12,7 @@ import { dedupeIcons } from './icons.js';
 import { writeManifest } from './manifest.js';
 import { normalizeItems } from './normalize/items.js';
 import { normalizeMissions } from './normalize/missions.js';
+import { normalizeMobs } from './normalize/mobs.js';
 import { normalizeNpcs } from './normalize/npcs.js';
 import { buildNpcGrouping } from './normalize/npcGrouping.js';
 import { buildNpcNameIndex } from './normalize/npcNameIndex.js';
@@ -46,7 +47,7 @@ async function main(): Promise<void> {
   const entries = await writeManifest(downloaded);
   log.done(`manifest: ${entries.length} builds → site/public/builds.json`);
 
-  log.step('normalizing missions + NPCs + items');
+  log.step('normalizing missions + NPCs + items + monsters');
   let totalMissions = 0;
   let totalMissionChunks = 0;
   let totalNpcs = 0;
@@ -57,6 +58,10 @@ async function main(): Promise<void> {
   let totalItems = 0;
   let totalItemChunks = 0;
   let totalItemSources = 0;
+  let totalMobs = 0;
+  let totalMobChunks = 0;
+  let totalLinkedMobs = 0;
+  let totalDroppingMobs = 0;
   for (const d of downloaded) {
     const slug = d.asset.name.replace(/\.zip$/i, '');
     const iconMap = maps[slug] ?? {};
@@ -81,12 +86,19 @@ async function main(): Promise<void> {
     totalItemChunks += it.chunks;
     totalItemSources += it.sourceCount;
 
-    await writeBuildMeta(slug, ['missions', 'npcs', 'items']);
-    log.info(`${slug.padEnd(46)} missions=${m.count} npcs=${n.count} items=${it.count} (${it.sourceCount} sources)`);
+    const mb = await normalizeMobs(d.path, slug, iconMap, m.mobMissions, it.mobItems);
+    totalMobs += mb.count;
+    totalMobChunks += mb.chunks;
+    totalLinkedMobs += mb.linked;
+    totalDroppingMobs += mb.dropping;
+
+    await writeBuildMeta(slug, ['missions', 'npcs', 'items', 'monsters']);
+    log.info(`${slug.padEnd(46)} missions=${m.count} npcs=${n.count} items=${it.count} mobs=${mb.count}`);
   }
   log.done(`missions: ${totalMissions} → ${totalMissionChunks} chunks`);
   log.done(`npcs: ${totalNpcs} → ${totalNpcChunks} chunks; ${totalLinkedNpcs} link to missions; ${totalVendors} vendors; ${totalMergedNpcs} merged groups`);
   log.done(`items: ${totalItems} → ${totalItemChunks} chunks; ${totalItemSources} source entries embedded`);
+  log.done(`mobs: ${totalMobs} → ${totalMobChunks} chunks; ${totalLinkedMobs} link to missions; ${totalDroppingMobs} drop items`);
 
   log.done('build complete');
 }
