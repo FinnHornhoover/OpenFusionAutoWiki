@@ -1,6 +1,6 @@
 import AdmZip from 'adm-zip';
 
-import { writeChunks, writeIndex } from '../chunk.js';
+import { chunkOf, writeChunks, writeIndex } from '../chunk.js';
 import { iconFor, itemRef, parseCompoundKey } from './refs.js';
 import type {
   Npc,
@@ -28,6 +28,7 @@ interface RawNpcType {
     BuyPrice?: number;
     ItemInfo?: {
       ItemID: number;
+      TypeID?: number;
       Name: string;
       Icon?: string;
       Rarity?: string;
@@ -63,7 +64,7 @@ function normalizeVendorItems(raw: RawNpcType, iconMap: IconMap): NpcVendorItem[
   for (const v of raw.VendorItems ?? []) {
     const info = v.ItemInfo;
     if (!info) continue;
-    const ref = itemRef(info.ItemID, info.Name ?? '', info.Icon ?? '', iconMap);
+    const ref = itemRef(info.TypeID ?? 0, info.ItemID, info.Name ?? '', info.Icon ?? '', iconMap);
     if (!ref) continue;
     out.push({
       ref,
@@ -103,7 +104,8 @@ function buildMergedNpc(
 
   const idleBarkers = new Set<string>();
   const missionBarkersBy = new Map<number, { mission: Ref; text: string }>();
-  const vendorBy = new Map<number, NpcVendorItem>();
+  // Item refs use compound string IDs (typeId-itemId).
+  const vendorBy = new Map<string, NpcVendorItem>();
   const locations: NpcLocation[] = [];
 
   for (const member of allMembers) {
@@ -112,10 +114,12 @@ function buildMergedNpc(
       if (t) idleBarkers.add(t);
     }
     for (const mb of normalizeMissionBarkers(member)) {
-      if (!missionBarkersBy.has(mb.mission.id)) missionBarkersBy.set(mb.mission.id, mb);
+      const key = mb.mission.id as number;
+      if (!missionBarkersBy.has(key)) missionBarkersBy.set(key, mb);
     }
     for (const v of normalizeVendorItems(member, iconMap)) {
-      if (!vendorBy.has(v.ref.id)) vendorBy.set(v.ref.id, v);
+      const key = String(v.ref.id);
+      if (!vendorBy.has(key)) vendorBy.set(key, v);
     }
     const insts = rawInsts[String(member.ID)] ?? {};
     for (const inst of Object.values(insts)) locations.push(normalizeLocation(inst));
@@ -246,7 +250,10 @@ export async function normalizeNpcs(
     (n) => n.startedMissions.length || n.journaledMissions.length || n.endedMissions.length,
   ).length;
 
-  const { chunks } = await writeChunks(slug, 'npcs', npcs);
+  const { chunks } = await writeChunks(slug, 'npcs', npcs, (n) => ({
+    url: n.id,
+    chunk: chunkOf(n.id),
+  }));
   await writeIndex(slug, 'npcs', npcs.map(indexEntry));
 
   return { count: npcs.length, chunks, vendors, linked, merged: mergedCount };

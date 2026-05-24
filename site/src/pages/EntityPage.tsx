@@ -1,8 +1,9 @@
 import { Link, useParams } from 'react-router-dom';
-import type { Mission, Npc } from '../data/types';
+import type { Item, Mission, Npc } from '../data/types';
 import { useBuildEntry } from '../data/useBuildEntry';
 import { useBuildMeta } from '../data/useBuildMeta';
 import { useEntity } from '../data/useEntity';
+import ItemTemplate from '../templates/Item.mdx';
 import MissionTemplate from '../templates/Mission.mdx';
 import NPCTemplate from '../templates/NPC.mdx';
 
@@ -12,7 +13,7 @@ export default function EntityPage() {
   const meta = useBuildMeta(build);
   const supported = meta?.builtTypes?.includes(type ?? '') ?? false;
 
-  const { entity, loading, notFound } = useEntity<Mission | Npc>(
+  const { entity, loading, notFound } = useEntity<Mission | Npc | Item>(
     supported ? build : undefined,
     supported ? type : undefined,
     supported ? id : undefined,
@@ -65,6 +66,19 @@ export default function EntityPage() {
           <Link to={`/${build}/npcs`}>NPCs</Link>
         </p>
         <NPCTemplate data={entity as Npc} />
+      </section>
+    );
+  }
+
+  if (type === 'items') {
+    return (
+      <section className="entity-page item-page">
+        <p className="breadcrumb muted">
+          <Link to={`/${build}`}>{buildLabel}</Link>
+          {' · '}
+          <Link to={`/${build}/items`}>Items</Link>
+        </p>
+        <ItemTemplate data={entity as Item} />
       </section>
     );
   }

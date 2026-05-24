@@ -1,9 +1,10 @@
 import { useParams } from 'react-router-dom';
 
-import type { MissionIndexEntry, NpcIndexEntry } from '../data/types';
+import type { ItemIndexEntry, MissionIndexEntry, NpcIndexEntry } from '../data/types';
 import { useBuildEntry } from '../data/useBuildEntry';
 import { useBuildMeta } from '../data/useBuildMeta';
 import { useIndex } from '../data/useIndex';
+import ItemIndex from './index/ItemIndex';
 import MissionIndex from './index/MissionIndex';
 import NpcIndex from './index/NpcIndex';
 
@@ -21,7 +22,7 @@ export default function EntityIndex() {
   const entry = useBuildEntry(build);
   const meta = useBuildMeta(build);
   const supported = meta?.builtTypes?.includes(type ?? '') ?? false;
-  const { rows, loading } = useIndex<MissionIndexEntry | NpcIndexEntry>(
+  const { rows, loading } = useIndex<MissionIndexEntry | NpcIndexEntry | ItemIndexEntry>(
     supported ? build : undefined,
     supported ? type : undefined,
   );
@@ -48,6 +49,9 @@ export default function EntityIndex() {
     }
     if (type === 'npcs') {
       return <NpcIndex build={build} rows={(rows ?? []) as NpcIndexEntry[]} loading={loading} />;
+    }
+    if (type === 'items') {
+      return <ItemIndex build={build} rows={(rows ?? []) as ItemIndexEntry[]} loading={loading} />;
     }
     return <div className="placeholder">Index renderer for {heading} isn't built yet.</div>;
   })();

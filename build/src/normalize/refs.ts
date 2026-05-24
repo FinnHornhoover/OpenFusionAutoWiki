@@ -29,9 +29,26 @@ export function npcRef(
   return { type: 'npc', id: canonicalId, name: name || `NPC #${canonicalId}`, icon: iconFor(iconPath, iconMap) };
 }
 
-export function itemRef(id: number, name: string, iconPath: string, iconMap: IconMap): Ref | null {
-  if (!id || id <= 0) return null;
-  return { type: 'item', id, name: name || `Item #${id}`, icon: iconFor(iconPath, iconMap) };
+/** Items live at compound (typeId, itemId) — same itemId is reused across typeIds. */
+export function itemRef(
+  typeId: number,
+  itemId: number,
+  name: string,
+  iconPath: string,
+  iconMap: IconMap,
+): Ref | null {
+  if (!itemId || itemId <= 0) return null;
+  return {
+    type: 'item',
+    id: `${typeId}-${itemId}`,
+    name: name || `Item #${itemId}`,
+    icon: iconFor(iconPath, iconMap),
+  };
+}
+
+/** Compound numeric key for chunking items. */
+export function itemChunkKey(typeId: number, itemId: number): number {
+  return typeId * 10000 + itemId;
 }
 
 export function nanoRef(id: number, name: string, iconPath: string, iconMap: IconMap): Ref | null {

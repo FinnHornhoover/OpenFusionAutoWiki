@@ -1,6 +1,6 @@
 import AdmZip from 'adm-zip';
 
-import { writeChunks, writeIndex } from '../chunk.js';
+import { chunkOf, writeChunks, writeIndex } from '../chunk.js';
 import type { IconMap } from '../icons.js';
 import type { NpcGrouping } from './npcGrouping.js';
 import type { NpcNameIndex } from './npcNameIndex.js';
@@ -64,6 +64,7 @@ interface RawTask {
 
 interface RawRewardItem {
   ItemID: number;
+  TypeID?: number;
   Name: string;
   Icon?: string;
   Rarity?: string;
@@ -200,7 +201,7 @@ function normalizeMission(raw: RawMission, iconMap: IconMap, npcNameIndex: NpcNa
   const rewards = raw.Rewards ?? {};
   const items = (rewards.Items ?? [])
     .map((it) => {
-      const ref = itemRef(it.ItemID, it.Name, it.Icon ?? '', iconMap);
+      const ref = itemRef(it.TypeID ?? 0, it.ItemID, it.Name, it.Icon ?? '', iconMap);
       if (!ref) return null;
       return {
         ref,
@@ -327,19 +328,23 @@ export async function normalizeMissions(
 
   for (const m of missions) {
     const missionAsRef: Ref = { type: 'mission', id: m.id, name: m.name };
-    if (m.startNPC) pushRole(npcMissions, m.startNPC.id, 'starts', missionAsRef);
-    if (m.journalNPC) pushRole(npcMissions, m.journalNPC.id, 'journals', missionAsRef);
-    if (m.endNPC) pushRole(npcMissions, m.endNPC.id, 'ends', missionAsRef);
+    // NPC and mission Ref.ids are always numeric (only item refs are string-compound).
+    if (m.startNPC) pushRole(npcMissions, m.startNPC.id as number, 'starts', missionAsRef);
+    if (m.journalNPC) pushRole(npcMissions, m.journalNPC.id as number, 'journals', missionAsRef);
+    if (m.endNPC) pushRole(npcMissions, m.endNPC.id as number, 'ends', missionAsRef);
 
     for (const req of m.requiredMissions) {
-      const target = byId.get(req.id);
+      const target = byId.get(req.id as number);
       if (target && !target.requiredByMissions.some((r) => r.id === m.id)) {
         target.requiredByMissions.push(missionAsRef);
       }
     }
   }
 
-  const { chunks } = await writeChunks(slug, 'missions', missions);
+  const { chunks } = await writeChunks(slug, 'missions', missions, (m) => ({
+    url: m.id,
+    chunk: chunkOf(m.id),
+  }));
   await writeIndex(slug, 'missions', missions.map(indexEntry));
 
   return { count: missions.length, chunks, npcMissions };

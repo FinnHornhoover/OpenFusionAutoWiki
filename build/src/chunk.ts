@@ -6,9 +6,9 @@ import { DATA_OUT } from './paths.js';
 /** Entities per chunk. Tunable; 250 keeps chunks ~1-5MB raw, well under 25MB cap. */
 export const CHUNK_SIZE = 250;
 
-/** Deterministic chunk id for a given entity id. */
-export function chunkOf(id: number): number {
-  return Math.floor(id / CHUNK_SIZE);
+/** Deterministic chunk id for a given numeric key. */
+export function chunkOf(numericKey: number): number {
+  return Math.floor(numericKey / CHUNK_SIZE);
 }
 
 export interface ChunkResult {
@@ -16,28 +16,37 @@ export interface ChunkResult {
   records: number;
 }
 
+export interface ChunkKey {
+  /** What the chunk's JSON object keys by; what the URL :id segment is. */
+  url: string | number;
+  /** Which chunk file the record lives in. */
+  chunk: number;
+}
+
 /**
- * Write a typed entity collection to /data/<slug>/<type>/<chunk>.json.
- * Records are grouped into chunks by `chunkOf(record.id)`. The on-disk format
- * is a JSON object keyed by id (string) so the page lookup is O(1).
+ * Write a typed entity collection to /data/<slug>/<type>/<chunk>.json. The
+ * caller supplies `keyOf` so each entity type can decide its own URL identity
+ * and chunk-assignment scheme (numeric for mission/npc IDs; compound
+ * "typeId-itemId" for items, chunked by `typeId * 10000 + itemId`).
  */
-export async function writeChunks<T extends { id: number }>(
+export async function writeChunks<T>(
   slug: string,
   type: string,
   records: T[],
+  keyOf: (r: T) => ChunkKey,
 ): Promise<ChunkResult> {
   const dir = join(DATA_OUT, slug, type);
   await mkdir(dir, { recursive: true });
 
   const buckets = new Map<number, Record<string, T>>();
   for (const r of records) {
-    const c = chunkOf(r.id);
-    let b = buckets.get(c);
-    if (!b) {
-      b = {};
-      buckets.set(c, b);
+    const { url, chunk } = keyOf(r);
+    let bucket = buckets.get(chunk);
+    if (!bucket) {
+      bucket = {};
+      buckets.set(chunk, bucket);
     }
-    b[String(r.id)] = r;
+    bucket[String(url)] = r;
   }
 
   for (const [chunk, bucket] of buckets) {

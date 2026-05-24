@@ -1,0 +1,122 @@
+import Dropdown from '../components/Dropdown';
+import EntityLink from '../components/EntityLink';
+import Icon from '../components/Icon';
+import SimilarItems from '../components/SimilarItems';
+
+# {props.data.name}
+
+<p className="entity-meta muted">
+  {props.data.icon ? <Icon src={props.data.icon} alt={props.data.name} size={48} /> : null}
+  <span className="badge badge-category">{props.data.type}{props.data.displayType && props.data.displayType !== props.data.type ? ` · ${props.data.displayType}` : ''}</span>
+  {props.data.rarity && <span className="badge badge-category">{props.data.rarity}</span>}
+  {props.data.contentLevel > 0 && <span className="muted">{' · '}Lv {props.data.contentLevel}</span>}
+  {props.data.requiredLevel > 0 && <span className="muted">{' · '}requires Lv {props.data.requiredLevel}</span>}
+  {!props.data.obtainable && <span className="badge badge-warn">unobtainable</span>}
+</p>
+
+{props.data.description && (
+  <blockquote className="npc-comment">{props.data.description}</blockquote>
+)}
+
+<dl className="stat-grid">
+  {props.data.buyPrice > 0 && <><dt>Buy</dt><dd>{props.data.buyPrice.toLocaleString()} Taros</dd></>}
+  {props.data.sellPrice > 0 && <><dt>Sell</dt><dd>{props.data.sellPrice.toLocaleString()} Taros</dd></>}
+  {props.data.singleDamage > 0 && <><dt>Damage (single)</dt><dd>{props.data.singleDamage.toLocaleString()}</dd></>}
+  {props.data.multiDamage > 0 && <><dt>Damage (multi)</dt><dd>{props.data.multiDamage.toLocaleString()} × {props.data.numberOfTargets} targets</dd></>}
+  {props.data.weaponType && props.data.weaponType !== 'None' && <><dt>Weapon class</dt><dd>{props.data.weaponType}</dd></>}
+  {props.data.range && props.data.range !== 'None' && <><dt>Range</dt><dd>{props.data.range}{props.data.rangeValue ? ` (${props.data.rangeValue})` : ''}</dd></>}
+  {props.data.rateOfFire > 0 && <><dt>Rate of fire</dt><dd>{props.data.rateOfFire}</dd></>}
+  {props.data.defense > 0 && <><dt>Defense</dt><dd>{props.data.defense.toLocaleString()}</dd></>}
+  {props.data.maxStack > 1 && <><dt>Stack</dt><dd>{props.data.maxStack}</dd></>}
+  {props.data.gender && props.data.gender !== 'Any' && <><dt>Gender</dt><dd>{props.data.gender}</dd></>}
+  <><dt>Tradeable</dt><dd>{props.data.tradeable ? 'Yes' : 'No'}</dd></>
+  <><dt>Sellable</dt><dd>{props.data.sellable ? 'Yes' : 'No'}</dd></>
+</dl>
+
+{(() => {
+  const buckets = {
+    'Mission rewards': props.data.sources.filter((s) => s.kind === 'mission' || s.kind === 'mission-crate'),
+    'Dropped by': props.data.sources.filter((s) => s.kind === 'mob'),
+    'Sold by': props.data.sources.filter((s) => s.kind === 'vendor'),
+    'Eggs / crates in world': props.data.sources.filter((s) => s.kind === 'egg'),
+    'Racing rewards': props.data.sources.filter((s) => s.kind === 'racing'),
+    'Code redemptions': props.data.sources.filter((s) => s.kind === 'code'),
+    'Event drops': props.data.sources.filter((s) => s.kind === 'event'),
+  };
+  return Object.entries(buckets)
+    .filter(([, list]) => list.length > 0)
+    .map(([label, list]) => (
+      <Dropdown key={label} summary={`${label} (${list.length})`} open={list.length <= 20}>
+        <ul className="ref-list">
+          {list.map((s, i) => {
+            if (s.kind === 'mob') {
+              return (
+                <li key={i}>
+                  <EntityLink entity={s.mob} withIcon={false} />
+                  <span className="muted">{s.areaZone ? ` · ${s.areaZone}` : ''}{s.oddsText ? ` · ${s.oddsText}` : ''}</span>
+                </li>
+              );
+            }
+            if (s.kind === 'mission' || s.kind === 'mission-crate') {
+              return (
+                <li key={i}>
+                  <EntityLink entity={s.mission} withIcon={false} />
+                  {s.npc && <span className="muted"> · from <EntityLink entity={s.npc} withIcon={false} /></span>}
+                  {s.kind === 'mission-crate' && <span className="muted"> · from reward crate</span>}
+                  {s.selectionNeeded && <span className="muted"> · choose one</span>}
+                </li>
+              );
+            }
+            if (s.kind === 'vendor') {
+              return (
+                <li key={i}>
+                  <EntityLink entity={s.npc} withIcon={false} />
+                  {s.price > 0 && <span className="muted"> · {s.price.toLocaleString()} Taros</span>}
+                  {s.areaZone && <span className="muted"> · {s.areaZone}</span>}
+                </li>
+              );
+            }
+            if (s.kind === 'egg') {
+              return (
+                <li key={i}>
+                  <strong>{s.eggName}</strong>
+                  {s.eggComment && <span className="muted"> · {s.eggComment}</span>}
+                  {s.areaZone && <span className="muted"> · {s.areaZone}</span>}
+                </li>
+              );
+            }
+            if (s.kind === 'racing') {
+              return (
+                <li key={i}>
+                  {s.npc ? <EntityLink entity={s.npc} withIcon={false} /> : <strong>Race</strong>}
+                  {s.instanceName && <span className="muted"> · {s.instanceName}</span>}
+                  {s.requiredScore > 0 && <span className="muted"> · score {s.requiredScore.toLocaleString()}+</span>}
+                  {s.requiredStars > 0 && <span className="muted"> · {s.requiredStars}★</span>}
+                </li>
+              );
+            }
+            if (s.kind === 'code') {
+              return <li key={i}><code>{s.code}</code></li>;
+            }
+            if (s.kind === 'event') {
+              return (
+                <li key={i}>
+                  <strong>{s.eventName || `Event #${s.eventId}`}</strong>
+                  {s.oddsText && <span className="muted"> · {s.oddsText}</span>}
+                </li>
+              );
+            }
+            return null;
+          })}
+        </ul>
+      </Dropdown>
+    ));
+})()}
+
+{props.data.sources.length === 0 && (
+  <p className="muted">No known sources for this item.</p>
+)}
+
+<SimilarItems current={props.data} />
+
+<p className="muted alias-ids">Type ID <code>{props.data.typeId}</code> · Item ID <code>{props.data.itemId}</code></p>

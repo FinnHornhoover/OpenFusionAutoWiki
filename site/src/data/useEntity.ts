@@ -2,8 +2,19 @@ import { useEffect, useState } from 'react';
 
 const CHUNK_SIZE = 250;
 
-function chunkOf(id: number): number {
-  return Math.floor(id / CHUNK_SIZE);
+/**
+ * Type-aware chunk computation. Most entity types address by a numeric id; items
+ * use a compound URL id "typeId-itemId" that maps onto the same numeric space the
+ * build pipeline uses (typeId * 10000 + itemId).
+ */
+function chunkFor(type: string, urlId: string): number {
+  if (type === 'items') {
+    const m = /^(\d+)-(\d+)$/.exec(urlId);
+    if (!m) return -1;
+    return Math.floor((parseInt(m[1], 10) * 10000 + parseInt(m[2], 10)) / CHUNK_SIZE);
+  }
+  const n = parseInt(urlId, 10);
+  return Number.isFinite(n) ? Math.floor(n / CHUNK_SIZE) : -1;
 }
 
 const cache = new Map<string, Record<string, unknown>>();
@@ -55,23 +66,21 @@ export function useEntity<T>(
   const key = slug && type && id ? `${slug}::${type}::${id}` : '';
   const [state, setState] = useState<InternalState<T>>(() => initialState<T>(key));
 
-  // Sync invalidation when the target changes. React permits setState during render
-  // if conditional — it re-renders with the new state before committing.
   if (state.key !== key) {
     setState(initialState<T>(key));
   }
 
   useEffect(() => {
     if (!key) return;
-    const numericId = parseInt(id!, 10);
-    if (!Number.isFinite(numericId)) {
+    const chunk = chunkFor(type!, id!);
+    if (chunk < 0) {
       setState({ key, result: { entity: null, loading: false, notFound: true } });
       return;
     }
     let alive = true;
-    loadChunk(slug!, type!, chunkOf(numericId)).then((bucket) => {
+    loadChunk(slug!, type!, chunk).then((bucket) => {
       if (!alive) return;
-      const found = bucket[String(numericId)] as T | undefined;
+      const found = bucket[id!] as T | undefined;
       setState({
         key,
         result: found

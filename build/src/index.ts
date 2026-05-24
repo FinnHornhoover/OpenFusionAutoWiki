@@ -10,6 +10,7 @@ import { join } from 'node:path';
 import { downloadAll, fetchRelease } from './download.js';
 import { dedupeIcons } from './icons.js';
 import { writeManifest } from './manifest.js';
+import { normalizeItems } from './normalize/items.js';
 import { normalizeMissions } from './normalize/missions.js';
 import { normalizeNpcs } from './normalize/npcs.js';
 import { buildNpcGrouping } from './normalize/npcGrouping.js';
@@ -45,7 +46,7 @@ async function main(): Promise<void> {
   const entries = await writeManifest(downloaded);
   log.done(`manifest: ${entries.length} builds → site/public/builds.json`);
 
-  log.step('normalizing missions + NPCs');
+  log.step('normalizing missions + NPCs + items');
   let totalMissions = 0;
   let totalMissionChunks = 0;
   let totalNpcs = 0;
@@ -53,11 +54,14 @@ async function main(): Promise<void> {
   let totalVendors = 0;
   let totalLinkedNpcs = 0;
   let totalMergedNpcs = 0;
+  let totalItems = 0;
+  let totalItemChunks = 0;
+  let totalItemSources = 0;
   for (const d of downloaded) {
     const slug = d.asset.name.replace(/\.zip$/i, '');
     const iconMap = maps[slug] ?? {};
 
-    // Group duplicate NPCs by (category, name) first; both normalizers use it.
+    // Group duplicate NPCs by (category, name) first; mission/npc/item normalizers all use it.
     const grouping = buildNpcGrouping(d.path);
     const npcNameIndex = buildNpcNameIndex(d.path, iconMap, grouping);
 
@@ -72,11 +76,17 @@ async function main(): Promise<void> {
     totalLinkedNpcs += n.linked;
     totalMergedNpcs += n.merged;
 
-    await writeBuildMeta(slug, ['missions', 'npcs']);
-    log.info(`${slug.padEnd(46)} missions=${m.count} npcs=${n.count} (${n.merged} merged, ${n.linked} link mission, ${n.vendors} vendors)`);
+    const it = await normalizeItems(d.path, slug, iconMap, grouping);
+    totalItems += it.count;
+    totalItemChunks += it.chunks;
+    totalItemSources += it.sourceCount;
+
+    await writeBuildMeta(slug, ['missions', 'npcs', 'items']);
+    log.info(`${slug.padEnd(46)} missions=${m.count} npcs=${n.count} items=${it.count} (${it.sourceCount} sources)`);
   }
-  log.done(`missions: ${totalMissions} records → ${totalMissionChunks} chunks`);
-  log.done(`npcs: ${totalNpcs} records → ${totalNpcChunks} chunks; ${totalLinkedNpcs} link to missions; ${totalVendors} are vendors; ${totalMergedNpcs} canonical groups had aliases merged in`);
+  log.done(`missions: ${totalMissions} → ${totalMissionChunks} chunks`);
+  log.done(`npcs: ${totalNpcs} → ${totalNpcChunks} chunks; ${totalLinkedNpcs} link to missions; ${totalVendors} vendors; ${totalMergedNpcs} merged groups`);
+  log.done(`items: ${totalItems} → ${totalItemChunks} chunks; ${totalItemSources} source entries embedded`);
 
   log.done('build complete');
 }
