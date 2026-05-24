@@ -24,6 +24,7 @@ export interface Mission {
   endNPC: Ref | null;
 
   requiredGuide: string;
+  requiredGuideNpc: Ref | null;
   requiredNano: Ref | null;
   requiredMissions: Ref[];
   /** Missions that require this mission. Filled after the first pass. */
