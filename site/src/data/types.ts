@@ -27,6 +27,7 @@ export interface Mission {
   requiredGuide: string;
   requiredNano: Ref | null;
   requiredMissions: Ref[];
+  requiredByMissions: Ref[];
 
   rewards: {
     fm: number;
@@ -56,17 +57,25 @@ export interface MissionTask {
     end: TaskMessage | null;
     fail: TaskMessage | null;
   };
+  guideEmails: GuideEmail[];
 }
 
 export interface TaskMessage {
   sender: Ref | null;
   text: string;
+  bubble: { sender: Ref | null; text: string } | null;
   journal: {
     detailedMission: string;
     detailedTask: string;
     missionSummary: string;
     missionCompleteSummary: string;
   };
+}
+
+export interface GuideEmail {
+  sender: string;
+  senderRef: Ref | null;
+  body: string;
 }
 
 export interface MissionIndexEntry {
@@ -76,6 +85,54 @@ export interface MissionIndexEntry {
   difficulty: string;
   type: string;
   startNPC: { name: string; icon: string } | null;
+}
+
+export interface NpcLocation {
+  areaZone: string;
+  x: number;
+  y: number;
+  z: number;
+  instanceID: number;
+}
+
+export interface NpcVendorItem {
+  ref: Ref;
+  buyPrice: number;
+  sellPrice: number;
+  rarity: string;
+  requiredLevel: number;
+  itemKind: string;
+}
+
+export interface Npc {
+  id: number;
+  name: string;
+  icon: string;
+  category: string;
+  comment: string;
+  inGame: boolean;
+  height: number;
+  scale: number;
+
+  idleBarkers: string[];
+  missionBarkers: Array<{ mission: Ref; text: string }>;
+
+  vendorItems: NpcVendorItem[];
+
+  startedMissions: Ref[];
+  journaledMissions: Ref[];
+  endedMissions: Ref[];
+
+  locations: NpcLocation[];
+}
+
+export interface NpcIndexEntry {
+  id: number;
+  name: string;
+  icon: string;
+  category: string;
+  instanceCount: number;
+  inGame: boolean;
 }
 
 export interface BuildMeta {

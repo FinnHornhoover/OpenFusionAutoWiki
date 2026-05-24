@@ -21,7 +21,7 @@ export default function RewardBox({ rewards }: RewardBoxProps) {
       </ul>
       {nano && (
         <div className="reward-row">
-          <span className="reward-label">Nano:</span> <EntityLink ref={nano} />
+          <span className="reward-label">Nano:</span> <EntityLink entity={nano} />
         </div>
       )}
       {items.length > 0 && (
@@ -32,7 +32,7 @@ export default function RewardBox({ rewards }: RewardBoxProps) {
           <ul className="reward-items">
             {items.map((it, i) => (
               <li key={`${it.ref.id}-${i}`}>
-                <EntityLink ref={it.ref} />
+                <EntityLink entity={it.ref} />
                 {it.rarity && <span className="muted"> · {it.rarity}</span>}
                 {it.requiredLevel > 0 && <span className="muted"> · Lv {it.requiredLevel}</span>}
                 {it.itemKind && <span className="muted"> · {it.itemKind}</span>}

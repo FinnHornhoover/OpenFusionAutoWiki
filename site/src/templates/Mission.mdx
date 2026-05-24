@@ -14,13 +14,13 @@ import TaskList from '../components/TaskList';
 
 <div className="mission-givers">
   {props.data.startNPC && (
-    <div><span className="muted">Start:</span> <EntityLink ref={props.data.startNPC} /></div>
+    <div><span className="muted">Start:</span> <EntityLink entity={props.data.startNPC} /></div>
   )}
   {props.data.journalNPC && props.data.journalNPC.id !== props.data.startNPC?.id && (
-    <div><span className="muted">Journal:</span> <EntityLink ref={props.data.journalNPC} /></div>
+    <div><span className="muted">Journal:</span> <EntityLink entity={props.data.journalNPC} /></div>
   )}
   {props.data.endNPC && props.data.endNPC.id !== props.data.startNPC?.id && (
-    <div><span className="muted">End:</span> <EntityLink ref={props.data.endNPC} /></div>
+    <div><span className="muted">End:</span> <EntityLink entity={props.data.endNPC} /></div>
   )}
 </div>
 
@@ -31,14 +31,14 @@ import TaskList from '../components/TaskList';
         <span className="task-label">Missions:</span>
         <ul>
           {props.data.requiredMissions.map((m) => (
-            <li key={m.id}><EntityLink ref={m} /></li>
+            <li key={m.id}><EntityLink entity={m} /></li>
           ))}
         </ul>
       </div>
     )}
     {props.data.requiredNano && (
       <div className="task-row">
-        <span className="task-label">Nano:</span> <EntityLink ref={props.data.requiredNano} />
+        <span className="task-label">Nano:</span> <EntityLink entity={props.data.requiredNano} />
       </div>
     )}
     {props.data.requiredGuide && (
@@ -53,6 +53,16 @@ import TaskList from '../components/TaskList';
   <RewardBox rewards={props.data.rewards} />
 </Dropdown>
 
+{props.data.requiredByMissions.length > 0 && (
+  <Dropdown summary={`Required by ${props.data.requiredByMissions.length} mission${props.data.requiredByMissions.length === 1 ? '' : 's'}`}>
+    <ul className="ref-list">
+      {props.data.requiredByMissions.map((m) => (
+        <li key={m.id}><EntityLink entity={m} withIcon={false} /></li>
+      ))}
+    </ul>
+  </Dropdown>
+)}
+
 ## Tasks
 
 <TaskList tasks={props.data.tasks} />
@@ -62,7 +72,7 @@ import TaskList from '../components/TaskList';
     <ul className="barker-list">
       {props.data.barkers.map((b, i) => (
         <li key={`${b.npc.id}-${i}`}>
-          <EntityLink ref={b.npc} withIcon={false} />: <em>"{b.text}"</em>
+          <EntityLink entity={b.npc} withIcon={false} />: <em>"{b.text}"</em>
         </li>
       ))}
     </ul>

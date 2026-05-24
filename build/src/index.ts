@@ -11,6 +11,8 @@ import { downloadAll, fetchRelease } from './download.js';
 import { dedupeIcons } from './icons.js';
 import { writeManifest } from './manifest.js';
 import { normalizeMissions } from './normalize/missions.js';
+import { normalizeNpcs } from './normalize/npcs.js';
+import { buildNpcNameIndex } from './normalize/npcNameIndex.js';
 import { DATA_OUT } from './paths.js';
 import { log } from './log.js';
 
@@ -42,19 +44,33 @@ async function main(): Promise<void> {
   const entries = await writeManifest(downloaded);
   log.done(`manifest: ${entries.length} builds → site/public/builds.json`);
 
-  log.step('normalizing missions');
+  log.step('normalizing missions + NPCs');
   let totalMissions = 0;
-  let totalChunks = 0;
+  let totalMissionChunks = 0;
+  let totalNpcs = 0;
+  let totalNpcChunks = 0;
+  let totalVendors = 0;
+  let totalLinkedNpcs = 0;
   for (const d of downloaded) {
     const slug = d.asset.name.replace(/\.zip$/i, '');
     const iconMap = maps[slug] ?? {};
-    const { count, chunks } = await normalizeMissions(d.path, slug, iconMap);
-    totalMissions += count;
-    totalChunks += chunks;
-    await writeBuildMeta(slug, ['missions']);
-    log.info(`missions     ${slug} (${count} → ${chunks} chunks)`);
+
+    const npcNameIndex = buildNpcNameIndex(d.path, iconMap);
+    const m = await normalizeMissions(d.path, slug, iconMap, npcNameIndex);
+    totalMissions += m.count;
+    totalMissionChunks += m.chunks;
+
+    const n = await normalizeNpcs(d.path, slug, iconMap, m.npcMissions);
+    totalNpcs += n.count;
+    totalNpcChunks += n.chunks;
+    totalVendors += n.vendors;
+    totalLinkedNpcs += n.linked;
+
+    await writeBuildMeta(slug, ['missions', 'npcs']);
+    log.info(`${slug.padEnd(46)} missions=${m.count} npcs=${n.count} (${n.linked} link mission, ${n.vendors} vendors)`);
   }
-  log.done(`missions: ${totalMissions} records across ${downloaded.length} builds → ${totalChunks} chunks`);
+  log.done(`missions: ${totalMissions} records → ${totalMissionChunks} chunks`);
+  log.done(`npcs: ${totalNpcs} records → ${totalNpcChunks} chunks; ${totalLinkedNpcs} link to missions; ${totalVendors} are vendors`);
 
   log.done('build complete');
 }

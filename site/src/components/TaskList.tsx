@@ -1,4 +1,4 @@
-import type { MissionTask, TaskMessage } from '../data/types';
+import type { GuideEmail, MissionTask, TaskMessage } from '../data/types';
 import Dropdown from './Dropdown';
 import EntityLink from './EntityLink';
 
@@ -14,16 +14,41 @@ function MessageSection({ label, msg }: { label: string; msg: TaskMessage | null
   if (!msg) return null;
   const j = msg.journal;
   const hasJournal = j.detailedMission || j.detailedTask || j.missionSummary || j.missionCompleteSummary;
-  if (!msg.text && !msg.sender && !hasJournal) return null;
+  if (!msg.text && !msg.sender && !msg.bubble && !hasJournal) return null;
   return (
     <div className="task-message">
       <h4>{label}</h4>
-      {msg.sender && <p>From <EntityLink ref={msg.sender} /></p>}
+      {msg.sender && <p>From <EntityLink entity={msg.sender} /></p>}
       {msg.text && <blockquote>{msg.text}</blockquote>}
+      {msg.bubble && (msg.bubble.sender || msg.bubble.text) && (
+        <p className="dialog-bubble">
+          {msg.bubble.sender && <EntityLink entity={msg.bubble.sender} withIcon={false} />}
+          {msg.bubble.sender && msg.bubble.text && ': '}
+          {msg.bubble.text && <em>"{msg.bubble.text}"</em>}
+        </p>
+      )}
       {j.detailedMission && <p><em>Mission detail:</em> {j.detailedMission}</p>}
       {j.detailedTask && <p><em>Task detail:</em> {j.detailedTask}</p>}
       {j.missionSummary && <p><em>Summary:</em> {j.missionSummary}</p>}
       {j.missionCompleteSummary && <p><em>On complete:</em> {j.missionCompleteSummary}</p>}
+    </div>
+  );
+}
+
+function GuideEmailsSection({ emails }: { emails: GuideEmail[] }) {
+  if (!emails.length) return null;
+  return (
+    <div className="guide-emails">
+      <h4>Guide email{emails.length === 1 ? '' : 's'}</h4>
+      {emails.map((e, i) => (
+        <article key={i} className="guide-email">
+          <header className="guide-email-from">
+            From{' '}
+            {e.senderRef ? <EntityLink entity={e.senderRef} withIcon={false} /> : <strong>{e.sender || 'Unknown'}</strong>}
+          </header>
+          <blockquote>{e.body}</blockquote>
+        </article>
+      ))}
     </div>
   );
 }
@@ -49,7 +74,7 @@ function TaskItem({ task, index }: { task: MissionTask; index: number }) {
             {task.monsterRequirements.map((m) => (
               <li key={m.ref.id}>
                 {m.killCount > 0 && <strong>{m.killCount}× </strong>}
-                <EntityLink ref={m.ref} />
+                <EntityLink entity={m.ref} />
               </li>
             ))}
           </ul>
@@ -57,17 +82,17 @@ function TaskItem({ task, index }: { task: MissionTask; index: number }) {
       )}
       {task.escortNPC && (
         <div className="task-row">
-          <span className="task-label">Escort:</span> <EntityLink ref={task.escortNPC} />
+          <span className="task-label">Escort:</span> <EntityLink entity={task.escortNPC} />
         </div>
       )}
       {task.waypointNPC && (
         <div className="task-row">
-          <span className="task-label">Go to:</span> <EntityLink ref={task.waypointNPC} />
+          <span className="task-label">Go to:</span> <EntityLink entity={task.waypointNPC} />
         </div>
       )}
       {task.requiredInstance && (
         <div className="task-row">
-          <span className="task-label">Inside:</span> <EntityLink ref={task.requiredInstance} />
+          <span className="task-label">Inside:</span> <EntityLink entity={task.requiredInstance} />
         </div>
       )}
       {task.onEndObjective && (
@@ -78,6 +103,7 @@ function TaskItem({ task, index }: { task: MissionTask; index: number }) {
       <MessageSection label="On start" msg={task.messages.start} />
       <MessageSection label="On complete" msg={task.messages.end} />
       <MessageSection label="On fail" msg={task.messages.fail} />
+      <GuideEmailsSection emails={task.guideEmails} />
     </Dropdown>
   );
 }

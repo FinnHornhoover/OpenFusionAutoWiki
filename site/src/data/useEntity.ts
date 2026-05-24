@@ -9,12 +9,12 @@ function chunkOf(id: number): number {
 const cache = new Map<string, Record<string, unknown>>();
 const inflight = new Map<string, Promise<Record<string, unknown>>>();
 
-function key(slug: string, type: string, chunk: number): string {
+function chunkKey(slug: string, type: string, chunk: number): string {
   return `${slug}::${type}::${chunk}`;
 }
 
 async function loadChunk(slug: string, type: string, chunk: number): Promise<Record<string, unknown>> {
-  const k = key(slug, type, chunk);
+  const k = chunkKey(slug, type, chunk);
   const hit = cache.get(k);
   if (hit) return hit;
   let p = inflight.get(k);
@@ -38,36 +38,51 @@ export interface UseEntityResult<T> {
   notFound: boolean;
 }
 
+interface InternalState<T> {
+  key: string;
+  result: UseEntityResult<T>;
+}
+
+function initialState<T>(key: string): InternalState<T> {
+  return { key, result: { entity: null, loading: !!key, notFound: !key } };
+}
+
 export function useEntity<T>(
   slug: string | undefined,
   type: string | undefined,
   id: string | undefined,
 ): UseEntityResult<T> {
-  const [state, setState] = useState<UseEntityResult<T>>({ entity: null, loading: true, notFound: false });
+  const key = slug && type && id ? `${slug}::${type}::${id}` : '';
+  const [state, setState] = useState<InternalState<T>>(() => initialState<T>(key));
+
+  // Sync invalidation when the target changes. React permits setState during render
+  // if conditional — it re-renders with the new state before committing.
+  if (state.key !== key) {
+    setState(initialState<T>(key));
+  }
 
   useEffect(() => {
-    if (!slug || !type || !id) {
-      setState({ entity: null, loading: false, notFound: true });
-      return;
-    }
-    const numericId = parseInt(id, 10);
+    if (!key) return;
+    const numericId = parseInt(id!, 10);
     if (!Number.isFinite(numericId)) {
-      setState({ entity: null, loading: false, notFound: true });
+      setState({ key, result: { entity: null, loading: false, notFound: true } });
       return;
     }
     let alive = true;
-    setState({ entity: null, loading: true, notFound: false });
-    loadChunk(slug, type, chunkOf(numericId)).then((bucket) => {
+    loadChunk(slug!, type!, chunkOf(numericId)).then((bucket) => {
       if (!alive) return;
       const found = bucket[String(numericId)] as T | undefined;
-      setState(found
-        ? { entity: found, loading: false, notFound: false }
-        : { entity: null, loading: false, notFound: true });
+      setState({
+        key,
+        result: found
+          ? { entity: found, loading: false, notFound: false }
+          : { entity: null, loading: false, notFound: true },
+      });
     });
     return () => {
       alive = false;
     };
-  }, [slug, type, id]);
+  }, [key, slug, type, id]);
 
-  return state;
+  return state.result;
 }

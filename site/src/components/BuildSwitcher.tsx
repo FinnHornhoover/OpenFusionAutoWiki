@@ -1,8 +1,11 @@
-import { useNavigate, useParams } from 'react-router-dom';
+import { useMatch, useNavigate } from 'react-router-dom';
 import { useManifest } from '../data/useManifest';
 
 export default function BuildSwitcher() {
-  const { build } = useParams();
+  // useParams returns {} outside a matched <Route>, and this component lives in the
+  // header next to QuickPicks. useMatch reads the current URL anywhere under <BrowserRouter>.
+  const match = useMatch('/:build/*');
+  const build = match?.params.build;
   const navigate = useNavigate();
   const { manifest, loading } = useManifest();
 

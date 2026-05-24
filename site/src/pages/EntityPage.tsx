@@ -1,9 +1,10 @@
 import { Link, useParams } from 'react-router-dom';
-import type { Mission } from '../data/types';
+import type { Mission, Npc } from '../data/types';
 import { useBuildEntry } from '../data/useBuildEntry';
 import { useBuildMeta } from '../data/useBuildMeta';
 import { useEntity } from '../data/useEntity';
 import MissionTemplate from '../templates/Mission.mdx';
+import NPCTemplate from '../templates/NPC.mdx';
 
 export default function EntityPage() {
   const { build, type, id } = useParams();
@@ -11,7 +12,7 @@ export default function EntityPage() {
   const meta = useBuildMeta(build);
   const supported = meta?.builtTypes?.includes(type ?? '') ?? false;
 
-  const { entity, loading, notFound } = useEntity<Mission>(
+  const { entity, loading, notFound } = useEntity<Mission | Npc>(
     supported ? build : undefined,
     supported ? type : undefined,
     supported ? id : undefined,
@@ -50,7 +51,20 @@ export default function EntityPage() {
           {' · '}
           <Link to={`/${build}/missions`}>Missions</Link>
         </p>
-        <MissionTemplate data={entity} />
+        <MissionTemplate data={entity as Mission} />
+      </section>
+    );
+  }
+
+  if (type === 'npcs') {
+    return (
+      <section className="entity-page npc-page">
+        <p className="breadcrumb muted">
+          <Link to={`/${build}`}>{buildLabel}</Link>
+          {' · '}
+          <Link to={`/${build}/npcs`}>NPCs</Link>
+        </p>
+        <NPCTemplate data={entity as Npc} />
       </section>
     );
   }

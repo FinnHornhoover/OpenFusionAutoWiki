@@ -1,0 +1,111 @@
+import Dropdown from '../components/Dropdown';
+import EntityLink from '../components/EntityLink';
+import Icon from '../components/Icon';
+
+# {props.data.name}
+
+<p className="entity-meta muted">
+  {props.data.icon ? <Icon src={props.data.icon} alt={props.data.name} size={48} /> : null}
+  {props.data.category && <span className="badge badge-category">{props.data.category}</span>}
+  {props.data.inGame === false && <span className="badge badge-warn">cut from final build</span>}
+  {props.data.locations.length > 0 && (
+    <span className="muted">
+      {' · '}{props.data.locations.length} spawn{props.data.locations.length === 1 ? '' : 's'}
+    </span>
+  )}
+</p>
+
+{props.data.comment && (
+  <blockquote className="npc-comment">"{props.data.comment}"</blockquote>
+)}
+
+{props.data.startedMissions.length > 0 && (
+  <Dropdown summary={`Gives ${props.data.startedMissions.length} mission${props.data.startedMissions.length === 1 ? '' : 's'}`} open>
+    <ul className="ref-list">
+      {props.data.startedMissions.map((m) => (
+        <li key={m.id}><EntityLink entity={m} withIcon={false} /></li>
+      ))}
+    </ul>
+  </Dropdown>
+)}
+
+{props.data.journaledMissions.length > 0 && (
+  <Dropdown summary={`Journals ${props.data.journaledMissions.length} mission${props.data.journaledMissions.length === 1 ? '' : 's'}`}>
+    <ul className="ref-list">
+      {props.data.journaledMissions.map((m) => (
+        <li key={m.id}><EntityLink entity={m} withIcon={false} /></li>
+      ))}
+    </ul>
+  </Dropdown>
+)}
+
+{props.data.endedMissions.length > 0 && (
+  <Dropdown summary={`Ends ${props.data.endedMissions.length} mission${props.data.endedMissions.length === 1 ? '' : 's'}`}>
+    <ul className="ref-list">
+      {props.data.endedMissions.map((m) => (
+        <li key={m.id}><EntityLink entity={m} withIcon={false} /></li>
+      ))}
+    </ul>
+  </Dropdown>
+)}
+
+{props.data.vendorItems.length > 0 && (
+  <Dropdown summary={`Sells ${props.data.vendorItems.length} item${props.data.vendorItems.length === 1 ? '' : 's'}`}>
+    <ul className="reward-items">
+      {props.data.vendorItems.map((v, i) => (
+        <li key={`${v.ref.id}-${i}`}>
+          <EntityLink entity={v.ref} />
+          <span className="muted">{' · '}{v.buyPrice.toLocaleString()} Taros</span>
+          {v.rarity && <span className="muted">{' · '}{v.rarity}</span>}
+          {v.requiredLevel > 0 && <span className="muted">{' · '}Lv {v.requiredLevel}</span>}
+          {v.itemKind && <span className="muted">{' · '}{v.itemKind}</span>}
+        </li>
+      ))}
+    </ul>
+  </Dropdown>
+)}
+
+{props.data.missionBarkers.length > 0 && (
+  <Dropdown summary={`Mission barkers (${props.data.missionBarkers.length})`}>
+    <ul className="barker-list">
+      {props.data.missionBarkers.map((b, i) => (
+        <li key={`${b.mission.id}-${i}`}>
+          <EntityLink entity={b.mission} withIcon={false} />: <em>"{b.text}"</em>
+        </li>
+      ))}
+    </ul>
+  </Dropdown>
+)}
+
+{props.data.idleBarkers.length > 0 && (
+  <Dropdown summary={`Idle barkers (${props.data.idleBarkers.length})`}>
+    <ul className="barker-list">
+      {props.data.idleBarkers.map((text, i) => (
+        <li key={i}><em>"{text}"</em></li>
+      ))}
+    </ul>
+  </Dropdown>
+)}
+
+{props.data.locations.length > 0 && (
+  <Dropdown summary={`Spawn locations (${props.data.locations.length})`}>
+    <table className="location-table">
+      <thead>
+        <tr>
+          <th>Area</th>
+          <th>Coordinates</th>
+          <th>Instance</th>
+        </tr>
+      </thead>
+      <tbody>
+        {props.data.locations.map((loc, i) => (
+          <tr key={i}>
+            <td>{loc.areaZone || <span className="muted">—</span>}</td>
+            <td className="muted">{loc.x}, {loc.y}, {loc.z}</td>
+            <td className="muted">{loc.instanceID || '—'}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </Dropdown>
+)}

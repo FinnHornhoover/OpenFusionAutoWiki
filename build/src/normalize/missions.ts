@@ -2,6 +2,7 @@ import AdmZip from 'adm-zip';
 
 import { writeChunks, writeIndex } from '../chunk.js';
 import type { IconMap } from '../icons.js';
+import type { NpcNameIndex } from './npcNameIndex.js';
 import {
   instanceRef,
   itemRef,
@@ -12,6 +13,7 @@ import {
   parseCompoundKey,
 } from './refs.js';
 import type {
+  GuideEmail,
   Mission,
   MissionIndexEntry,
   MissionTask,
@@ -44,6 +46,7 @@ interface RawTask {
   EscortNPCID?: number;
   EscortNPCIcon?: string;
   EscortNPCName?: string;
+  GuideEmails?: Record<string, string>;
   MessageOnEnd?: RawTaskMessage;
   MessageOnFail?: RawTaskMessage;
   MessageOnStart?: RawTaskMessage;
@@ -111,18 +114,41 @@ function normalizeMessage(raw: RawTaskMessage | undefined, iconMap: IconMap): Ta
     missionCompleteSummary: raw.JournalMissionCompleteSummary ?? '',
   };
   const text = (raw.Text ?? '').trim();
+  const bubbleText = (raw.DialogBubble ?? '').trim();
+  const bubbleNpc = npcRef(
+    raw.DialogBubbleNPCID ?? 0,
+    raw.DialogBubbleNPCName ?? '',
+    raw.DialogBubbleNPCIcon ?? '',
+    iconMap,
+  );
+  const bubble = bubbleText || bubbleNpc ? { sender: bubbleNpc, text: bubbleText } : null;
   const anyContent =
     text ||
+    bubble ||
     journal.detailedMission ||
     journal.detailedTask ||
     journal.missionSummary ||
     journal.missionCompleteSummary ||
     sender;
   if (!anyContent && type === 'None') return null;
-  return { sender, text, journal };
+  return { sender, text, bubble, journal };
 }
 
-function normalizeTask(raw: RawTask, iconMap: IconMap): MissionTask {
+function normalizeGuideEmails(raw: RawTask, npcNameIndex: NpcNameIndex): GuideEmail[] {
+  const out: GuideEmail[] = [];
+  for (const [sender, body] of Object.entries(raw.GuideEmails ?? {})) {
+    const trimmed = (body ?? '').trim();
+    if (!sender && !trimmed) continue;
+    out.push({
+      sender,
+      senderRef: npcNameIndex.get(sender.toLowerCase()) ?? null,
+      body: trimmed,
+    });
+  }
+  return out;
+}
+
+function normalizeTask(raw: RawTask, iconMap: IconMap, npcNameIndex: NpcNameIndex): MissionTask {
   const monsterRequirements = Object.entries(raw.QuestItemMonsterRequirements ?? {})
     .map(([key, val]) => {
       const { id, name } = parseCompoundKey(key);
@@ -158,10 +184,11 @@ function normalizeTask(raw: RawTask, iconMap: IconMap): MissionTask {
       end: normalizeMessage(raw.MessageOnEnd, iconMap),
       fail: normalizeMessage(raw.MessageOnFail, iconMap),
     },
+    guideEmails: normalizeGuideEmails(raw, npcNameIndex),
   };
 }
 
-function normalizeMission(raw: RawMission, iconMap: IconMap): Mission {
+function normalizeMission(raw: RawMission, iconMap: IconMap, npcNameIndex: NpcNameIndex): Mission {
   const startNPC = npcRef(raw.MissionStartNPCID ?? 0, raw.MissionStartNPCName ?? '', raw.MissionStartNPCIcon ?? '', iconMap);
   const journalNPC = npcRef(raw.MissionJournalNPCID ?? 0, raw.MissionJournalNPCName ?? '', raw.MissionJournalNPCIcon ?? '', iconMap);
   const endNPC = npcRef(raw.MissionEndNPCID ?? 0, raw.MissionEndNPCName ?? '', raw.MissionEndNPCIcon ?? '', iconMap);
@@ -206,7 +233,7 @@ function normalizeMission(raw: RawMission, iconMap: IconMap): Mission {
     .filter((x): x is { npc: Ref; text: string } => x !== null);
 
   const tasks = Object.values(raw.Tasks ?? {})
-    .map((t) => normalizeTask(t, iconMap))
+    .map((t) => normalizeTask(t, iconMap, npcNameIndex))
     .sort((a, b) => a.id - b.id);
 
   return {
@@ -222,6 +249,7 @@ function normalizeMission(raw: RawMission, iconMap: IconMap): Mission {
     requiredGuide: raw.RequiredGuide && raw.RequiredGuide !== 'None' ? raw.RequiredGuide : '',
     requiredNano: nanoRef(raw.RequiredNanoID ?? 0, raw.RequiredNano ?? '', '', iconMap),
     requiredMissions,
+    requiredByMissions: [], // filled in a second pass
     rewards: {
       fm: rewards.FM ?? 0,
       taros: rewards.Taros ?? 0,
@@ -245,30 +273,71 @@ function indexEntry(m: Mission): MissionIndexEntry {
   };
 }
 
+/** Lightweight back-reference: missions a specific NPC participates in. */
+export interface NpcMissionsEntry {
+  starts: Ref[];
+  journals: Ref[];
+  ends: Ref[];
+}
+export type NpcMissionsMap = Map<number, NpcMissionsEntry>;
+
+function pushRole(map: NpcMissionsMap, npcId: number, role: keyof NpcMissionsEntry, ref: Ref): void {
+  let entry = map.get(npcId);
+  if (!entry) {
+    entry = { starts: [], journals: [], ends: [] };
+    map.set(npcId, entry);
+  }
+  // Avoid duplicates within the same role for the same mission id
+  if (!entry[role].some((r) => r.id === ref.id)) entry[role].push(ref);
+}
+
 /**
  * Read mission_info.json from a cached ZIP, normalize every entry, and emit
- * chunked records + an index file under site/public/data/<slug>/.
+ * chunked records + an index file under site/public/data/<slug>/. Also
+ * returns an inverted map of NPC id → { starts, journals, ends } so the
+ * NPC normalizer can show "missions given by this NPC" without re-scanning.
  */
 export async function normalizeMissions(
   zipPath: string,
   slug: string,
   iconMap: IconMap,
-): Promise<{ count: number; chunks: number }> {
+  npcNameIndex: NpcNameIndex,
+): Promise<{ count: number; chunks: number; npcMissions: NpcMissionsMap }> {
   const zip = new AdmZip(zipPath);
   const entry = zip.getEntry('info/mission_info.json');
+  const npcMissions: NpcMissionsMap = new Map();
   if (!entry) {
-    return { count: 0, chunks: 0 };
+    return { count: 0, chunks: 0, npcMissions };
   }
   const raw = JSON.parse(entry.getData().toString('utf8')) as Record<string, RawMission>;
 
   const missions: Mission[] = Object.values(raw)
-    .map((m) => normalizeMission(m, iconMap))
+    .map((m) => normalizeMission(m, iconMap, npcNameIndex))
     .sort((a, b) => a.id - b.id);
+
+  // Build the inverted index of NPC → missions in the three giver roles, AND the
+  // back-index of mission → missions that name it as a prereq.
+  const byId = new Map<number, Mission>();
+  for (const m of missions) byId.set(m.id, m);
+
+  for (const m of missions) {
+    const missionAsRef: Ref = { type: 'mission', id: m.id, name: m.name };
+    if (m.startNPC) pushRole(npcMissions, m.startNPC.id, 'starts', missionAsRef);
+    if (m.journalNPC) pushRole(npcMissions, m.journalNPC.id, 'journals', missionAsRef);
+    if (m.endNPC) pushRole(npcMissions, m.endNPC.id, 'ends', missionAsRef);
+
+    for (const req of m.requiredMissions) {
+      const target = byId.get(req.id);
+      if (target && !target.requiredByMissions.some((r) => r.id === m.id)) {
+        target.requiredByMissions.push(missionAsRef);
+      }
+    }
+  }
 
   const { chunks } = await writeChunks(slug, 'missions', missions);
   await writeIndex(slug, 'missions', missions.map(indexEntry));
 
-  return { count: missions.length, chunks };
+  return { count: missions.length, chunks, npcMissions };
 }
 
 /** Used by the orchestrator to advertise which entity types have data for a build. */

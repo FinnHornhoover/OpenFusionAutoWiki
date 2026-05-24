@@ -31,29 +31,38 @@ export interface UseIndexResult<T> {
   loading: boolean;
 }
 
+interface InternalState<T> {
+  key: string;
+  result: UseIndexResult<T>;
+}
+
+function initialState<T>(k: string): InternalState<T> {
+  if (!k) return { key: k, result: { rows: null, loading: false } };
+  const cached = cache.get(k) as T[] | undefined;
+  return cached
+    ? { key: k, result: { rows: cached, loading: false } }
+    : { key: k, result: { rows: null, loading: true } };
+}
+
 export function useIndex<T>(slug: string | undefined, type: string | undefined): UseIndexResult<T> {
   const k = slug && type ? key(slug, type) : '';
-  const [rows, setRows] = useState<T[] | null>(k ? (cache.get(k) as T[] | undefined) ?? null : null);
-  const [loading, setLoading] = useState<boolean>(!!k && !cache.has(k));
+  const [state, setState] = useState<InternalState<T>>(() => initialState<T>(k));
+
+  // Sync invalidation when target changes.
+  if (state.key !== k) {
+    setState(initialState<T>(k));
+  }
 
   useEffect(() => {
-    if (!slug || !type) {
-      setRows(null);
-      setLoading(false);
-      return;
-    }
+    if (!k) return;
     let alive = true;
-    setLoading(!cache.has(key(slug, type)));
-    load<T>(slug, type).then((r) => {
-      if (alive) {
-        setRows(r);
-        setLoading(false);
-      }
+    load<T>(slug!, type!).then((rows) => {
+      if (alive) setState({ key: k, result: { rows, loading: false } });
     });
     return () => {
       alive = false;
     };
-  }, [slug, type]);
+  }, [k, slug, type]);
 
-  return { rows, loading };
+  return state.result;
 }
