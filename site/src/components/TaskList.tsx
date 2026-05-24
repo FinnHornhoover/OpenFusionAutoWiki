@@ -28,10 +28,16 @@ function MessageSection({ label, msg }: { label: string; msg: TaskMessage | null
           {msg.bubble.text && <em>"{msg.bubble.text}"</em>}
         </p>
       )}
-      {j.detailedMission && <p><em>Mission detail:</em> {j.detailedMission}</p>}
-      {j.detailedTask && <p><em>Task detail:</em> {j.detailedTask}</p>}
-      {j.missionSummary && <p><em>Summary:</em> {j.missionSummary}</p>}
-      {j.missionCompleteSummary && <p><em>On complete:</em> {j.missionCompleteSummary}</p>}
+      {hasJournal && (
+        <table className="task-journal-text">
+          <tbody>
+            {j.detailedMission && <tr><th scope="row">Mission detail</th><td>{j.detailedMission}</td></tr>}
+            {j.detailedTask && <tr><th scope="row">Task detail</th><td>{j.detailedTask}</td></tr>}
+            {j.missionSummary && <tr><th scope="row">Summary</th><td>{j.missionSummary}</td></tr>}
+            {j.missionCompleteSummary && <tr><th scope="row">On complete</th><td>{j.missionCompleteSummary}</td></tr>}
+          </tbody>
+        </table>
+      )}
     </div>
   );
 }
