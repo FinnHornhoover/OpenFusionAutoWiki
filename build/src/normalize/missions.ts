@@ -289,6 +289,13 @@ export type NpcMissionsMap = Map<number, NpcMissionsEntry>;
 /** Back-reference: missions that require killing a specific mob type. */
 export type MobMissionsMap = Map<number, Ref[]>;
 
+/** Back-reference: missions a specific nano is rewarded by or required for. */
+export interface NanoMissionsEntry {
+  rewards: Ref[];
+  required: Ref[];
+}
+export type NanoMissionsMap = Map<number, NanoMissionsEntry>;
+
 function pushRole(map: NpcMissionsMap, npcId: number, role: keyof NpcMissionsEntry, ref: Ref): void {
   let entry = map.get(npcId);
   if (!entry) {
@@ -311,13 +318,20 @@ export async function normalizeMissions(
   iconMap: IconMap,
   npcNameIndex: NpcNameIndex,
   grouping: NpcGrouping,
-): Promise<{ count: number; chunks: number; npcMissions: NpcMissionsMap; mobMissions: MobMissionsMap }> {
+): Promise<{
+  count: number;
+  chunks: number;
+  npcMissions: NpcMissionsMap;
+  mobMissions: MobMissionsMap;
+  nanoMissions: NanoMissionsMap;
+}> {
   const zip = new AdmZip(zipPath);
   const entry = zip.getEntry('info/mission_info.json');
   const npcMissions: NpcMissionsMap = new Map();
   const mobMissions: MobMissionsMap = new Map();
+  const nanoMissions: NanoMissionsMap = new Map();
   if (!entry) {
-    return { count: 0, chunks: 0, npcMissions, mobMissions };
+    return { count: 0, chunks: 0, npcMissions, mobMissions, nanoMissions };
   }
   const raw = JSON.parse(entry.getData().toString('utf8')) as Record<string, RawMission>;
 
@@ -357,6 +371,18 @@ export async function normalizeMissions(
         if (!list.some((r) => r.id === m.id)) list.push(missionAsRef);
       }
     }
+
+    // Nano roles: rewarded by a mission or required to start one.
+    const upsertNano = (nanoId: number, role: keyof NanoMissionsEntry) => {
+      let e = nanoMissions.get(nanoId);
+      if (!e) {
+        e = { rewards: [], required: [] };
+        nanoMissions.set(nanoId, e);
+      }
+      if (!e[role].some((r) => r.id === m.id)) e[role].push(missionAsRef);
+    };
+    if (m.rewards.nano) upsertNano(m.rewards.nano.id as number, 'rewards');
+    if (m.requiredNano) upsertNano(m.requiredNano.id as number, 'required');
   }
 
   const { chunks } = await writeChunks(slug, 'missions', missions, (m) => ({
@@ -365,7 +391,7 @@ export async function normalizeMissions(
   }));
   await writeIndex(slug, 'missions', missions.map(indexEntry));
 
-  return { count: missions.length, chunks, npcMissions, mobMissions };
+  return { count: missions.length, chunks, npcMissions, mobMissions, nanoMissions };
 }
 
 /** Used by the orchestrator to advertise which entity types have data for a build. */

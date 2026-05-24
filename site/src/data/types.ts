@@ -348,6 +348,46 @@ export interface AreaIndexEntry {
   missionCount: number;
 }
 
+export interface NanoPower {
+  id: number;
+  name: string;
+  comment: string;
+  icon: string;
+  typeName: string;
+  skillName: string;
+  skillId: number;
+  skillIcon: string;
+  skillCoolTime: number;
+  skillRange: number;
+  skillAngle: number;
+  skillArea: number;
+  skillTargetNumber: number;
+  powerItem: Ref | null;
+  powerItemCount: number;
+}
+
+export interface Nano {
+  id: number;
+  name: string;
+  comment: string;
+  icon: string;
+  nanoType: string;
+  nanoTypeId: number;
+  awardLevel: number;
+  powers: NanoPower[];
+
+  missionsRewarding: Ref[];
+  missionsRequiring: Ref[];
+}
+
+export interface NanoIndexEntry {
+  id: number;
+  name: string;
+  icon: string;
+  nanoType: string;
+  awardLevel: number;
+}
+
 export interface BuildMeta {
   builtTypes: string[];
 }

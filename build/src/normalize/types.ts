@@ -432,3 +432,46 @@ export interface AreaIndexEntry {
   mobCount: number;
   missionCount: number;
 }
+
+// ---- Nanos ------------------------------------------------------------------
+
+export interface NanoPower {
+  id: number;
+  name: string;            // power's display name (UPPER CASE in source — keep as is)
+  comment: string;
+  icon: string;            // md5 hash for the power's icon
+  typeName: string;        // "UNSTABLE POWER" etc.
+  skillName: string;
+  skillId: number;
+  skillIcon: string;
+  skillCoolTime: number;
+  skillRange: number;
+  skillAngle: number;
+  skillArea: number;
+  skillTargetNumber: number;
+  powerItem: Ref | null;
+  powerItemCount: number;
+}
+
+export interface Nano {
+  id: number;
+  name: string;
+  comment: string;
+  icon: string;
+  nanoType: string;        // "Adaptium" | "Blastons" | "Cosmix"
+  nanoTypeId: number;
+  /** Lowest level among missions that reward this nano (0 when unawarded). */
+  awardLevel: number;
+  powers: NanoPower[];
+
+  missionsRewarding: Ref[];
+  missionsRequiring: Ref[];
+}
+
+export interface NanoIndexEntry {
+  id: number;
+  name: string;
+  icon: string;
+  nanoType: string;
+  awardLevel: number;
+}

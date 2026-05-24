@@ -14,6 +14,7 @@ import { normalizeAreas } from './normalize/areas.js';
 import { normalizeItems } from './normalize/items.js';
 import { normalizeMissions } from './normalize/missions.js';
 import { normalizeMobs } from './normalize/mobs.js';
+import { normalizeNanos } from './normalize/nanos.js';
 import { normalizeNpcs } from './normalize/npcs.js';
 import { buildNpcGrouping } from './normalize/npcGrouping.js';
 import { buildNpcNameIndex } from './normalize/npcNameIndex.js';
@@ -67,6 +68,9 @@ async function main(): Promise<void> {
   let totalAreaChunks = 0;
   let totalAreasWithMissions = 0;
   let totalAreasWithTransport = 0;
+  let totalNanos = 0;
+  let totalNanoChunks = 0;
+  let totalLinkedNanos = 0;
   for (const d of downloaded) {
     const slug = d.asset.name.replace(/\.zip$/i, '');
     const iconMap = maps[slug] ?? {};
@@ -103,14 +107,20 @@ async function main(): Promise<void> {
     totalAreasWithMissions += ar.withMissions;
     totalAreasWithTransport += ar.withTransport;
 
-    await writeBuildMeta(slug, ['missions', 'npcs', 'items', 'monsters', 'areas']);
-    log.info(`${slug.padEnd(46)} missions=${m.count} npcs=${n.count} items=${it.count} mobs=${mb.count} areas=${ar.count}`);
+    const na = await normalizeNanos(d.path, slug, iconMap, m.nanoMissions);
+    totalNanos += na.count;
+    totalNanoChunks += na.chunks;
+    totalLinkedNanos += na.linked;
+
+    await writeBuildMeta(slug, ['missions', 'npcs', 'items', 'monsters', 'areas', 'nanos']);
+    log.info(`${slug.padEnd(46)} missions=${m.count} npcs=${n.count} items=${it.count} mobs=${mb.count} areas=${ar.count} nanos=${na.count}`);
   }
   log.done(`missions: ${totalMissions} → ${totalMissionChunks} chunks`);
   log.done(`npcs: ${totalNpcs} → ${totalNpcChunks} chunks; ${totalLinkedNpcs} link to missions; ${totalVendors} vendors; ${totalMergedNpcs} merged groups`);
   log.done(`items: ${totalItems} → ${totalItemChunks} chunks; ${totalItemSources} source entries embedded`);
   log.done(`mobs: ${totalMobs} → ${totalMobChunks} chunks; ${totalLinkedMobs} link to missions; ${totalDroppingMobs} drop items`);
   log.done(`areas: ${totalAreas} → ${totalAreaChunks} chunks; ${totalAreasWithMissions} host missions; ${totalAreasWithTransport} have transport`);
+  log.done(`nanos: ${totalNanos} → ${totalNanoChunks} chunks; ${totalLinkedNanos} link to missions`);
 
   log.done('build complete');
 }

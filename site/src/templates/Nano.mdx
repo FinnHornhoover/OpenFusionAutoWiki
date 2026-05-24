@@ -1,0 +1,68 @@
+import Dropdown from '../components/Dropdown';
+import EntityLink from '../components/EntityLink';
+import Icon from '../components/Icon';
+
+# {props.data.name}
+
+<p className="entity-meta muted">
+  {props.data.icon ? <Icon src={props.data.icon} alt={props.data.name} size={48} /> : null}
+  {props.data.nanoType && <span className="badge badge-category">{props.data.nanoType}</span>}
+</p>
+
+{props.data.comment && (
+  <blockquote className="npc-comment">{props.data.comment}</blockquote>
+)}
+
+{props.data.powers.length > 0 && (
+  <>
+    <h2>Powers</h2>
+    {props.data.powers.map((p) => (
+      <section key={p.id} className="nano-power">
+        <h3>
+          {p.icon && <Icon src={p.icon} alt={p.name} size={28} />}
+          {' '}{p.skillName || p.name}
+          {p.typeName && <span className="muted"> · {p.typeName}</span>}
+        </h3>
+        {p.comment && <p>{p.comment}</p>}
+        <dl className="stat-grid">
+          {p.skillCoolTime > 0 && <><dt>Cooldown</dt><dd>{p.skillCoolTime}s</dd></>}
+          {p.skillRange > 0 && <><dt>Range</dt><dd>{p.skillRange}</dd></>}
+          {p.skillArea > 0 && <><dt>Area</dt><dd>{p.skillArea}</dd></>}
+          {p.skillAngle > 0 && <><dt>Angle</dt><dd>{p.skillAngle}°</dd></>}
+          {p.skillTargetNumber > 0 && <><dt>Targets</dt><dd>{p.skillTargetNumber}</dd></>}
+          {p.powerItem && (
+            <>
+              <dt>Power item</dt>
+              <dd>
+                <EntityLink entity={p.powerItem} />
+                {p.powerItemCount > 0 && <span className="muted"> · ×{p.powerItemCount}</span>}
+              </dd>
+            </>
+          )}
+        </dl>
+      </section>
+    ))}
+  </>
+)}
+
+{props.data.missionsRewarding.length > 0 && (
+  <Dropdown summary={`Awarded by ${props.data.missionsRewarding.length} mission${props.data.missionsRewarding.length === 1 ? '' : 's'}`} open>
+    <ul className="ref-list">
+      {props.data.missionsRewarding.map((m) => (
+        <li key={m.id}><EntityLink entity={m} withIcon={false} /></li>
+      ))}
+    </ul>
+  </Dropdown>
+)}
+
+{props.data.missionsRequiring.length > 0 && (
+  <Dropdown summary={`Required by ${props.data.missionsRequiring.length} mission${props.data.missionsRequiring.length === 1 ? '' : 's'}`}>
+    <ul className="ref-list">
+      {props.data.missionsRequiring.map((m) => (
+        <li key={m.id}><EntityLink entity={m} withIcon={false} /></li>
+      ))}
+    </ul>
+  </Dropdown>
+)}
+
+<p className="muted alias-ids">Nano ID <code>{props.data.id}</code></p>
