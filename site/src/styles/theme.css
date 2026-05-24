@@ -358,6 +358,17 @@ details.dropdown > .dropdown-body {
 .barker-list { padding-left: var(--space-5); }
 .barker-list li { margin: var(--space-2) 0; }
 
+.alias-ids {
+  font-size: 0.85rem;
+  margin: var(--space-3) 0;
+}
+.alias-ids code {
+  padding: 1px 6px;
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-subtle);
+  border: 1px solid var(--color-border);
+}
+
 /* Badges */
 .badge {
   display: inline-block;

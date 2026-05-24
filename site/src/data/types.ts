@@ -124,6 +124,8 @@ export interface Npc {
   endedMissions: Ref[];
 
   locations: NpcLocation[];
+
+  aliasIds: number[];
 }
 
 export interface NpcIndexEntry {

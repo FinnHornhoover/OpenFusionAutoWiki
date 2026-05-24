@@ -1,5 +1,6 @@
 import type { Ref } from './types.js';
 import type { IconMap } from '../icons.js';
+import type { NpcGrouping } from './npcGrouping.js';
 
 /**
  * Convert a "icons/foo.png" path to a md5-hashed filename using the per-build map.
@@ -11,9 +12,21 @@ export function iconFor(iconPath: string, iconMap: IconMap): string {
   return iconMap[norm] ?? '';
 }
 
-export function npcRef(id: number, name: string, iconPath: string, iconMap: IconMap): Ref | null {
+/**
+ * Build an NPC reference, transparently remapping the raw type-ID to its canonical
+ * group ID when grouping is in effect. Callers (mission normalizer especially) thus
+ * never accidentally link to a non-canonical alias.
+ */
+export function npcRef(
+  id: number,
+  name: string,
+  iconPath: string,
+  iconMap: IconMap,
+  grouping?: NpcGrouping,
+): Ref | null {
   if (!id || id <= 0) return null;
-  return { type: 'npc', id, name: name || `NPC #${id}`, icon: iconFor(iconPath, iconMap) };
+  const canonicalId = grouping?.memberToCanonical.get(id) ?? id;
+  return { type: 'npc', id: canonicalId, name: name || `NPC #${canonicalId}`, icon: iconFor(iconPath, iconMap) };
 }
 
 export function itemRef(id: number, name: string, iconPath: string, iconMap: IconMap): Ref | null {
