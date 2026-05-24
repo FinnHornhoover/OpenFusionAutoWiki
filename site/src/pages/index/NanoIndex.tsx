@@ -33,24 +33,26 @@ export default function NanoIndex({ build, rows, loading }: Props) {
   const [page, setPage] = useState(0);
   const showSkeleton = useDelayedFlag(loading);
 
+  const visibleRows = useMemo(() => rows.filter((r) => r.id > 0), [rows]);
+
   const counts = useMemo(() => {
     const acc: Record<NanoTab, number> = { All: 0, Adaptium: 0, Blastons: 0, Cosmix: 0 };
-    for (const r of rows) {
+    for (const r of visibleRows) {
       acc.All++;
       if ((NANO_TYPE_TABS as readonly string[]).includes(r.nanoType)) {
         acc[r.nanoType as NanoTab]++;
       }
     }
     return acc;
-  }, [rows]);
+  }, [visibleRows]);
 
   const filtered = useMemo(() => {
     const needle = q.trim().toLowerCase();
-    let pool = rows;
+    let pool = visibleRows;
     if (activeTab !== 'All') pool = pool.filter((r) => r.nanoType === activeTab);
     if (needle) pool = pool.filter((r) => r.name.toLowerCase().includes(needle));
     return pool.slice().sort((a, b) => a.id - b.id);
-  }, [rows, q, activeTab]);
+  }, [visibleRows, q, activeTab]);
 
   const start = page * PAGE_SIZE;
   const pageRows = filtered.slice(start, start + PAGE_SIZE);
@@ -68,7 +70,7 @@ export default function NanoIndex({ build, rows, loading }: Props) {
 
   return (
     <>
-      <p className="muted">{filtered.length.toLocaleString()} of {rows.length.toLocaleString()}</p>
+      <p className="muted">{filtered.length.toLocaleString()} of {visibleRows.length.toLocaleString()}</p>
 
       <nav className="type-tabs" aria-label="Filter by nano type">
         {(['All', ...NANO_TYPE_TABS] as NanoTab[]).map((t) => (

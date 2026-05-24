@@ -116,11 +116,12 @@ export async function normalizeNanos(
 
   const nanos: Nano[] = Object.values(raw)
     .map((n) => normalizeNano(n, iconMap, nanoMissions))
+    .filter((n) => n.id > 0)
     .sort((a, b) => a.id - b.id);
 
   const linked = nanos.filter((n) => n.missionsRewarding.length > 0 || n.missionsRequiring.length > 0).length;
 
-  // ~57 nanos — single chunk per build is fine.
+  // Nanos fit in a single chunk per build.
   const { chunks } = await writeChunks(slug, 'nanos', nanos, (n) => ({
     url: n.id,
     chunk: chunkOf(n.id),
