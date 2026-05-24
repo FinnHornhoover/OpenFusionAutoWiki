@@ -9,8 +9,11 @@
     "start": "node dist/index.js",
     "dev": "tsc --watch"
   },
-  "dependencies": {},
+  "dependencies": {
+    "adm-zip": "^0.5.16"
+  },
   "devDependencies": {
+    "@types/adm-zip": "^0.5.7",
     "@types/node": "^22.7.4",
     "typescript": "^5.6.3"
   }

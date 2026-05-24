@@ -2,11 +2,13 @@ import { useEffect, useState } from 'react';
 
 export interface BuildEntry {
   slug: string;
+  officialName: string;
+  rev: string;
+  nickname: string;
+  fixed: boolean;
   displayName: string;
   date: string;
   tags: string[];
-  fixed: boolean;
-  rev: string;
 }
 
 let cache: BuildEntry[] | null = null;

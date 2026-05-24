@@ -1,5 +1,6 @@
 import { Link, Route, Routes } from 'react-router-dom';
 import BuildSwitcher from './components/BuildSwitcher';
+import QuickPicks from './components/QuickPicks';
 import SearchBar from './components/SearchBar';
 import Home from './pages/Home';
 import BuildHome from './pages/BuildHome';
@@ -12,6 +13,7 @@ export default function App() {
     <div className="app">
       <header className="site-header">
         <Link to="/" className="brand">FusionFall Wiki</Link>
+        <QuickPicks />
         <BuildSwitcher />
         <SearchBar />
       </header>

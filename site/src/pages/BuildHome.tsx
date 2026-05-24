@@ -1,4 +1,5 @@
 import { Link, useParams } from 'react-router-dom';
+import { buildPageSubtitle, buildPageTitle, useBuildEntry } from '../data/useBuildEntry';
 
 const ENTITY_TYPES = [
   { type: 'missions', label: 'Missions' },
@@ -11,11 +12,13 @@ const ENTITY_TYPES = [
 
 export default function BuildHome() {
   const { build } = useParams();
+  const entry = useBuildEntry(build);
   if (!build) return null;
 
   return (
     <section>
-      <h1>{build}</h1>
+      <h1>{entry ? buildPageTitle(entry) : build}</h1>
+      {entry && <p className="build-subtitle muted">{buildPageSubtitle(entry)}</p>}
       <p className="muted">Browse this build:</p>
       <ul>
         {ENTITY_TYPES.map(({ type, label }) => (
