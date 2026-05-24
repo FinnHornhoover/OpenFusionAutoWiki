@@ -1,8 +1,9 @@
 import { Link, useParams } from 'react-router-dom';
-import type { Item, Mission, Mob, Npc } from '../data/types';
+import type { Area, Item, Mission, Mob, Npc } from '../data/types';
 import { useBuildEntry } from '../data/useBuildEntry';
 import { useBuildMeta } from '../data/useBuildMeta';
 import { useEntity } from '../data/useEntity';
+import AreaTemplate from '../templates/Area.mdx';
 import ItemTemplate from '../templates/Item.mdx';
 import MissionTemplate from '../templates/Mission.mdx';
 import MonsterTemplate from '../templates/Monster.mdx';
@@ -14,7 +15,7 @@ export default function EntityPage() {
   const meta = useBuildMeta(build);
   const supported = meta?.builtTypes?.includes(type ?? '') ?? false;
 
-  const { entity, loading, notFound } = useEntity<Mission | Npc | Item | Mob>(
+  const { entity, loading, notFound } = useEntity<Mission | Npc | Item | Mob | Area>(
     supported ? build : undefined,
     supported ? type : undefined,
     supported ? id : undefined,
@@ -93,6 +94,19 @@ export default function EntityPage() {
           <Link to={`/${build}/monsters`}>Monsters</Link>
         </p>
         <MonsterTemplate data={entity as Mob} />
+      </section>
+    );
+  }
+
+  if (type === 'areas') {
+    return (
+      <section className="entity-page area-page">
+        <p className="breadcrumb muted">
+          <Link to={`/${build}`}>{buildLabel}</Link>
+          {' · '}
+          <Link to={`/${build}/areas`}>Areas</Link>
+        </p>
+        <AreaTemplate data={entity as Area} />
       </section>
     );
   }

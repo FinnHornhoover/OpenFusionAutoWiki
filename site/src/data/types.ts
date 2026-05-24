@@ -271,6 +271,83 @@ export interface MobIndexEntry {
   inGame: boolean;
 }
 
+export interface AreaNpcEntry {
+  ref: Ref;
+  instanceCount: number;
+}
+
+export interface AreaMobEntry {
+  ref: Ref;
+  instanceCount: number;
+  level: number;
+  hp: number;
+}
+
+export interface AreaEggEntry {
+  typeName: string;
+  typeComment: string;
+  crateItem: Ref | null;
+  x: number;
+  y: number;
+  z: number;
+  instanceID: number;
+}
+
+export interface AreaTransport {
+  routeId: number;
+  routeName: string;
+  moveType: string;
+  startNpc: Ref | null;
+  stops: Array<{ areaZone: string; x: number; y: number; z: number; isHere: boolean }>;
+}
+
+export interface AreaInstanceWarp {
+  instanceID: number;
+  instanceName: string;
+  npc: Ref | null;
+  requiredItem: Ref | null;
+  requiredMinLevel: number;
+}
+
+export interface AreaInfectedZoneSummary {
+  iznId: number;
+  description: string;
+  difficultyLabel: string;
+  recommendedLevel: number;
+  maxScore: number;
+}
+
+export interface Area {
+  id: string;
+  name: string;
+  zoneName: string;
+  fullName: string;
+
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+
+  npcs: AreaNpcEntry[];
+  mobs: AreaMobEntry[];
+  vendors: Ref[];
+  eggs: AreaEggEntry[];
+  transportation: AreaTransport[];
+  instanceWarps: AreaInstanceWarp[];
+  infectedZone: AreaInfectedZoneSummary | null;
+
+  missionsStarting: Ref[];
+}
+
+export interface AreaIndexEntry {
+  id: string;
+  name: string;
+  zoneName: string;
+  npcCount: number;
+  mobCount: number;
+  missionCount: number;
+}
+
 export interface BuildMeta {
   builtTypes: string[];
 }

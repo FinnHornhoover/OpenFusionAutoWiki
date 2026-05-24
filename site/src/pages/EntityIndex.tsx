@@ -1,9 +1,10 @@
 import { useParams } from 'react-router-dom';
 
-import type { ItemIndexEntry, MissionIndexEntry, MobIndexEntry, NpcIndexEntry } from '../data/types';
+import type { AreaIndexEntry, ItemIndexEntry, MissionIndexEntry, MobIndexEntry, NpcIndexEntry } from '../data/types';
 import { useBuildEntry } from '../data/useBuildEntry';
 import { useBuildMeta } from '../data/useBuildMeta';
 import { useIndex } from '../data/useIndex';
+import AreaIndex from './index/AreaIndex';
 import ItemIndex from './index/ItemIndex';
 import MissionIndex from './index/MissionIndex';
 import MobIndex from './index/MobIndex';
@@ -23,7 +24,7 @@ export default function EntityIndex() {
   const entry = useBuildEntry(build);
   const meta = useBuildMeta(build);
   const supported = meta?.builtTypes?.includes(type ?? '') ?? false;
-  const { rows, loading } = useIndex<MissionIndexEntry | NpcIndexEntry | ItemIndexEntry | MobIndexEntry>(
+  const { rows, loading } = useIndex<MissionIndexEntry | NpcIndexEntry | ItemIndexEntry | MobIndexEntry | AreaIndexEntry>(
     supported ? build : undefined,
     supported ? type : undefined,
   );
@@ -56,6 +57,9 @@ export default function EntityIndex() {
     }
     if (type === 'monsters') {
       return <MobIndex build={build} rows={(rows ?? []) as MobIndexEntry[]} loading={loading} />;
+    }
+    if (type === 'areas') {
+      return <AreaIndex build={build} rows={(rows ?? []) as AreaIndexEntry[]} loading={loading} />;
     }
     return <div className="placeholder">Index renderer for {heading} isn't built yet.</div>;
   })();

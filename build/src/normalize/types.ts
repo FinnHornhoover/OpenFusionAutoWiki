@@ -340,3 +340,95 @@ export interface MobIndexEntry {
   instanceCount: number;
   inGame: boolean;
 }
+
+// ---- Areas ------------------------------------------------------------------
+
+/** An NPC type appearing in an area, with how many instances of it live there. */
+export interface AreaNpcEntry {
+  ref: Ref;
+  instanceCount: number;
+}
+
+/** A mob type appearing in an area, with how many instances and (when uniform) level/HP. */
+export interface AreaMobEntry {
+  ref: Ref;
+  instanceCount: number;
+  level: number;
+  hp: number;
+}
+
+/** A single egg/crate location in the area. */
+export interface AreaEggEntry {
+  typeName: string;          // e.g., "14Lv Item shiny"
+  typeComment: string;        // "Item", "Nano", …
+  crateItem: Ref | null;      // item dispensed (when known)
+  x: number;
+  y: number;
+  z: number;
+  instanceID: number;
+}
+
+/** A transportation route that has at least one stop in this area. */
+export interface AreaTransport {
+  routeId: number;
+  routeName: string;          // human label
+  moveType: string;           // "Slider", "MonkeySkyway", "SCAMPER", …
+  startNpc: Ref | null;
+  /** All stops on the route, in order — first stop in this area gets `hereIndex`. */
+  stops: Array<{ areaZone: string; x: number; y: number; z: number; isHere: boolean }>;
+}
+
+/** A warp door in the area leading to an instance. */
+export interface AreaInstanceWarp {
+  instanceID: number;
+  instanceName: string;
+  npc: Ref | null;
+  requiredItem: Ref | null;
+  requiredMinLevel: number;
+}
+
+/** When the area is part of an Infected Zone, a compact summary. */
+export interface AreaInfectedZoneSummary {
+  iznId: number;
+  description: string;
+  difficultyLabel: string;
+  recommendedLevel: number;
+  maxScore: number;
+}
+
+export interface Area {
+  /** URL slug derived from "AreaName - ZoneName". */
+  id: string;
+  /** Display name (the area, not the zone). */
+  name: string;
+  /** Parent zone, e.g. "The Suburbs". */
+  zoneName: string;
+  /** "AreaName - ZoneName". */
+  fullName: string;
+
+  // Map rectangle (game-space, denormalized for display)
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+
+  npcs: AreaNpcEntry[];
+  mobs: AreaMobEntry[];
+  vendors: Ref[];
+  eggs: AreaEggEntry[];
+  transportation: AreaTransport[];
+  instanceWarps: AreaInstanceWarp[];
+  infectedZone: AreaInfectedZoneSummary | null;
+
+  /** Missions whose start NPC lives in this area. */
+  missionsStarting: Ref[];
+}
+
+export interface AreaIndexEntry {
+  id: string;
+  name: string;
+  zoneName: string;
+  npcCount: number;
+  mobCount: number;
+  missionCount: number;
+}

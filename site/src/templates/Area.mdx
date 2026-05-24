@@ -1,0 +1,120 @@
+import Dropdown from '../components/Dropdown';
+import EntityLink from '../components/EntityLink';
+
+# {props.data.name}
+
+<p className="entity-meta muted">
+  {props.data.zoneName && <span className="badge badge-category">{props.data.zoneName}</span>}
+  {props.data.infectedZone && <span className="badge badge-warn">Infected Zone</span>}
+  {' · '}{props.data.npcs.length} NPC types
+  {' · '}{props.data.mobs.length} monster types
+  {props.data.missionsStarting.length > 0 && (
+    <span>{' · '}{props.data.missionsStarting.length} mission{props.data.missionsStarting.length === 1 ? '' : 's'} start here</span>
+  )}
+</p>
+
+{props.data.infectedZone && (
+  <Dropdown summary="Infected Zone" open>
+    <dl className="stat-grid">
+      <><dt>Recommended level</dt><dd>{props.data.infectedZone.recommendedLevel || '—'}</dd></>
+      {props.data.infectedZone.difficultyLabel && <><dt>Difficulty</dt><dd>{props.data.infectedZone.difficultyLabel}</dd></>}
+      {props.data.infectedZone.maxScore > 0 && <><dt>Max score</dt><dd>{props.data.infectedZone.maxScore.toLocaleString()}</dd></>}
+    </dl>
+    {props.data.infectedZone.description && <p>{props.data.infectedZone.description}</p>}
+  </Dropdown>
+)}
+
+{props.data.missionsStarting.length > 0 && (
+  <Dropdown summary={`Missions starting here (${props.data.missionsStarting.length})`} open={props.data.missionsStarting.length <= 20}>
+    <ul className="ref-list">
+      {props.data.missionsStarting.map((m) => (
+        <li key={m.id}><EntityLink entity={m} withIcon={false} /></li>
+      ))}
+    </ul>
+  </Dropdown>
+)}
+
+{props.data.npcs.length > 0 && (
+  <Dropdown summary={`NPCs (${props.data.npcs.length})`}>
+    <ul className="ref-list">
+      {props.data.npcs.map((n) => (
+        <li key={n.ref.id}>
+          <EntityLink entity={n.ref} />
+          {n.instanceCount > 1 && <span className="muted"> · ×{n.instanceCount}</span>}
+        </li>
+      ))}
+    </ul>
+  </Dropdown>
+)}
+
+{props.data.vendors.length > 0 && (
+  <Dropdown summary={`Vendors (${props.data.vendors.length})`}>
+    <ul className="ref-list">
+      {props.data.vendors.map((v) => (
+        <li key={v.id}><EntityLink entity={v} /></li>
+      ))}
+    </ul>
+  </Dropdown>
+)}
+
+{props.data.mobs.length > 0 && (
+  <Dropdown summary={`Monsters (${props.data.mobs.length})`}>
+    <ul className="ref-list">
+      {props.data.mobs.map((m) => (
+        <li key={m.ref.id}>
+          <EntityLink entity={m.ref} />
+          <span className="muted">
+            {m.level > 0 && ` · Lv ${m.level}`}
+            {m.hp > 0 && ` · ${m.hp.toLocaleString()} HP`}
+            {m.instanceCount > 1 && ` · ×${m.instanceCount}`}
+          </span>
+        </li>
+      ))}
+    </ul>
+  </Dropdown>
+)}
+
+{props.data.transportation.length > 0 && (
+  <Dropdown summary={`Transportation (${props.data.transportation.length})`}>
+    <ul className="ref-list">
+      {props.data.transportation.map((t, i) => (
+        <li key={`${t.routeId}-${i}`}>
+          <strong>{t.routeName}</strong>
+          {t.moveType && <span className="muted"> · {t.moveType}</span>}
+          {t.startNpc && <span className="muted"> · operated by <EntityLink entity={t.startNpc} withIcon={false} /></span>}
+        </li>
+      ))}
+    </ul>
+  </Dropdown>
+)}
+
+{props.data.instanceWarps.length > 0 && (
+  <Dropdown summary={`Instance warps (${props.data.instanceWarps.length})`}>
+    <ul className="ref-list">
+      {props.data.instanceWarps.map((w, i) => (
+        <li key={`${w.instanceID}-${i}`}>
+          <strong>→ {w.instanceName}</strong>
+          {w.npc && <span className="muted"> · via <EntityLink entity={w.npc} withIcon={false} /></span>}
+          {w.requiredMinLevel > 0 && <span className="muted"> · Lv {w.requiredMinLevel}+</span>}
+          {w.requiredItem && <span className="muted"> · needs <EntityLink entity={w.requiredItem} withIcon={false} /></span>}
+        </li>
+      ))}
+    </ul>
+  </Dropdown>
+)}
+
+{props.data.eggs.length > 0 && (
+  <Dropdown summary={`Eggs / crates (${props.data.eggs.length})`}>
+    <ul className="ref-list">
+      {props.data.eggs.map((e, i) => (
+        <li key={i}>
+          <strong>{e.typeName}</strong>
+          {e.typeComment && <span className="muted"> · {e.typeComment}</span>}
+          {e.crateItem && <span className="muted"> · contains <EntityLink entity={e.crateItem} withIcon={false} /></span>}
+        </li>
+      ))}
+    </ul>
+  </Dropdown>
+)}
+
+<p className="muted alias-ids">Area key: <code>{props.data.fullName}</code></p>
