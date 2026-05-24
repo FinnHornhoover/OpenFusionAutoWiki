@@ -29,3 +29,7 @@ site/public/minimap/
 # secrets for local development
 make_env.sh
 google-service-account.json
+
+# planning md files in the repo
+*.md
+!README.md

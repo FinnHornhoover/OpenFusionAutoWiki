@@ -6,10 +6,10 @@ import TaskList from '../components/TaskList';
 # {props.data.name}
 
 <p className="entity-meta muted">
-  Level {props.data.level}
-  {props.data.difficulty ? ` · ${props.data.difficulty}` : ''}
-  {props.data.type ? ` · ${props.data.type}` : ''}
-  {props.data.inGame === false ? ' · cut from final build' : ''}
+  <span>Level {props.data.level}</span>
+  {props.data.difficulty && <span>{props.data.difficulty}</span>}
+  {props.data.type && <span>{props.data.type}</span>}
+  {props.data.inGame === false && <span>cut from final build</span>}
 </p>
 
 <div className="mission-givers">

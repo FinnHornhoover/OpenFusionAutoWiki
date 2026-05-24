@@ -7,10 +7,10 @@ import Minimap from '../components/Minimap';
 <p className="entity-meta muted">
   {props.data.zoneName && <span className="badge badge-category">{props.data.zoneName}</span>}
   {props.data.infectedZone && <span className="badge badge-warn">Infected Zone</span>}
-  {' · '}{props.data.npcs.length} NPC types
-  {' · '}{props.data.mobs.length} monster types
+  <span>{props.data.npcs.length} NPC types</span>
+  <span>{props.data.mobs.length} monster types</span>
   {props.data.missionsStarting.length > 0 && (
-    <span>{' · '}{props.data.missionsStarting.length} mission{props.data.missionsStarting.length === 1 ? '' : 's'} start here</span>
+    <span>{props.data.missionsStarting.length} mission{props.data.missionsStarting.length === 1 ? '' : 's'} start here</span>
   )}
 </p>
 
