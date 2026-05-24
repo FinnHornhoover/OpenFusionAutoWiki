@@ -365,7 +365,8 @@ export async function normalizeMissions(
   for (const m of missions) byId.set(m.id, m);
 
   for (const m of missions) {
-    const missionAsRef: Ref = { type: 'mission', id: m.id, name: m.name };
+    const giver = m.startNPC ?? m.journalNPC;
+    const missionAsRef: Ref = { type: 'mission', id: m.id, name: m.name, icon: giver?.icon ?? '' };
     // NPC and mission Ref.ids are always numeric (only item refs are string-compound).
     if (m.startNPC) pushRole(npcMissions, m.startNPC.id as number, 'starts', missionAsRef);
     if (m.journalNPC) pushRole(npcMissions, m.journalNPC.id as number, 'journals', missionAsRef);
