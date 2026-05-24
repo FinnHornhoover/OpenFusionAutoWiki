@@ -112,8 +112,8 @@ export default function MissionIndex({ build, rows, loading }: Props) {
           <ul className="entity-index">
             {pageRows.map((r) => (
               <li key={r.id} className="entity-index-row">
-                {r.startNPC?.icon
-                  ? <Icon src={r.startNPC.icon} alt={r.startNPC.name} size={112} />
+                {r.displayNPC?.icon
+                  ? <Icon src={r.displayNPC.icon} alt={r.displayNPC.name} size={112} />
                   : <span className="icon icon-empty" aria-hidden style={{ width: 112, height: 112 }} />}
                 <span className="entity-index-main">
                   <Link to={`/${build}/missions/${r.id}`}>{r.name}</Link>
@@ -121,7 +121,7 @@ export default function MissionIndex({ build, rows, loading }: Props) {
                     {' · '}Lv {r.level}
                     {r.difficulty && r.difficulty !== 'Normal' && ` · ${r.difficulty}`}
                     {r.type && r.type !== 'Normal' && ` · ${r.type}`}
-                    {r.startNPC?.name && ` · from ${r.startNPC.name}`}
+                    {r.displayNPC?.name && ` · from ${r.displayNPC.name}`}
                   </span>
                 </span>
               </li>

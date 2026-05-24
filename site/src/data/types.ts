@@ -88,6 +88,7 @@ export interface MissionIndexEntry {
   difficulty: string;
   type: string;
   startNPC: { name: string; icon: string } | null;
+  displayNPC?: { name: string; icon: string } | null;
 }
 
 export interface NpcLocation {

@@ -50,7 +50,7 @@ import { formatDurationSeconds } from '../data/formatTime';
   <Dropdown summary={`Awarded by ${props.data.missionsRewarding.length} mission${props.data.missionsRewarding.length === 1 ? '' : 's'}`} open>
     <ul className="ref-list">
       {props.data.missionsRewarding.map((m) => (
-        <li key={m.id}><EntityLink entity={m} withIcon={false} /></li>
+        <li key={m.id}><EntityLink entity={m} /></li>
       ))}
     </ul>
   </Dropdown>
@@ -60,7 +60,7 @@ import { formatDurationSeconds } from '../data/formatTime';
   <Dropdown summary={`Required by ${props.data.missionsRequiring.length} mission${props.data.missionsRequiring.length === 1 ? '' : 's'}`}>
     <ul className="ref-list">
       {props.data.missionsRequiring.map((m) => (
-        <li key={m.id}><EntityLink entity={m} withIcon={false} /></li>
+        <li key={m.id}><EntityLink entity={m} /></li>
       ))}
     </ul>
   </Dropdown>

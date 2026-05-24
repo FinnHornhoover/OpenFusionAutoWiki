@@ -321,7 +321,7 @@ function normalizeMission(
       taros: rewards.Taros ?? 0,
       itemSelectionNeeded: rewards.ItemSelectionNeeded ?? false,
       items,
-      nano: nanoRef(rewards.NanoRewardID ?? 0, rewards.NanoReward ?? '', '', iconMap),
+      nano: nanoRefs.get(rewards.NanoRewardID ?? 0) ?? nanoRef(rewards.NanoRewardID ?? 0, rewards.NanoReward ?? '', '', iconMap),
     },
     tasks,
     barkers,
@@ -329,6 +329,7 @@ function normalizeMission(
 }
 
 function indexEntry(m: Mission): MissionIndexEntry {
+  const displayNPC = m.startNPC ?? m.journalNPC;
   return {
     id: m.id,
     name: m.name,
@@ -336,6 +337,7 @@ function indexEntry(m: Mission): MissionIndexEntry {
     difficulty: m.difficulty,
     type: m.type,
     startNPC: m.startNPC ? { name: m.startNPC.name, icon: m.startNPC.icon ?? '' } : null,
+    displayNPC: displayNPC ? { name: displayNPC.name, icon: displayNPC.icon ?? '' } : null,
   };
 }
 
@@ -411,7 +413,9 @@ export async function normalizeMissions(
 
   for (const m of missions) {
     const giver = m.startNPC ?? m.journalNPC;
+    const journaler = m.journalNPC ?? m.startNPC;
     const missionAsRef: Ref = { type: 'mission', id: m.id, name: m.name, icon: giver?.icon ?? '' };
+    const missionAsNanoRef: Ref = { type: 'mission', id: m.id, name: m.name, icon: journaler?.icon ?? '' };
     // NPC and mission Ref.ids are always numeric (only item refs are string-compound).
     if (m.startNPC) pushRole(npcMissions, m.startNPC.id as number, 'starts', missionAsRef);
     if (m.journalNPC) pushRole(npcMissions, m.journalNPC.id as number, 'journals', missionAsRef);
@@ -449,7 +453,7 @@ export async function normalizeMissions(
         e = { rewards: [], required: [] };
         nanoMissions.set(nanoId, e);
       }
-      if (!e[role].some((r) => r.id === m.id)) e[role].push(missionAsRef);
+      if (!e[role].some((r) => r.id === m.id)) e[role].push(missionAsNanoRef);
     };
     if (m.rewards.nano) upsertNano(m.rewards.nano.id as number, 'rewards');
     if (m.requiredNano) upsertNano(m.requiredNano.id as number, 'required');
