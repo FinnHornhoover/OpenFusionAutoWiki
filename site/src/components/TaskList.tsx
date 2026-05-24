@@ -1,0 +1,96 @@
+import type { MissionTask, TaskMessage } from '../data/types';
+import Dropdown from './Dropdown';
+import EntityLink from './EntityLink';
+
+function formatTimeLimit(seconds: number): string | null {
+  if (!seconds || seconds <= 0) return null;
+  if (seconds < 60) return `${seconds}s`;
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return s ? `${m}m ${s}s` : `${m}m`;
+}
+
+function MessageSection({ label, msg }: { label: string; msg: TaskMessage | null }) {
+  if (!msg) return null;
+  const j = msg.journal;
+  const hasJournal = j.detailedMission || j.detailedTask || j.missionSummary || j.missionCompleteSummary;
+  if (!msg.text && !msg.sender && !hasJournal) return null;
+  return (
+    <div className="task-message">
+      <h4>{label}</h4>
+      {msg.sender && <p>From <EntityLink ref={msg.sender} /></p>}
+      {msg.text && <blockquote>{msg.text}</blockquote>}
+      {j.detailedMission && <p><em>Mission detail:</em> {j.detailedMission}</p>}
+      {j.detailedTask && <p><em>Task detail:</em> {j.detailedTask}</p>}
+      {j.missionSummary && <p><em>Summary:</em> {j.missionSummary}</p>}
+      {j.missionCompleteSummary && <p><em>On complete:</em> {j.missionCompleteSummary}</p>}
+    </div>
+  );
+}
+
+function TaskItem({ task, index }: { task: MissionTask; index: number }) {
+  const timeLimit = formatTimeLimit(task.timeLimitSeconds);
+  return (
+    <Dropdown
+      open={index === 0}
+      summary={
+        <span>
+          <span className="task-index">{index + 1}.</span>{' '}
+          <strong>{task.objective || task.type}</strong>
+          {task.type && <span className="muted"> · {task.type}</span>}
+          {timeLimit && <span className="muted"> · ⏱ {timeLimit}</span>}
+        </span>
+      }
+    >
+      {task.monsterRequirements.length > 0 && (
+        <div className="task-row">
+          <span className="task-label">Defeat:</span>
+          <ul>
+            {task.monsterRequirements.map((m) => (
+              <li key={m.ref.id}>
+                {m.killCount > 0 && <strong>{m.killCount}× </strong>}
+                <EntityLink ref={m.ref} />
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {task.escortNPC && (
+        <div className="task-row">
+          <span className="task-label">Escort:</span> <EntityLink ref={task.escortNPC} />
+        </div>
+      )}
+      {task.waypointNPC && (
+        <div className="task-row">
+          <span className="task-label">Go to:</span> <EntityLink ref={task.waypointNPC} />
+        </div>
+      )}
+      {task.requiredInstance && (
+        <div className="task-row">
+          <span className="task-label">Inside:</span> <EntityLink ref={task.requiredInstance} />
+        </div>
+      )}
+      {task.onEndObjective && (
+        <div className="task-row">
+          <span className="task-label">Then:</span> {task.onEndObjective}
+        </div>
+      )}
+      <MessageSection label="On start" msg={task.messages.start} />
+      <MessageSection label="On complete" msg={task.messages.end} />
+      <MessageSection label="On fail" msg={task.messages.fail} />
+    </Dropdown>
+  );
+}
+
+interface TaskListProps {
+  tasks: MissionTask[];
+}
+
+export default function TaskList({ tasks }: TaskListProps) {
+  if (!tasks.length) return <p className="muted">No tasks.</p>;
+  return (
+    <div className="task-list">
+      {tasks.map((t, i) => <TaskItem key={t.id} task={t} index={i} />)}
+    </div>
+  );
+}

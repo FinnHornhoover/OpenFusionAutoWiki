@@ -9,11 +9,14 @@
     "preview": "vite preview --port 8080 --host"
   },
   "dependencies": {
+    "@mdx-js/react": "^3.0.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^6.26.2"
   },
   "devDependencies": {
+    "@mdx-js/rollup": "^3.0.1",
+    "@types/mdx": "^2.0.13",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^4.3.3",
