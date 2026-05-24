@@ -1,0 +1,21 @@
+{
+  "name": "ffautomatedwiki",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "build",
+    "site"
+  ],
+  "scripts": {
+    "build:data": "npm run build -w build && node build/dist/index.js",
+    "build:site": "npm run build -w site",
+    "build:all": "npm run build:data && npm run build:site",
+    "dev": "npm run dev -w site",
+    "preview": "npm run preview -w site",
+    "clean": "rm -rf site/dist site/public/data site/public/icons site/public/builds.json build/dist"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

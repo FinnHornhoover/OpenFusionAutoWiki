@@ -1,0 +1,23 @@
+# dependencies
+node_modules/
+
+# build outputs
+dist/
+build/dist/
+site/dist/
+
+# generated wiki data (produced by build pipeline)
+site/public/data/
+site/public/icons/
+site/public/builds.json
+
+# download/extract cache
+.cache/
+
+# editor / OS
+.DS_Store
+.vscode/
+.idea/
+*.log
+.env
+.env.local

@@ -1,0 +1,22 @@
+services:
+  wiki:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: ffwiki:local
+    ports:
+      - "8080:80"
+    # Cache mount removed for now; once the build pipeline downloads ZIPs in P1,
+    # mounting ./.cache to /app/.cache will avoid re-downloading on rebuild.
+
+  # P1+ option: run the build with a host-mounted cache.
+  # builder:
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile
+  #     target: builder
+  #   volumes:
+  #     - ./.cache:/app/.cache
+  #     - ./site/public/data:/app/site/public/data
+  #     - ./site/public/icons:/app/site/public/icons
+  #   command: npm run build:all
