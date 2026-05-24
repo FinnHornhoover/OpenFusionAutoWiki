@@ -6,13 +6,13 @@ import { log } from './log.js';
 import type { DownloadedAsset } from './download.js';
 
 export interface BuildEntry {
-  /** Stable URL slug — equals officialName so revision bumps don't break links. */
+  /** Stable URL slug, based on the official build name. */
   slug: string;
-  /** Official build identity (e.g., `retrobution`, `beta-20111013-fixed`). Same as `slug`. */
+  /** Official build name, e.g. `retrobution` or `beta-20111013-fixed`. */
   officialName: string;
-  /** Revision of the derived files (e.g., `r7`). Bumps across releases without changing slug. */
+  /** Derived-file revision, e.g. `r7`. */
   rev: string;
-  /** Optional short user-friendly nickname (e.g., `academy`, `common-future`). */
+  /** Optional short nickname, e.g. `academy` or `common-future`. */
   nickname: string;
   /** True when officialName ends with `-fixed`. */
   fixed: boolean;
@@ -20,7 +20,7 @@ export interface BuildEntry {
   displayName: string;
   /** ISO YYYY-MM-DD when officialName encodes a date, otherwise `""`. */
   date: string;
-  /** Coarse facets for filtering/search (officialName base, "fixed" if applicable, nickname). */
+  /** Coarse filters for search and build lists. */
   tags: string[];
 }
 
@@ -58,8 +58,7 @@ export function parseAssetName(zipBasename: string): BuildEntry {
   const fixed = /-fixed$/.test(officialName);
   const date = extractIsoDate(officialName);
 
-  // Dropdown form: "Nickname -- officialName" when a nickname exists, else just officialName.
-  // Case-preserving for date-bearing names (beta-…); capitalize-first for word-only names.
+  // Prefer the nickname in labels; keep dated build names as-is.
   const officialFallback = /\d/.test(officialName)
     ? officialName
     : officialName.charAt(0).toUpperCase() + officialName.slice(1);
@@ -67,7 +66,7 @@ export function parseAssetName(zipBasename: string): BuildEntry {
     ? `${titleCaseWords(nickname)} -- ${officialName}`
     : officialFallback;
 
-  // tag facets: leading word of officialName, "fixed" if so, nickname
+  // Tags are coarse filters, not full search text.
   const facetBase = officialName.replace(/-fixed$/, '').replace(/-\d{8}.*$/, '');
   const tags: string[] = [];
   if (facetBase) tags.push(facetBase);
@@ -109,8 +108,7 @@ function revNumber(rev: string): number {
 export async function writeManifest(assets: DownloadedAsset[]): Promise<BuildEntry[]> {
   const all = assets.map((a) => parseAssetName(a.asset.name.replace(/\.zip$/i, '')));
 
-  // If two ZIPs share an officialName (e.g. a future release ships both r7 and r8 of
-  // the same build), keep the highest-rev one. Stable URLs are the whole point.
+  // Keep the newest revision for duplicate official names so URLs stay stable.
   const bySlug = new Map<string, BuildEntry>();
   for (const e of all) {
     const cur = bySlug.get(e.slug);

@@ -438,7 +438,7 @@ export async function normalizeAreas(
     const instanceWarps = buildAreaInstanceWarps(raw.InstanceWarps, instanceIndex, iconMap, grouping);
     const infectedZone = summarizeInfectedZone(raw.InfectedZone);
 
-    // Vendors: NPCs in this area whose NPCType.VendorItems is non-empty.
+    // Vendors with items for sale in this area.
     const vendors: Ref[] = [];
     const vendorTypeIds = new Set<number>();
     for (const t of Object.values(raw.NPCTypes ?? {})) {

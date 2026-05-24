@@ -1,11 +1,8 @@
-/** Reference to another wiki entity. The site decides whether it can link to it. */
+/** Reference to another wiki entity. */
 export interface Ref {
   type: 'mission' | 'npc' | 'item' | 'monster' | 'nano' | 'instance';
   /**
-   * Stable URL identifier for the target.
-   * - Most types use a numeric id (mission id, npc canonical id, mob type id, …).
-   * - Items use a compound string "typeId-itemId" because the same ItemID is reused
-   *   across TypeIDs (ItemID 1 is a Weapon AND a Body AND Legs AND Shoes).
+   * Stable URL id. Items use "typeId-itemId" because ItemID is reused by type.
    */
   id: number | string;
   name: string;
@@ -29,7 +26,7 @@ export interface Mission {
   requiredGuide: string;
   requiredNano: Ref | null;
   requiredMissions: Ref[];
-  /** Inverted: missions that name THIS mission as a prerequisite. Filled after first pass. */
+  /** Missions that require this mission. Filled after the first pass. */
   requiredByMissions: Ref[];
 
   rewards: {
@@ -57,7 +54,7 @@ export interface MissionTask {
   nextTaskOnEnd: number;
   timeLimitSeconds: number;
   waypointNPC: Ref | null;
-  /** Pre-baked spawn point of waypointNPC's canonical type — used for the in-task minimap. */
+  /** Spawn point for the waypoint NPC, used by the task minimap. */
   waypointPoint: { x: number; y: number; areaZone: string } | null;
   escortNPC: Ref | null;
   requiredInstance: Ref | null;
@@ -83,8 +80,7 @@ export interface TaskMessage {
   };
 }
 
-/** Email-style guidance shown to the player during a task. Sender is a name (no ID);
- *  senderRef is filled when the name matches exactly one NPC in this build. */
+/** Guide message shown during a task. senderRef is set only for unambiguous NPC names. */
 export interface GuideEmail {
   sender: string;
   senderRef: Ref | null;

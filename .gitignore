@@ -25,3 +25,7 @@ site/public/minimap/
 *.log
 .env
 .env.local
+
+# secrets for local development
+make_env.sh
+google-service-account.json

@@ -5,8 +5,7 @@ import { join } from 'node:path';
 import { DATA_OUT, SITE_PUBLIC } from '../paths.js';
 import { log } from '../log.js';
 
-/** Default points at the canonical Cloudflare Pages URL; override at build time
- *  via `FFWIKI_BASE_URL=https://ffwiki.example.com node build/dist/index.js`. */
+/** Public site root for sitemap URLs. */
 function baseUrl(): string {
   const raw = (process.env.FFWIKI_BASE_URL ?? '').trim();
   if (raw) return raw.replace(/\/+$/, '');
@@ -36,7 +35,7 @@ function escapeXml(s: string): string {
 
 const ENTITY_TYPES = ['missions', 'npcs', 'items', 'monsters', 'areas', 'nanos'] as const;
 
-/** Per-build sitemap. Lists the build landing + per-type index + every entity. */
+/** Per-build sitemap: landing page, type indexes, and entity pages. */
 async function writeBuildSitemap(slug: string, base: string): Promise<number> {
   const urls: string[] = [];
   urls.push(`${base}/${slug}`);
@@ -60,7 +59,7 @@ async function writeBuildSitemap(slug: string, base: string): Promise<number> {
   return urls.length;
 }
 
-/** Site-level sitemap.xml — a sitemapindex pointing at every per-build sitemap. */
+/** Site-level sitemap index for the per-build sitemaps. */
 async function writeSitemapIndex(slugs: string[], base: string): Promise<void> {
   const body =
     '<?xml version="1.0" encoding="UTF-8"?>\n' +
@@ -70,7 +69,7 @@ async function writeSitemapIndex(slugs: string[], base: string): Promise<void> {
   await writeFile(join(SITE_PUBLIC, 'sitemap.xml'), body);
 }
 
-/** robots.txt — allow crawlers, point at sitemap, hide the raw JSON. */
+/** robots.txt: allow the site, hide raw JSON, link the sitemap. */
 async function writeRobots(base: string): Promise<void> {
   const body = [
     'User-agent: *',
@@ -83,7 +82,7 @@ async function writeRobots(base: string): Promise<void> {
   await writeFile(join(SITE_PUBLIC, 'robots.txt'), body);
 }
 
-/** One-shot generator called after every per-build entity write is complete. */
+/** Write sitemap.xml, per-build sitemaps, and robots.txt. */
 export async function writeSitemapAndRobots(
   slugs: string[],
 ): Promise<{ totalUrls: number; base: string }> {

@@ -2,23 +2,22 @@ import type { DropChance as DropChanceData } from '../data/types';
 
 function fmt(p: number): string {
   if (p <= 0) return '';
-  // More precision for small chances so 0.05% doesn't render as 0.00%.
+  // Keep tiny chances visible.
   const digits = p < 0.001 ? 4 : p < 0.01 ? 3 : 2;
   const pct = `${(p * 100).toFixed(digits)}%`;
-  // Simplified odds: ceil(1/p) → "~1/30" reads more naturally than "333/2000".
+  // Rounded odds are easier to scan than exact fractions.
   const denom = Math.ceil(1 / p);
   return `${pct} (~1/${denom.toLocaleString()})`;
 }
 
 interface Props {
   data: DropChanceData;
-  /** Render with a leading separator (" · "). Default true since most callers want it inline. */
+  /** Include a leading inline separator. */
   leadingSeparator?: boolean;
 }
 
 /**
- * Renders the per-character drop chance for a gendered item source, accounting
- * for the full mob → crate → rarity → gender chain.
+ * Per-character drop chance after mob, crate, rarity, and gender rolls.
  *  - both 0 → renders nothing
  *  - boy === girl → "1.68%"
  *  - one side 0 → "1.68% (boys-only)" or "1.68% (girls-only)"
