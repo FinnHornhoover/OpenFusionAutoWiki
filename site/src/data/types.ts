@@ -251,6 +251,7 @@ export interface Mob {
   walkSpeed: number;
   runSpeed: number;
   respawnSeconds: number;
+  respawnTime: string;
 
   activeSkill: string;
   activeSkillIcon: string;

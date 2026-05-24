@@ -37,6 +37,7 @@ interface RawMobType {
   WalkSpeed?: number;
   RunSpeed?: number;
   RespawnSeconds?: number;
+  RespawnTime?: string;
 
   ActiveSkill?: string;
   ActiveSkillIcon?: string;
@@ -121,6 +122,7 @@ function normalizeMob(
     walkSpeed: raw.WalkSpeed ?? 0,
     runSpeed: raw.RunSpeed ?? 0,
     respawnSeconds: raw.RespawnSeconds ?? 0,
+    respawnTime: (raw.RespawnTime ?? '').trim(),
 
     activeSkill: (raw.ActiveSkill ?? '').trim(),
     activeSkillIcon: iconFor(raw.ActiveSkillIcon ?? '', iconMap),
