@@ -26,26 +26,19 @@ import TaskList from '../components/TaskList';
 
 {(props.data.requiredMissions.length > 0 || props.data.requiredNano || props.data.requiredGuide) && (
   <Dropdown summary="Requirements">
-    {props.data.requiredMissions.length > 0 && (
-      <div className="task-row">
-        <span className="task-label">Missions:</span>
-        <ul>
-          {props.data.requiredMissions.map((m) => (
-            <li key={m.id}><EntityLink entity={m} /></li>
-          ))}
-        </ul>
-      </div>
-    )}
-    {props.data.requiredNano && (
-      <div className="task-row">
-        <span className="task-label">Nano:</span> <EntityLink entity={props.data.requiredNano} />
-      </div>
-    )}
-    {props.data.requiredGuide && (
-      <div className="task-row">
-        <span className="task-label">Guide:</span> {props.data.requiredGuide}
-      </div>
-    )}
+    <ul className="ref-list">
+      {props.data.requiredMissions.map((m) => (
+        <li key={`mission-${m.id}`}><span className="task-label requirement-label">Mission:</span> <EntityLink entity={m} /></li>
+      ))}
+      {props.data.requiredNano && (
+        <li key={`nano-${props.data.requiredNano.id}`}><span className="task-label requirement-label">Nano:</span> <EntityLink entity={props.data.requiredNano} /></li>
+      )}
+      {props.data.requiredGuide && (
+        <li key="guide">
+          <span className="task-label requirement-label">Guide:</span> {props.data.requiredGuideNpc ? <EntityLink entity={props.data.requiredGuideNpc} /> : props.data.requiredGuide}
+        </li>
+      )}
+    </ul>
   </Dropdown>
 )}
 
@@ -57,7 +50,7 @@ import TaskList from '../components/TaskList';
   <Dropdown summary={`Required by ${props.data.requiredByMissions.length} mission${props.data.requiredByMissions.length === 1 ? '' : 's'}`}>
     <ul className="ref-list">
       {props.data.requiredByMissions.map((m) => (
-        <li key={m.id}><EntityLink entity={m} withIcon={false} /></li>
+        <li key={m.id}><EntityLink entity={m} /></li>
       ))}
     </ul>
   </Dropdown>

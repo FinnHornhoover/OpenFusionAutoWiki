@@ -73,6 +73,45 @@ interface RawRewardItem {
   Type?: string;
 }
 
+interface RawNanoInfo {
+  ID: number;
+  Name?: string;
+  NanoIcon?: string;
+}
+
+const GUIDE_NPC_IDS = new Map<string, number>([
+  ['computress', 730],
+  ['ben', 732],
+  ['mojo jojo', 731],
+  ['dexter', 728],
+  ['edd', 707],
+]);
+
+function normalizeGuideNpc(requiredGuide: string, npcNameIndex: NpcNameIndex): Ref | null {
+  const name = requiredGuide.trim();
+  const id = GUIDE_NPC_IDS.get(name.toLowerCase());
+  if (!id) return null;
+  const indexed = npcNameIndex.get(name.toLowerCase());
+  return { type: 'npc', id, name: indexed?.name ?? name, icon: indexed?.icon ?? '' };
+}
+
+function buildNanoRefIndex(zip: AdmZip, iconMap: IconMap): Map<number, Ref> {
+  const entry = zip.getEntry('info/nano_info.json');
+  const out = new Map<number, Ref>();
+  if (!entry) return out;
+  const raw = JSON.parse(entry.getData().toString('utf8')) as Record<string, RawNanoInfo>;
+  for (const n of Object.values(raw)) {
+    if (!n.ID || n.ID <= 0) continue;
+    out.set(n.ID, nanoRef(n.ID, n.Name ?? '', n.NanoIcon ?? '', iconMap) ?? {
+      type: 'nano',
+      id: n.ID,
+      name: n.Name ?? `Nano #${n.ID}`,
+      icon: '',
+    });
+  }
+  return out;
+}
+
 interface RawMission {
   ID: number;
   Name: string;
@@ -210,6 +249,7 @@ function normalizeMission(
   npcNameIndex: NpcNameIndex,
   grouping: NpcGrouping,
   npcLocations: NpcLocationMap,
+  nanoRefs: Map<number, Ref>,
 ): Mission {
   const startNPC = npcRef(raw.MissionStartNPCID ?? 0, raw.MissionStartNPCName ?? '', raw.MissionStartNPCIcon ?? '', iconMap, grouping);
   const journalNPC = npcRef(raw.MissionJournalNPCID ?? 0, raw.MissionJournalNPCName ?? '', raw.MissionJournalNPCIcon ?? '', iconMap, grouping);
@@ -245,6 +285,9 @@ function normalizeMission(
     }
   }
 
+  const requiredGuide = raw.RequiredGuide && raw.RequiredGuide !== 'None' ? raw.RequiredGuide : '';
+  const requiredNanoId = raw.RequiredNanoID ?? 0;
+
   const barkers = Object.entries(raw.Barkers ?? {})
     .map(([key, text]) => {
       const { id, name } = parseCompoundKey(key);
@@ -268,8 +311,9 @@ function normalizeMission(
     startNPC,
     journalNPC,
     endNPC,
-    requiredGuide: raw.RequiredGuide && raw.RequiredGuide !== 'None' ? raw.RequiredGuide : '',
-    requiredNano: nanoRef(raw.RequiredNanoID ?? 0, raw.RequiredNano ?? '', '', iconMap),
+    requiredGuide,
+    requiredGuideNpc: requiredGuide ? normalizeGuideNpc(requiredGuide, npcNameIndex) : null,
+    requiredNano: nanoRefs.get(requiredNanoId) ?? nanoRef(requiredNanoId, raw.RequiredNano ?? '', '', iconMap),
     requiredMissions,
     requiredByMissions: [], // filled in a second pass
     rewards: {
@@ -352,9 +396,10 @@ export async function normalizeMissions(
     return { count: 0, chunks: 0, npcMissions, mobMissions, nanoMissions };
   }
   const raw = JSON.parse(entry.getData().toString('utf8')) as Record<string, RawMission>;
+  const nanoRefs = buildNanoRefIndex(zip, iconMap);
 
   const missions: Mission[] = Object.values(raw)
-    .map((m) => normalizeMission(m, iconMap, npcNameIndex, grouping, npcLocations))
+    .map((m) => normalizeMission(m, iconMap, npcNameIndex, grouping, npcLocations, nanoRefs))
     .sort((a, b) => a.id - b.id);
 
   // Build the inverted indexes:
@@ -376,7 +421,10 @@ export async function normalizeMissions(
       const target = byId.get(req.id as number);
       // If this ref came from RequiredMissionIDs[] alone, it was created with a
       // placeholder name ("Mission #N"). Patch it now that all missions are known.
-      if (target) req.name = target.name;
+      if (target) {
+        req.name = target.name;
+        req.icon = (target.startNPC ?? target.journalNPC)?.icon ?? '';
+      }
       if (target && !target.requiredByMissions.some((r) => r.id === m.id)) {
         target.requiredByMissions.push(missionAsRef);
       }
