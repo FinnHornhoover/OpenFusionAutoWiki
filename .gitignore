@@ -10,6 +10,9 @@ site/dist/
 site/public/data/
 site/public/icons/
 site/public/builds.json
+site/public/sitemap.xml
+site/public/sitemaps/
+site/public/robots.txt
 
 # download/extract cache
 .cache/

@@ -2,9 +2,9 @@ import { NavLink } from 'react-router-dom';
 import { useManifest } from '../data/useManifest';
 
 const PICKS: Array<{ label: string; slug: string }> = [
-  { label: 'Retrobution', slug: 'retrobution_r20' },
-  { label: 'Public Original', slug: 'beta-20100104-fixed_r7_original' },
-  { label: 'Public Academy', slug: 'beta-20111013-fixed_r7_academy' },
+  { label: 'Retrobution', slug: 'retrobution' },
+  { label: 'Public Original', slug: 'beta-20100104-fixed' },
+  { label: 'Public Academy', slug: 'beta-20111013-fixed' },
 ];
 
 export default function QuickPicks() {

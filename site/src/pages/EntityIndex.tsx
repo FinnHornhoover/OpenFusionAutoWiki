@@ -4,6 +4,7 @@ import ErrorState from '../components/ErrorState';
 import type { AreaIndexEntry, ItemIndexEntry, MissionIndexEntry, MobIndexEntry, NanoIndexEntry, NpcIndexEntry } from '../data/types';
 import { useBuildEntry } from '../data/useBuildEntry';
 import { useBuildMeta } from '../data/useBuildMeta';
+import { useDocumentTitle } from '../data/useDocumentTitle';
 import { useIndex } from '../data/useIndex';
 import AreaIndex from './index/AreaIndex';
 import ItemIndex from './index/ItemIndex';
@@ -33,6 +34,7 @@ export default function EntityIndex() {
 
   const buildLabel = entry ? entry.displayName : build;
   const heading = TYPE_TITLES[type ?? ''] ?? type ?? '';
+  useDocumentTitle(`${heading} · ${buildLabel ?? ''}`.trim());
 
   if (!supported) {
     return (

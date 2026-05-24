@@ -110,9 +110,14 @@ async function dedupeOne(
 /**
  * Walk every cached ZIP and dedupe its icons + help images into
  * site/public/icons/<md5><ext>. Returns aggregate stats and per-build maps.
+ *
+ * `slugFor` maps the ZIP basename to the public URL slug. The internal on-disk
+ * iconmap cache is keyed by ZIP basename for stability across slug changes;
+ * only the OUTPUT `maps` record is keyed by the public slug.
  */
 export async function dedupeIcons(
   assets: DownloadedAsset[],
+  slugFor: (a: DownloadedAsset) => string,
 ): Promise<{ stats: IconStats; maps: Record<string, IconMap> }> {
   await mkdir(ICONS_OUT, { recursive: true });
 
@@ -121,8 +126,8 @@ export async function dedupeIcons(
   let totalImagesSeen = 0;
 
   for (const a of assets) {
-    const { buildSlug: slug, iconMap, totalImages } = await dedupeOne(a.path, written);
-    maps[slug] = iconMap;
+    const { iconMap, totalImages } = await dedupeOne(a.path, written);
+    maps[slugFor(a)] = iconMap;
     totalImagesSeen += totalImages;
   }
 

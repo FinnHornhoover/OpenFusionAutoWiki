@@ -5,6 +5,7 @@ import type { Area, Item, Mission, Mob, Nano, Npc } from '../data/types';
 import { useBuildEntry } from '../data/useBuildEntry';
 import { useBuildMeta } from '../data/useBuildMeta';
 import { useDelayedFlag } from '../data/useDelayedFlag';
+import { useDocumentTitle } from '../data/useDocumentTitle';
 import { useEntity } from '../data/useEntity';
 import AreaTemplate from '../templates/Area.mdx';
 import ItemTemplate from '../templates/Item.mdx';
@@ -27,6 +28,11 @@ export default function EntityPage() {
   const showSkeleton = useDelayedFlag(loading);
 
   const buildLabel = entry ? entry.displayName : build;
+  const entityName = (entity as { name?: string } | null)?.name;
+  const typeLabel = type ? type.charAt(0).toUpperCase() + type.replace(/s$/, '').slice(1) : '';
+  useDocumentTitle(
+    entityName ? `${entityName} · ${typeLabel} · ${buildLabel ?? ''}`.trim() : null,
+  );
 
   if (!supported) {
     return (

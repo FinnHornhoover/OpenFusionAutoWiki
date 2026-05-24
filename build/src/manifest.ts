@@ -2,16 +2,17 @@ import { writeFile, mkdir } from 'node:fs/promises';
 import { dirname } from 'node:path';
 
 import { BUILDS_JSON } from './paths.js';
+import { log } from './log.js';
 import type { DownloadedAsset } from './download.js';
 
 export interface BuildEntry {
-  /** Full ZIP basename without `.zip`. Unique key. */
+  /** Stable URL slug — equals officialName so revision bumps don't break links. */
   slug: string;
-  /** Part 1 of the slug — official build identity (e.g., `retrobution`, `beta-20111013-fixed`). */
+  /** Official build identity (e.g., `retrobution`, `beta-20111013-fixed`). Same as `slug`. */
   officialName: string;
-  /** Part 2 of the slug — revision of the derived files (e.g., `r7`). */
+  /** Revision of the derived files (e.g., `r7`). Bumps across releases without changing slug. */
   rev: string;
-  /** Part 3 (optional) — short, user-friendly nickname (e.g., `academy`, `common-future`). */
+  /** Optional short user-friendly nickname (e.g., `academy`, `common-future`). */
   nickname: string;
   /** True when officialName ends with `-fixed`. */
   fixed: boolean;
@@ -36,11 +37,19 @@ function extractIsoDate(officialName: string): string {
   return m ? `${m[1]}-${m[2]}-${m[3]}` : '';
 }
 
-export function parseSlug(slug: string): BuildEntry {
+/** Derive the stable URL slug (= officialName) directly from a ZIP filename. */
+export function slugForZip(assetName: string): string {
+  const base = assetName.replace(/\.zip$/i, '');
+  const us = base.indexOf('_');
+  return us === -1 ? base : base.slice(0, us);
+}
+
+/** Parse a ZIP basename into a BuildEntry. Slug = officialName, NOT the basename. */
+export function parseAssetName(zipBasename: string): BuildEntry {
   // Split into three slots: officialName _ rev _ nickname(rest)
-  const firstUs = slug.indexOf('_');
-  const officialName = firstUs === -1 ? slug : slug.slice(0, firstUs);
-  const afterFirst = firstUs === -1 ? '' : slug.slice(firstUs + 1);
+  const firstUs = zipBasename.indexOf('_');
+  const officialName = firstUs === -1 ? zipBasename : zipBasename.slice(0, firstUs);
+  const afterFirst = firstUs === -1 ? '' : zipBasename.slice(firstUs + 1);
 
   const secondUs = afterFirst.indexOf('_');
   const rev = secondUs === -1 ? afterFirst : afterFirst.slice(0, secondUs);
@@ -50,9 +59,7 @@ export function parseSlug(slug: string): BuildEntry {
   const date = extractIsoDate(officialName);
 
   // Dropdown form: "Nickname -- officialName" when a nickname exists, else just officialName.
-  // The officialName portion after "--" stays verbatim (it's a precise identifier).
-  // The no-nickname fallback follows the title rule: date-bearing names keep their case,
-  // word-only names get their first letter capitalized.
+  // Case-preserving for date-bearing names (beta-…); capitalize-first for word-only names.
   const officialFallback = /\d/.test(officialName)
     ? officialName
     : officialName.charAt(0).toUpperCase() + officialName.slice(1);
@@ -60,7 +67,7 @@ export function parseSlug(slug: string): BuildEntry {
     ? `${titleCaseWords(nickname)} -- ${officialName}`
     : officialFallback;
 
-  // tag facets: leading word of officialName (before first dash/digit), "fixed" if so, nickname
+  // tag facets: leading word of officialName, "fixed" if so, nickname
   const facetBase = officialName.replace(/-fixed$/, '').replace(/-\d{8}.*$/, '');
   const tags: string[] = [];
   if (facetBase) tags.push(facetBase);
@@ -68,7 +75,7 @@ export function parseSlug(slug: string): BuildEntry {
   if (nickname) tags.push(nickname);
 
   return {
-    slug,
+    slug: officialName,
     officialName,
     rev,
     nickname,
@@ -93,10 +100,25 @@ function compareEntries(a: BuildEntry, b: BuildEntry): number {
   return a.officialName.localeCompare(b.officialName);
 }
 
+/** Parse a rev string ("r7", "r20") into a number; -1 if unparseable. */
+function revNumber(rev: string): number {
+  const m = /^r(\d+)$/i.exec(rev);
+  return m ? parseInt(m[1], 10) : -1;
+}
+
 export async function writeManifest(assets: DownloadedAsset[]): Promise<BuildEntry[]> {
-  const entries = assets
-    .map((a) => parseSlug(a.asset.name.replace(/\.zip$/i, '')))
-    .sort(compareEntries);
+  const all = assets.map((a) => parseAssetName(a.asset.name.replace(/\.zip$/i, '')));
+
+  // If two ZIPs share an officialName (e.g. a future release ships both r7 and r8 of
+  // the same build), keep the highest-rev one. Stable URLs are the whole point.
+  const bySlug = new Map<string, BuildEntry>();
+  for (const e of all) {
+    const cur = bySlug.get(e.slug);
+    if (!cur || revNumber(e.rev) > revNumber(cur.rev)) bySlug.set(e.slug, e);
+    else log.warn(`duplicate slug "${e.slug}" — keeping ${cur.rev}, dropping ${e.rev}`);
+  }
+
+  const entries = [...bySlug.values()].sort(compareEntries);
 
   await mkdir(dirname(BUILDS_JSON), { recursive: true });
   await writeFile(BUILDS_JSON, JSON.stringify(entries, null, 2));

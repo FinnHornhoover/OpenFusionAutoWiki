@@ -1,5 +1,6 @@
 import { Link, useParams } from 'react-router-dom';
 import { buildPageSubtitle, buildPageTitle, useBuildEntry } from '../data/useBuildEntry';
+import { useDocumentTitle } from '../data/useDocumentTitle';
 
 const ENTITY_TYPES = [
   { type: 'missions', label: 'Missions' },
@@ -13,6 +14,7 @@ const ENTITY_TYPES = [
 export default function BuildHome() {
   const { build } = useParams();
   const entry = useBuildEntry(build);
+  useDocumentTitle(entry ? buildPageTitle(entry) : build ?? null);
   if (!build) return null;
 
   return (

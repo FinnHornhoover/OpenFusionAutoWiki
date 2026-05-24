@@ -1,9 +1,11 @@
 import { Link } from 'react-router-dom';
 import ErrorState from '../components/ErrorState';
+import { useDocumentTitle } from '../data/useDocumentTitle';
 import { useManifest } from '../data/useManifest';
 
 export default function Home() {
   const { manifest, loading, error } = useManifest();
+  useDocumentTitle(null);
 
   return (
     <section>

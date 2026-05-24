@@ -9,7 +9,7 @@ import { join } from 'node:path';
 
 import { downloadAll, fetchRelease } from './download.js';
 import { dedupeIcons } from './icons.js';
-import { writeManifest } from './manifest.js';
+import { slugForZip, writeManifest } from './manifest.js';
 import { normalizeAreas } from './normalize/areas.js';
 import { normalizeItems } from './normalize/items.js';
 import { normalizeMissions } from './normalize/missions.js';
@@ -19,6 +19,7 @@ import { normalizeNpcs } from './normalize/npcs.js';
 import { buildNpcGrouping } from './normalize/npcGrouping.js';
 import { buildNpcNameIndex } from './normalize/npcNameIndex.js';
 import { writeSearchIndex } from './normalize/search.js';
+import { writeSitemapAndRobots } from './normalize/sitemap.js';
 import { DATA_OUT } from './paths.js';
 import { log } from './log.js';
 
@@ -39,7 +40,7 @@ async function main(): Promise<void> {
   log.done(`downloaded/cached ${downloaded.length} ZIPs (${(totalBytes / (1024 * 1024)).toFixed(1)} MB total)`);
 
   log.step('deduping icons');
-  const { stats, maps } = await dedupeIcons(downloaded);
+  const { stats, maps } = await dedupeIcons(downloaded, (a) => slugForZip(a.asset.name));
   log.done(
     `icons: ${stats.uniqueIconsWritten} unique / ${stats.totalImagesSeen} seen ` +
     `across ${stats.buildsProcessed} builds ` +
@@ -75,7 +76,7 @@ async function main(): Promise<void> {
   let totalSearchRows = 0;
   let totalSearchBytes = 0;
   for (const d of downloaded) {
-    const slug = d.asset.name.replace(/\.zip$/i, '');
+    const slug = slugForZip(d.asset.name);
     const iconMap = maps[slug] ?? {};
 
     // Group duplicate NPCs by (category, name) first; mission/npc/item normalizers all use it.
@@ -129,6 +130,11 @@ async function main(): Promise<void> {
   log.done(`areas: ${totalAreas} → ${totalAreaChunks} chunks; ${totalAreasWithMissions} host missions; ${totalAreasWithTransport} have transport`);
   log.done(`nanos: ${totalNanos} → ${totalNanoChunks} chunks; ${totalLinkedNanos} link to missions`);
   log.done(`search: ${totalSearchRows} rows across ${downloaded.length} builds (${(totalSearchBytes / (1024 * 1024)).toFixed(1)} MB total raw)`);
+
+  log.step('writing sitemap + robots.txt');
+  const slugs = downloaded.map((d) => slugForZip(d.asset.name));
+  const sitemap = await writeSitemapAndRobots(slugs);
+  log.done(`sitemap: ${sitemap.totalUrls.toLocaleString()} URLs across ${slugs.length} per-build sitemaps; base=${sitemap.base}`);
 
   log.done('build complete');
 }
