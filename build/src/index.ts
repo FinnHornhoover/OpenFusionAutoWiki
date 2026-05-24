@@ -1,4 +1,4 @@
-// FFAutomatedWiki — build pipeline orchestrator.
+// openfusion-auto-wiki — build pipeline orchestrator.
 //
 // P1: download, icon dedupe, manifest.
 // P2: normalize missions per build → chunked JSON + per-type index.

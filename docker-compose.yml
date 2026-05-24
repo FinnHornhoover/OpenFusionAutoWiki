@@ -3,7 +3,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: ffwiki:local
+    image: openfusion-auto-wiki:local
     ports:
       - "8080:80"
     # Cache mount removed for now; once the build pipeline downloads ZIPs in P1,

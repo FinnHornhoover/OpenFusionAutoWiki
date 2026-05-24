@@ -24,7 +24,7 @@ export async function downloadMinimap(): Promise<{ bytes: number; cached: boolea
 
   log.info(`fetching all_minimap.png from OFDropEditor`);
   const res = await fetch(MINIMAP_URL, {
-    headers: { 'User-Agent': 'FFAutomatedWiki/0.0' },
+    headers: { 'User-Agent': 'openfusion-auto-wiki/0.0' },
     redirect: 'follow',
   });
   if (!res.ok) throw new Error(`minimap HTTP ${res.status}`);

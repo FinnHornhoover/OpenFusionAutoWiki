@@ -1,0 +1,34 @@
+# Hashed Vite bundle output — content-addressed, safe to cache forever.
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# Icons are md5-named on emit, so a "same name" file always has the same bytes.
+/icons/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# The minimap PNG is also content-stable for a given OFDropEditor release.
+/minimap/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# Per-build data files can change between deploys (new FFInfoPacks release).
+# Short fresh window, then serve stale while revalidating to keep navigation snappy.
+/data/*
+  Cache-Control: public, max-age=300, stale-while-revalidate=86400
+
+# Same treatment for the top-level manifest + search payloads.
+/builds.json
+  Cache-Control: public, max-age=300, stale-while-revalidate=86400
+
+# Sitemap + robots — crawlers re-fetch on their own cadence; short cache is fine.
+/sitemap.xml
+  Cache-Control: public, max-age=3600
+/sitemaps/*
+  Cache-Control: public, max-age=3600
+/robots.txt
+  Cache-Control: public, max-age=3600
+
+# Root document — must always revalidate so users see the latest deployment.
+/
+  Cache-Control: public, max-age=0, must-revalidate
+/index.html
+  Cache-Control: public, max-age=0, must-revalidate

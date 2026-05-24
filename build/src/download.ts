@@ -39,7 +39,7 @@ export async function fetchRelease(): Promise<Release> {
     : `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/releases/latest`;
 
   const headers: Record<string, string> = {
-    'User-Agent': 'FFAutomatedWiki/0.0 (build pipeline)',
+    'User-Agent': 'openfusion-auto-wiki/0.0 (build pipeline)',
     Accept: 'application/vnd.github+json',
   };
   if (process.env.GITHUB_TOKEN) {
@@ -88,7 +88,7 @@ async function downloadOne(asset: ReleaseAsset, destDir: string): Promise<Downlo
   log.info(`fetching   ${asset.name} (${(asset.size / (1024 * 1024)).toFixed(1)} MB)`);
 
   const res = await fetch(asset.url, {
-    headers: { 'User-Agent': 'FFAutomatedWiki/0.0' },
+    headers: { 'User-Agent': 'openfusion-auto-wiki/0.0' },
     redirect: 'follow',
   });
   if (!res.ok || !res.body) {

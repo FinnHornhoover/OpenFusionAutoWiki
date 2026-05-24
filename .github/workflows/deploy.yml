@@ -1,0 +1,95 @@
+name: Deploy to Cloudflare Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Don't deploy two runs in parallel — Cloudflare Pages will accept them
+# but we want the most recent main commit to be the live one.
+concurrency:
+  group: cf-pages-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      deployments: write
+    env:
+      # The sitemap emits absolute URLs; default to the *.pages.dev project URL.
+      # Override via a repo variable when pointing a custom domain.
+      FFWIKI_BASE_URL: ${{ vars.FFWIKI_BASE_URL || 'https://openfusion-auto-wiki.pages.dev' }}
+      # Authenticated GitHub API requests get a 15K/hr rate limit instead of 60/hr.
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install workspace deps
+        run: npm ci
+
+      # Always target the latest FFInfoPacks release. Resolving the tag up
+      # front lets the cache key rev when upstream ships a new release.
+      - name: Resolve latest FFInfoPacks tag
+        id: ffinfo
+        run: |
+          TAG=$(curl -sSL -H "Authorization: Bearer $GITHUB_TOKEN" \
+            https://api.github.com/repos/FinnHornhoover/FFInfoPacks/releases/latest \
+            | jq -r '.tag_name')
+          if [ -z "$TAG" ] || [ "$TAG" = "null" ]; then
+            echo "::error::Failed to resolve latest FFInfoPacks release tag"
+            exit 1
+          fi
+          echo "FFInfoPacks latest: $TAG"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+
+      # Cache the 1.6 GB of FFInfoPacks ZIPs so cold-cache runs are the
+      # exception, not the rule. Cache key changes when upstream releases.
+      - name: Cache FFInfoPacks ZIPs
+        uses: actions/cache@v4
+        with:
+          path: .cache/ffinfo
+          key: ffinfo-${{ steps.ffinfo.outputs.tag }}-v1
+
+      # Per-build icon dedup output — invalidates with the ZIPs above.
+      - name: Cache icon dedup maps
+        uses: actions/cache@v4
+        with:
+          path: .cache/iconmaps
+          key: iconmaps-${{ steps.ffinfo.outputs.tag }}-v1
+
+      - name: Build pipeline (download + normalize)
+        run: npm run build:data
+
+      - name: Build site (Vite + MDX)
+        run: npm run build:site
+
+      - name: Smoke checks
+        run: |
+          # Cloudflare Pages: ≤20,000 files per deployment, ≤25 MB per file.
+          FILE_COUNT=$(find site/dist -type f | wc -l)
+          echo "site/dist file count: $FILE_COUNT"
+          if [ "$FILE_COUNT" -ge 20000 ]; then
+            echo "::error::site/dist exceeds Cloudflare Pages' 20,000 file limit ($FILE_COUNT)"
+            exit 1
+          fi
+          OVERSIZE=$(find site/dist -type f -size +25M)
+          if [ -n "$OVERSIZE" ]; then
+            echo "::error::Files exceed Cloudflare Pages' 25 MB per-file limit:"
+            echo "$OVERSIZE"
+            exit 1
+          fi
+
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy site/dist --project-name=openfusion-auto-wiki --branch=main

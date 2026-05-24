@@ -1,0 +1,4 @@
+# Cloudflare Pages serves real files first; this rule only fires for
+# unmatched paths (SPA routes like /:build/:type/:id), falling back to
+# the React app's index.html so React Router can take over client-side.
+/*    /index.html   200
