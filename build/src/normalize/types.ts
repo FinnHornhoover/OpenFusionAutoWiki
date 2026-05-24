@@ -96,6 +96,7 @@ export interface MissionIndexEntry {
   difficulty: string;
   type: string;
   startNPC: { name: string; icon: string } | null;
+  displayNPC?: { name: string; icon: string } | null;
 }
 
 /** Where an NPC is spawned in the world. */
