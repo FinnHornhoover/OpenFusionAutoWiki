@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 
 import EntityIndexSkeleton from '../../components/EntityIndexSkeleton';
+import Minimap from '../../components/Minimap';
 import type { AreaIndexEntry } from '../../data/types';
 import { useDelayedFlag } from '../../data/useDelayedFlag';
 
@@ -92,21 +93,45 @@ export default function AreaIndex({ build, rows, loading }: Props) {
       {!loading && filtered.length === 0 && <p className="muted">No matches.</p>}
       {!loading && filtered.length > 0 && (
         <>
-          <ul className="entity-index">
-            {pageRows.map((r) => (
-              <li key={r.id} className="entity-index-row">
-                <span className="entity-index-main">
-                  <Link to={`/${build}/areas/${r.id}`}>{r.name}</Link>
-                  <span className="muted">
-                    {r.zoneName && ` · ${r.zoneName}`}
-                    {r.missionCount > 0 && ` · ${r.missionCount} mission${r.missionCount === 1 ? '' : 's'}`}
-                    {r.npcCount > 0 && ` · ${r.npcCount} NPC type${r.npcCount === 1 ? '' : 's'}`}
-                    {r.mobCount > 0 && ` · ${r.mobCount} mob type${r.mobCount === 1 ? '' : 's'}`}
-                  </span>
-                </span>
-              </li>
-            ))}
-          </ul>
+          <table className="location-table source-table area-index-table">
+            <thead>
+              <tr>
+                <th>Area</th>
+                <th>Zone</th>
+                <th>NPCs</th>
+                <th>Monsters</th>
+                <th>Missions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {pageRows.map((r) => (
+                <tr key={r.id}>
+                  <td className="area-index-cell">
+                    <div className="area-index-name">
+                      {r.width > 0 && r.height > 0 && (
+                        <Link to={`/${build}/areas/${r.id}`} aria-label={r.name}>
+                          <Minimap
+                            x={r.x + r.width / 2}
+                            y={r.y + r.height / 2}
+                            width={r.width}
+                            height={r.height}
+                            size={256}
+                            extent={Math.max(r.width, r.height) / 2 + 16384}
+                            title={r.name}
+                          />
+                        </Link>
+                      )}
+                      <Link className="area-index-link" to={`/${build}/areas/${r.id}`}>{r.name}</Link>
+                    </div>
+                  </td>
+                  <td>{r.zoneName || <span className="muted">—</span>}</td>
+                  <td>{r.npcCount.toLocaleString()}</td>
+                  <td>{r.mobCount.toLocaleString()}</td>
+                  <td>{r.missionCount.toLocaleString()}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
           {totalPages > 1 && (
             <nav className="pager" aria-label="Pagination">
               <button onClick={() => setPage(Math.max(0, page - 1))} disabled={page === 0}>‹ Prev</button>

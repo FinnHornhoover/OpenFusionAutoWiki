@@ -358,6 +358,10 @@ export interface AreaIndexEntry {
   id: string;
   name: string;
   zoneName: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
   npcCount: number;
   mobCount: number;
   missionCount: number;
