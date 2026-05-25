@@ -217,6 +217,10 @@ export type ItemSource =
       eventName: string;
     } & DropChance);
 
+export interface CrateDrop extends DropChance {
+  ref: Ref;
+}
+
 export interface Item {
   /** Compound URL id: "typeId-itemId". */
   id: string;
@@ -259,6 +263,8 @@ export interface Item {
   weaponType: string;
 
   sources: ItemSource[];
+  crateDrops: CrateDrop[];
+  containingCrates: CrateDrop[];
 }
 
 export interface ItemIndexEntry {
