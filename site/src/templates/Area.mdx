@@ -1,6 +1,8 @@
 import Dropdown from '../components/Dropdown';
 import EntityLink from '../components/EntityLink';
+import Icon from '../components/Icon';
 import Minimap from '../components/Minimap';
+import { formatDurationSeconds } from '../data/formatTime';
 
 # {props.data.name}
 
@@ -41,51 +43,85 @@ import Minimap from '../components/Minimap';
 
 {props.data.missionsStarting.length > 0 && (
   <Dropdown summary={`Missions starting here (${props.data.missionsStarting.length})`} open={props.data.missionsStarting.length <= 20}>
-    <ul className="ref-list">
-      {props.data.missionsStarting.map((m) => (
-        <li key={m.id}><EntityLink entity={m} withIcon={false} /></li>
-      ))}
-    </ul>
+    <table className="location-table source-table">
+      <thead>
+        <tr>
+          <th>Mission</th>
+        </tr>
+      </thead>
+      <tbody>
+        {props.data.missionsStarting.map((m) => (
+          <tr key={m.id}>
+            <td><EntityLink entity={m} /></td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
   </Dropdown>
 )}
 
 {props.data.npcs.length > 0 && (
   <Dropdown summary={`NPCs (${props.data.npcs.length})`}>
-    <ul className="ref-list">
-      {props.data.npcs.map((n) => (
-        <li key={n.ref.id}>
-          <EntityLink entity={n.ref} />
-          {n.instanceCount > 1 && <span className="muted"> · ×{n.instanceCount}</span>}
-        </li>
-      ))}
-    </ul>
+    <table className="location-table source-table">
+      <thead>
+        <tr>
+          <th>NPC</th>
+          <th>Count</th>
+        </tr>
+      </thead>
+      <tbody>
+        {props.data.npcs.map((n) => (
+          <tr key={n.ref.id}>
+            <td><EntityLink entity={n.ref} /></td>
+            <td>{n.instanceCount.toLocaleString()}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
   </Dropdown>
 )}
 
 {props.data.vendors.length > 0 && (
   <Dropdown summary={`Vendors (${props.data.vendors.length})`}>
-    <ul className="ref-list">
-      {props.data.vendors.map((v) => (
-        <li key={v.id}><EntityLink entity={v} /></li>
-      ))}
-    </ul>
+    <table className="location-table source-table">
+      <thead>
+        <tr>
+          <th>Vendor</th>
+        </tr>
+      </thead>
+      <tbody>
+        {props.data.vendors.map((v) => (
+          <tr key={v.id}>
+            <td><EntityLink entity={v} /></td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
   </Dropdown>
 )}
 
 {props.data.mobs.length > 0 && (
   <Dropdown summary={`Monsters (${props.data.mobs.length})`}>
-    <ul className="ref-list">
-      {props.data.mobs.map((m) => (
-        <li key={m.ref.id}>
-          <EntityLink entity={m.ref} />
-          <span className="muted">
-            {m.level > 0 && ` · Lv ${m.level}`}
-            {m.hp > 0 && ` · ${m.hp.toLocaleString()} HP`}
-            {m.instanceCount > 1 && ` · ×${m.instanceCount}`}
-          </span>
-        </li>
-      ))}
-    </ul>
+    <table className="location-table source-table">
+      <thead>
+        <tr>
+          <th>Monster</th>
+          <th>Count</th>
+          <th>Level</th>
+          <th>HP</th>
+        </tr>
+      </thead>
+      <tbody>
+        {props.data.mobs.map((m) => (
+          <tr key={m.ref.id}>
+            <td><EntityLink entity={m.ref} /></td>
+            <td>{m.instanceCount.toLocaleString()}</td>
+            <td>{m.level > 0 ? m.level : <span className="muted">—</span>}</td>
+            <td>{m.hp > 0 ? m.hp.toLocaleString() : <span className="muted">—</span>}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
   </Dropdown>
 )}
 
@@ -119,16 +155,36 @@ import Minimap from '../components/Minimap';
 )}
 
 {props.data.eggs.length > 0 && (
-  <Dropdown summary={`Eggs / crates (${props.data.eggs.length})`}>
-    <ul className="ref-list">
-      {props.data.eggs.map((e, i) => (
-        <li key={i}>
-          <strong>{e.typeName}</strong>
-          {e.typeComment && <span className="muted"> · {e.typeComment}</span>}
-          {e.crateItem && <span className="muted"> · contains <EntityLink entity={e.crateItem} withIcon={false} /></span>}
-        </li>
-      ))}
-    </ul>
+  <Dropdown summary={`Eggs (${props.data.eggs.length})`}>
+    <table className="location-table source-table">
+      <thead>
+        <tr>
+          <th>Egg</th>
+          <th>Type</th>
+          <th>Contains</th>
+          <th>Power</th>
+          <th>Duration</th>
+        </tr>
+      </thead>
+      <tbody>
+        {props.data.eggs.map((e, i) => (
+          <tr key={i}>
+            <td>{e.typeName || <span className="muted">Egg</span>}</td>
+            <td>{e.typeComment || <span className="muted">—</span>}</td>
+            <td>{e.crateItem ? <EntityLink entity={e.crateItem} /> : <span className="muted">—</span>}</td>
+            <td>
+              {e.effectName ? (
+                <>
+                  {e.effectIcon && <Icon src={e.effectIcon} alt="" size={32} />}
+                  {' '}{e.effectName}
+                </>
+              ) : <span className="muted">—</span>}
+            </td>
+            <td>{e.effectDuration > 0 ? formatDurationSeconds(e.effectDuration) : <span className="muted">—</span>}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
   </Dropdown>
 )}
 
