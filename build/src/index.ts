@@ -9,6 +9,7 @@ import { dedupeIcons } from './icons.js';
 import { slugForZip, writeManifest } from './manifest.js';
 import { downloadMinimap } from './minimap.js';
 import { normalizeAreas } from './normalize/areas.js';
+import { buildInstanceNameIndex } from './normalize/instanceLookup.js';
 import { normalizeItems } from './normalize/items.js';
 import { normalizeMissions } from './normalize/missions.js';
 import { normalizeMobs } from './normalize/mobs.js';
@@ -80,6 +81,7 @@ async function main(): Promise<void> {
 
     // Shared NPC grouping used by missions, NPCs, items, and area pages.
     const grouping = buildNpcGrouping(d.path);
+    const instanceNames = buildInstanceNameIndex(d.path);
     const npcNameIndex = buildNpcNameIndex(d.path, iconMap, grouping);
     const npcLocations = buildNpcLocationMap(d.path, grouping);
 
@@ -87,7 +89,7 @@ async function main(): Promise<void> {
     totalMissions += m.count;
     totalMissionChunks += m.chunks;
 
-    const n = await normalizeNpcs(d.path, slug, iconMap, grouping, m.npcMissions);
+    const n = await normalizeNpcs(d.path, slug, iconMap, grouping, m.npcMissions, instanceNames);
     totalNpcs += n.count;
     totalNpcChunks += n.chunks;
     totalVendors += n.vendors;

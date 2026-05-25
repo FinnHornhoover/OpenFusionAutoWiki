@@ -93,10 +93,12 @@ export interface MissionIndexEntry {
 
 export interface NpcLocation {
   areaZone: string;
+  areaId: string;
   x: number;
   y: number;
   z: number;
   instanceID: number;
+  instanceName: string;
 }
 
 export interface NpcVendorItem {

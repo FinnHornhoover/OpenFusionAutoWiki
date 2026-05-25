@@ -1,7 +1,7 @@
 import Dropdown from '../components/Dropdown';
 import EntityLink from '../components/EntityLink';
 import Icon from '../components/Icon';
-import Minimap from '../components/Minimap';
+import MapSpot from '../components/MapSpot';
 
 # {props.data.name}
 
@@ -104,17 +104,23 @@ import Minimap from '../components/Minimap';
         <tr>
           <th>Map</th>
           <th>Area</th>
-          <th>Coordinates</th>
-          <th>Instance</th>
         </tr>
       </thead>
       <tbody>
         {props.data.locations.map((loc, i) => (
           <tr key={i}>
-            <td><Minimap x={loc.x} y={loc.y} size={256} title={loc.areaZone} /></td>
+            <td>
+              <MapSpot
+                x={loc.x}
+                y={loc.y}
+                z={loc.z}
+                areaId={loc.areaId}
+                title={loc.areaZone}
+                instanceName={loc.instanceName}
+                instanceID={loc.instanceID}
+              />
+            </td>
             <td>{loc.areaZone || <span className="muted">—</span>}</td>
-            <td className="muted">{loc.x}, {loc.y}, {loc.z}</td>
-            <td className="muted">{loc.instanceID || '—'}</td>
           </tr>
         ))}
       </tbody>

@@ -408,6 +408,23 @@ details.dropdown > .dropdown-body {
   box-shadow: 0 0 4px rgba(0, 0, 0, 0.5);
   pointer-events: none;
 }
+
+.map-spot {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+}
+.map-spot-coordinates,
+.map-spot-instance {
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+  line-height: 1.25;
+  text-align: center;
+}
+.map-spot-coordinates {
+  font-style: italic;
+}
 .area-map {
   margin: var(--space-4) 0;
 }

@@ -2,6 +2,7 @@ import AdmZip from 'adm-zip';
 
 import { writeChunks, writeIndex } from '../chunk.js';
 import { iconFor, itemRef } from './refs.js';
+import { slugify } from './slug.js';
 import type {
   Area,
   AreaEggEntry,
@@ -120,17 +121,6 @@ interface RawTransportRoute {
 interface RawInstance {
   ID?: number;
   Name?: string;
-}
-
-/** Lowercase, dashed slug. Collisions are unlikely with our 70-area dataset; falls back to raw key. */
-function slugify(s: string): string {
-  const slug = s
-    .toLowerCase()
-    .replace(/\s*-\s*/g, '-')
-    .replace(/[^a-z0-9-]+/g, '-')
-    .replace(/-{2,}/g, '-')
-    .replace(/^-+|-+$/g, '');
-  return slug || s.toLowerCase();
 }
 
 function canonNpcId(id: number, grouping: NpcGrouping): number {

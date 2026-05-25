@@ -102,10 +102,12 @@ export interface MissionIndexEntry {
 /** Where an NPC is spawned in the world. */
 export interface NpcLocation {
   areaZone: string;
+  areaId: string;
   x: number;
   y: number;
   z: number;
   instanceID: number;
+  instanceName: string;
 }
 
 /** Vendor item entry on an NPC page. */

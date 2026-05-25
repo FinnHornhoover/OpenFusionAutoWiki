@@ -11,7 +11,9 @@ import type {
 } from './types.js';
 import type { IconMap } from '../icons.js';
 import type { NpcMissionsMap } from './missions.js';
+import type { InstanceNameIndex } from './instanceLookup.js';
 import type { NpcGrouping } from './npcGrouping.js';
+import { slugify } from './slug.js';
 
 interface RawNpcType {
   ID: number;
@@ -49,13 +51,17 @@ interface RawNpcInstance {
   TypeID?: number;
 }
 
-function normalizeLocation(raw: RawNpcInstance): NpcLocation {
+function normalizeLocation(raw: RawNpcInstance, instanceNames: InstanceNameIndex): NpcLocation {
+  const areaZone = raw.AreaZone ?? '';
+  const instanceID = raw.InstanceID ?? 0;
   return {
-    areaZone: raw.AreaZone ?? '',
+    areaZone,
+    areaId: areaZone && areaZone !== 'Unknown - Unknown' ? slugify(areaZone) : '',
     x: raw.X ?? 0,
     y: raw.Y ?? 0,
     z: raw.Z ?? 0,
-    instanceID: raw.InstanceID ?? 0,
+    instanceID,
+    instanceName: instanceNames.get(instanceID) ?? '',
   };
 }
 
@@ -103,6 +109,7 @@ function buildMergedNpc(
   rawInsts: Record<string, Record<string, RawNpcInstance>>,
   iconMap: IconMap,
   npcMissions: NpcMissionsMap,
+  instanceNames: InstanceNameIndex,
 ): Npc {
   const allMembers = [canonical, ...aliases];
 
@@ -126,7 +133,7 @@ function buildMergedNpc(
       if (!vendorBy.has(key)) vendorBy.set(key, v);
     }
     const insts = rawInsts[String(member.ID)] ?? {};
-    for (const inst of Object.values(insts)) locations.push(normalizeLocation(inst));
+    for (const inst of Object.values(insts)) locations.push(normalizeLocation(inst, instanceNames));
   }
 
   const aliasIds = aliases.map((a) => a.ID).sort((a, b) => a - b);
@@ -162,8 +169,9 @@ function buildSoloNpc(
   rawInsts: Record<string, Record<string, RawNpcInstance>>,
   iconMap: IconMap,
   npcMissions: NpcMissionsMap,
+  instanceNames: InstanceNameIndex,
 ): Npc {
-  const locations = Object.values(rawInsts[String(raw.ID)] ?? {}).map(normalizeLocation);
+  const locations = Object.values(rawInsts[String(raw.ID)] ?? {}).map((inst) => normalizeLocation(inst, instanceNames));
   const missions = npcMissions.get(raw.ID);
   return {
     id: raw.ID,
@@ -207,6 +215,7 @@ export async function normalizeNpcs(
   iconMap: IconMap,
   grouping: NpcGrouping,
   npcMissions: NpcMissionsMap,
+  instanceNames: InstanceNameIndex,
 ): Promise<{ count: number; chunks: number; vendors: number; linked: number; merged: number }> {
   const zip = new AdmZip(zipPath);
   const typeEntry = zip.getEntry('info/npc_type_info.json');
@@ -241,10 +250,10 @@ export async function normalizeNpcs(
       if (canon !== t.ID) continue; // alias, will be folded into canonical
       const aliases = aliasesByCanonical.get(t.ID) ?? [];
       if (aliases.length > 0) mergedCount++;
-      npcs.push(buildMergedNpc(t, aliases, rawInsts, iconMap, npcMissions));
+      npcs.push(buildMergedNpc(t, aliases, rawInsts, iconMap, npcMissions, instanceNames));
     } else {
       // Out-of-game: kept as solo, no grouping applied.
-      npcs.push(buildSoloNpc(t, rawInsts, iconMap, npcMissions));
+      npcs.push(buildSoloNpc(t, rawInsts, iconMap, npcMissions, instanceNames));
     }
   }
   npcs.sort((a, b) => a.id - b.id);
