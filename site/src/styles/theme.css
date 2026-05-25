@@ -735,6 +735,18 @@ details.dropdown > .dropdown-body {
   letter-spacing: 0.04em;
 }
 
+.area-index-cell {
+  min-width: 360px;
+}
+.area-index-name {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+.area-index-name .minimap {
+  flex-shrink: 0;
+}
+
 /* Index controls (search + filters) */
 .index-controls {
   display: flex;
