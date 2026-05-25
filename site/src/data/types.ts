@@ -158,6 +158,10 @@ export type ItemSource =
   | { kind: 'code'; code: string }
   | ({ kind: 'event'; eventId: number; eventName: string } & DropChance);
 
+export interface CrateDrop extends DropChance {
+  ref: Ref;
+}
+
 export interface Item {
   id: string;
   typeId: number;
@@ -197,6 +201,8 @@ export interface Item {
   weaponType: string;
 
   sources: ItemSource[];
+  crateDrops: CrateDrop[];
+  containingCrates: CrateDrop[];
 }
 
 export interface ItemIndexEntry {

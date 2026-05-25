@@ -1,10 +1,11 @@
 import AdmZip from 'adm-zip';
 
 import { chunkOf, writeChunks, writeIndex } from '../chunk.js';
-import { iconFor, itemChunkKey, missionRef, monsterRef, npcRef } from './refs.js';
+import { iconFor, itemChunkKey, itemRef, missionRef, monsterRef, npcRef } from './refs.js';
 import type {
   Item,
   ItemIndexEntry,
+  CrateDrop,
   ItemSource,
   MobDrop,
   Ref,
@@ -114,6 +115,113 @@ function chance(entry: RawSourceEntry): {
     girlProbability: entry.SourceGirlProbability ?? 0,
     girlOdds: entry.SourceGirlOdds ?? '',
   };
+}
+
+
+interface RawCrateDrop {
+  Item?: RawItem;
+  ContainingCrate?: RawItem;
+  BoyProbability?: number;
+  BoyOdds?: string;
+  GirlProbability?: number;
+  GirlOdds?: string;
+}
+
+type RawCrateToItemInfo = Record<string, RawCrateDrop[]>;
+type RawItemToCrateInfo = Record<string, RawCrateDrop[]>;
+
+function rawInfoKey(key: string): string | null {
+  const m = /^(\d+)::(\d+)/.exec(key);
+  if (!m) return null;
+  return `${parseInt(m[1], 10)}::${parseInt(m[2], 10)}`;
+}
+
+function buildCrateDrops(
+  rawCrateItems: RawCrateToItemInfo,
+  iconMap: IconMap,
+): Map<string, CrateDrop[]> {
+  const byCrate = new Map<string, CrateDrop[]>();
+
+  for (const [crateId, entries] of Object.entries(rawCrateItems)) {
+    const rawCrateKey = `9::${parseInt(crateId, 10)}`;
+    let list = byCrate.get(rawCrateKey);
+    if (!list) {
+      list = [];
+      byCrate.set(rawCrateKey, list);
+    }
+
+    for (const entry of entries) {
+      const raw = entry.Item;
+      if (!raw) continue;
+      const ref = itemRef(raw.TypeID, raw.ItemID, raw.Name, raw.Icon ?? '', iconMap);
+      if (!ref) continue;
+      const drop: CrateDrop = {
+        ref,
+        boyProbability: entry.BoyProbability ?? 0,
+        boyOdds: entry.BoyOdds ?? '',
+        girlProbability: entry.GirlProbability ?? 0,
+        girlOdds: entry.GirlOdds ?? '',
+      };
+      if (!list.some((d) => d.ref.id === drop.ref.id && d.boyOdds === drop.boyOdds && d.girlOdds === drop.girlOdds)) {
+        list.push(drop);
+      }
+    }
+  }
+
+  for (const list of byCrate.values()) {
+    list.sort((a, b) => {
+      const pa = Math.max(a.boyProbability, a.girlProbability);
+      const pb = Math.max(b.boyProbability, b.girlProbability);
+      return (pb - pa) || a.ref.name.localeCompare(b.ref.name);
+    });
+  }
+
+  return byCrate;
+}
+
+function buildContainingCrates(
+  rawItemCrates: RawItemToCrateInfo,
+  iconMap: IconMap,
+): Map<string, CrateDrop[]> {
+  const byItem = new Map<string, CrateDrop[]>();
+
+  for (const [itemKey, entries] of Object.entries(rawItemCrates)) {
+    const rawItemKey = rawInfoKey(itemKey);
+    if (!rawItemKey) continue;
+
+    let list = byItem.get(rawItemKey);
+    if (!list) {
+      list = [];
+      byItem.set(rawItemKey, list);
+    }
+
+    for (const entry of entries) {
+      const raw = entry.ContainingCrate;
+      if (!raw) continue;
+      const ref = itemRef(raw.TypeID, raw.ItemID, raw.Name, raw.Icon ?? '', iconMap);
+      if (!ref) continue;
+      const crate: CrateDrop = {
+        ref,
+        boyProbability: entry.BoyProbability ?? 0,
+        boyOdds: entry.BoyOdds ?? '',
+        girlProbability: entry.GirlProbability ?? 0,
+        girlOdds: entry.GirlOdds ?? '',
+      };
+      if (!list.some((d) => d.ref.id === crate.ref.id && d.boyOdds === crate.boyOdds && d.girlOdds === crate.girlOdds)) {
+        list.push(crate);
+      }
+    }
+  }
+
+  for (const list of byItem.values()) {
+    list.sort((a, b) => {
+      const pa = Math.max(a.boyProbability, a.girlProbability);
+      const pb = Math.max(b.boyProbability, b.girlProbability);
+      return (pb - pa) || a.ref.name.localeCompare(b.ref.name);
+    });
+  }
+
+  return byItem;
 }
 
 function normalizeSource(
@@ -232,6 +340,8 @@ function sourceDedupKey(s: ItemSource): string {
 function normalizeItem(
   raw: RawItem,
   rawSources: RawSourceEntry[],
+  crateDrops: CrateDrop[],
+  containingCrates: CrateDrop[],
   iconMap: IconMap,
   grouping: NpcGrouping,
 ): Item {
@@ -285,6 +395,8 @@ function normalizeItem(
     weaponType: raw.WeaponType ?? '',
 
     sources,
+    crateDrops,
+    containingCrates,
   };
 }
 
@@ -325,6 +437,19 @@ export async function normalizeItems(
   // Source info: keys are "TypeID::ItemID::Name". Build a lookup by "TypeID::ItemID".
   const sourceEntry = zip.getEntry('info/item_source_info.json');
   const sourcesByKey = new Map<string, RawSourceEntry[]>();
+  let crateDropsByKey = new Map<string, CrateDrop[]>();
+  const crateItemsEntry = zip.getEntry('info/crate_to_item_info.json');
+  if (crateItemsEntry) {
+    const rawCrateItems = JSON.parse(crateItemsEntry.getData().toString('utf8')) as RawCrateToItemInfo;
+    crateDropsByKey = buildCrateDrops(rawCrateItems, iconMap);
+  }
+
+  let containingCratesByKey = new Map<string, CrateDrop[]>();
+  const itemCratesEntry = zip.getEntry('info/item_to_crate_info.json');
+  if (itemCratesEntry) {
+    const rawItemCrates = JSON.parse(itemCratesEntry.getData().toString('utf8')) as RawItemToCrateInfo;
+    containingCratesByKey = buildContainingCrates(rawItemCrates, iconMap);
+  }
   if (sourceEntry) {
     const rawSources = JSON.parse(sourceEntry.getData().toString('utf8')) as Record<string, RawSourceEntry[]>;
     for (const [key, list] of Object.entries(rawSources)) {
@@ -335,8 +460,11 @@ export async function normalizeItems(
   }
 
   const items: Item[] = Object.values(rawItems).map((raw) => {
-    const sources = sourcesByKey.get(`${raw.TypeID}::${raw.ItemID}`) ?? [];
-    return normalizeItem(raw, sources, iconMap, grouping);
+    const key = `${raw.TypeID}::${raw.ItemID}`;
+    const sources = sourcesByKey.get(key) ?? [];
+    const crateDrops = crateDropsByKey.get(key) ?? [];
+    const containingCrates = containingCratesByKey.get(key) ?? [];
+    return normalizeItem(raw, sources, crateDrops, containingCrates, iconMap, grouping);
   });
 
   // Sort: by typeId then itemId for deterministic output.

@@ -34,6 +34,49 @@ import SimilarItems from '../components/SimilarItems';
   <><dt>Sellable</dt><dd>{props.data.sellable ? 'Yes' : 'No'}</dd></>
 </dl>
 
+{props.data.typeId === 9 && props.data.crateDrops.length > 0 && (
+  <Dropdown summary={`Drops (${props.data.crateDrops.length})`} open>
+    <table className="location-table source-table">
+      <thead>
+        <tr>
+          <th>Item</th>
+          <th>Chance</th>
+        </tr>
+      </thead>
+      <tbody>
+        {props.data.crateDrops.map((d, i) => (
+          <tr key={`${d.ref.id}-${i}`}>
+            <td><EntityLink entity={d.ref} /></td>
+            <td><DropChance data={d} leadingSeparator={false} /></td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </Dropdown>
+)}
+
+
+{props.data.containingCrates.length > 0 && (
+  <Dropdown summary={`Containing CRATEs (${props.data.containingCrates.length})`} open>
+    <table className="location-table source-table">
+      <thead>
+        <tr>
+          <th>CRATE</th>
+          <th>Chance</th>
+        </tr>
+      </thead>
+      <tbody>
+        {props.data.containingCrates.map((c, i) => (
+          <tr key={`${c.ref.id}-${i}`}>
+            <td><EntityLink entity={c.ref} /></td>
+            <td><DropChance data={c} leadingSeparator={false} /></td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </Dropdown>
+)}
+
 {(() => {
   const buckets = {
     'Mission rewards': props.data.sources.filter((s) => s.kind === 'mission' || s.kind === 'mission-crate'),
