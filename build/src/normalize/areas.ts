@@ -80,6 +80,9 @@ interface RawAreaEggType {
     Name?: string;
     Icon?: string;
   };
+  Effect?: string;
+  EffectIcon?: string;
+  EffectDuration?: number;
 }
 interface RawAreaInstanceWarp {
   EntryInstanceID?: number;
@@ -281,6 +284,9 @@ function buildAreaEggs(
       typeName: inst.TypeName ?? meta?.Comment ?? `Egg #${inst.TypeID}`,
       typeComment: meta?.Comment ?? '',
       crateItem,
+      effectName: meta?.Effect ?? '',
+      effectIcon: iconFor(meta?.EffectIcon ?? '', iconMap),
+      effectDuration: meta?.EffectDuration ?? 0,
       x: inst.X ?? 0,
       y: inst.Y ?? 0,
       z: inst.Z ?? 0,

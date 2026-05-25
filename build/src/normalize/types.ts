@@ -375,6 +375,9 @@ export interface AreaEggEntry {
   typeName: string;          // e.g., "14Lv Item shiny"
   typeComment: string;        // "Item", "Nano", …
   crateItem: Ref | null;      // item dispensed (when known)
+  effectName: string;
+  effectIcon: string;
+  effectDuration: number;
   x: number;
   y: number;
   z: number;

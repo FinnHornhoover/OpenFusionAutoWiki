@@ -302,6 +302,9 @@ export interface AreaEggEntry {
   typeName: string;
   typeComment: string;
   crateItem: Ref | null;
+  effectName: string;
+  effectIcon: string;
+  effectDuration: number;
   x: number;
   y: number;
   z: number;
