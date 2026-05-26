@@ -755,10 +755,18 @@ details.dropdown > .dropdown-body {
 }
 .location-list > li {
   display: flex;
-  justify-content: center;
+  flex-direction: column;
+  align-items: center;
+  min-width: 0;
 }
 .location-list .map-spot {
   width: 100%;
+}
+.location-list-meta {
+  display: block;
+  align-self: stretch;
+  margin-top: var(--space-2);
+  text-align: center;
 }
 .location-table {
   width: 100%;

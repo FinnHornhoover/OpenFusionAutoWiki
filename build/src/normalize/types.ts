@@ -295,10 +295,12 @@ export interface ItemIndexEntry {
 
 export interface MobLocation {
   areaZone: string;
+  areaId: string;
   x: number;
   y: number;
   z: number;
   instanceID: number;
+  instanceName: string;
   hp: number;
   groupId: string;
 }
@@ -323,6 +325,7 @@ export interface Mob {
 
   // Combat
   standardHP: number;
+  displayHP: number;
   attackPower: number;
   attackRange: number;
   combatRange: number;

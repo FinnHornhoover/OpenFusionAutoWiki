@@ -101,7 +101,7 @@ async function main(): Promise<void> {
     totalItemChunks += it.chunks;
     totalItemSources += it.sourceCount;
 
-    const mb = await normalizeMobs(d.path, slug, iconMap, m.mobMissions, it.mobItems);
+    const mb = await normalizeMobs(d.path, slug, iconMap, m.mobMissions, it.mobItems, instanceNames);
     totalMobs += mb.count;
     totalMobChunks += mb.chunks;
     totalLinkedMobs += mb.linked;

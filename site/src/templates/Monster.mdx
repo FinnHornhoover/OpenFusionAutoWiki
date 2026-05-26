@@ -2,7 +2,7 @@ import Dropdown from '../components/Dropdown';
 import DropChance from '../components/DropChance';
 import EntityLink from '../components/EntityLink';
 import Icon from '../components/Icon';
-import Minimap from '../components/Minimap';
+import MapSpot from '../components/MapSpot';
 import { formatDurationSeconds } from '../data/formatTime';
 
 # {props.data.name}
@@ -22,7 +22,7 @@ import { formatDurationSeconds } from '../data/formatTime';
 )}
 
 <dl className="stat-grid">
-  {props.data.standardHP > 0 && <><dt>HP</dt><dd>{props.data.standardHP.toLocaleString()}</dd></>}
+  {props.data.displayHP > 0 && <><dt>HP</dt><dd>{props.data.displayHP.toLocaleString()}</dd></>}
   {props.data.attackPower > 0 && <><dt>Attack power</dt><dd>{props.data.attackPower.toLocaleString()}</dd></>}
   {props.data.power !== 0 && <><dt>Power</dt><dd>{props.data.power.toLocaleString()}</dd></>}
   {props.data.protection > 0 && <><dt>Protection</dt><dd>{props.data.protection.toLocaleString()}</dd></>}
@@ -85,28 +85,24 @@ import { formatDurationSeconds } from '../data/formatTime';
 
 {props.data.locations.length > 0 && (
   <Dropdown summary={`Spawn locations (${props.data.locations.length})`}>
-    <table className="location-table">
-      <thead>
-        <tr>
-          <th>Map</th>
-          <th>Area</th>
-          <th>Coordinates</th>
-          <th>Instance</th>
-          <th>HP</th>
-        </tr>
-      </thead>
-      <tbody>
-        {props.data.locations.map((loc, i) => (
-          <tr key={i}>
-            <td><Minimap x={loc.x} y={loc.y} size={256} title={loc.areaZone} /></td>
-            <td>{loc.areaZone || <span className="muted">—</span>}</td>
-            <td className="muted">{loc.x}, {loc.y}, {loc.z}</td>
-            <td className="muted">{loc.instanceID || '—'}</td>
-            <td className="muted">{loc.hp ? loc.hp.toLocaleString() : '—'}</td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
+    <ul className="ref-list location-list">
+      {props.data.locations.map((loc, i) => (
+        <li key={i}>
+          <MapSpot
+            x={loc.x}
+            y={loc.y}
+            z={loc.z}
+            areaId={loc.areaId}
+            title={loc.areaZone}
+            instanceName={loc.instanceName}
+            instanceID={loc.instanceID}
+          />
+          {loc.hp > 0 && loc.hp !== props.data.displayHP && (
+            <span className="muted location-list-meta">HP {loc.hp.toLocaleString()}</span>
+          )}
+        </li>
+      ))}
+    </ul>
   </Dropdown>
 )}
 
