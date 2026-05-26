@@ -5,16 +5,18 @@ import MapSpot from '../components/MapSpot';
 
 # {props.data.name}
 
-<p className="entity-meta muted">
-  {props.data.icon ? <Icon src={props.data.icon} alt={props.data.name} size={192} /> : null}
-  {props.data.category && <span className="badge badge-category">{props.data.category}</span>}
-  {props.data.inGame === false && <span className="badge badge-warn">cut from final build</span>}
-  {props.data.locations.length > 0 && (
-    <span className="muted">
-      {props.data.locations.length} spawn{props.data.locations.length === 1 ? '' : 's'}
-    </span>
-  )}
-</p>
+<div className="entity-header">
+  {props.data.icon ? <div className="entity-header-icon"><Icon src={props.data.icon} alt={props.data.name} size={192} /></div> : null}
+  <div className="entity-meta muted">
+    {props.data.category && <span className="badge badge-category">{props.data.category}</span>}
+    {props.data.inGame === false && <span className="badge badge-warn">cut from final build</span>}
+    {props.data.locations.length > 0 && (
+      <span className="badge badge-category">
+        {props.data.locations.length} spawn{props.data.locations.length === 1 ? '' : 's'}
+      </span>
+    )}
+  </div>
+</div>
 
 {props.data.comment.trim() && (
   <blockquote className="npc-comment">"{props.data.comment.trim()}"</blockquote>

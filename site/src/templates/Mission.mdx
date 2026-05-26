@@ -5,12 +5,14 @@ import TaskList from '../components/TaskList';
 
 # {props.data.name}
 
-<p className="entity-meta muted">
-  <span>Level {props.data.level}</span>
-  {props.data.difficulty && <span>{props.data.difficulty}</span>}
-  {props.data.type && <span>{props.data.type}</span>}
-  {props.data.inGame === false && <span>cut from final build</span>}
-</p>
+<div className="entity-header">
+  <div className="entity-meta muted">
+    <span className="badge badge-category">Level {props.data.level}</span>
+    {props.data.difficulty && <span className="badge badge-category">{props.data.difficulty}</span>}
+    {props.data.type && <span className="badge badge-category">{props.data.type}</span>}
+    {props.data.inGame === false && <span className="badge badge-warn">cut from final build</span>}
+  </div>
+</div>
 
 <div className="mission-givers">
   {props.data.startNPC && (

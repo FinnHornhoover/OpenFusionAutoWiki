@@ -7,15 +7,17 @@ import { formatDurationSeconds } from '../data/formatTime';
 
 # {props.data.name}
 
-<p className="entity-meta muted">
-  {props.data.icon ? <Icon src={props.data.icon} alt={props.data.name} size={192} /> : null}
-  {props.data.colorType && <span className="badge badge-category">{props.data.colorType}</span>}
-  {props.data.level > 0 && <span className="muted">Level {props.data.level}</span>}
-  {props.data.inGame === false && <span className="badge badge-warn">cut from final build</span>}
-  {props.data.locations.length > 0 && (
-    <span className="muted">{props.data.locations.length} spawn{props.data.locations.length === 1 ? '' : 's'}</span>
-  )}
-</p>
+<div className="entity-header">
+  {props.data.icon ? <div className="entity-header-icon"><Icon src={props.data.icon} alt={props.data.name} size={192} /></div> : null}
+  <div className="entity-meta muted">
+    {props.data.colorType && <span className="badge badge-category">{props.data.colorType}</span>}
+    {props.data.level > 0 && <span className="badge badge-category">Level {props.data.level}</span>}
+    {props.data.inGame === false && <span className="badge badge-warn">cut from final build</span>}
+    {props.data.locations.length > 0 && (
+      <span className="badge badge-category">{props.data.locations.length} spawn{props.data.locations.length === 1 ? '' : 's'}</span>
+    )}
+  </div>
+</div>
 
 {props.data.comment && (
   <blockquote className="npc-comment">{props.data.comment}</blockquote>

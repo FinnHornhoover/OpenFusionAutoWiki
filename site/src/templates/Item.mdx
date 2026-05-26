@@ -6,14 +6,15 @@ import SimilarItems from '../components/SimilarItems';
 
 # {props.data.name}
 
-<p className="entity-meta muted">
-  {props.data.icon ? <Icon src={props.data.icon} alt={props.data.name} size={192} /> : null}
-  <span className="badge badge-category">{props.data.type}{props.data.displayType && props.data.displayType !== props.data.type ? ` · ${props.data.displayType}` : ''}</span>
-  {props.data.rarity && <span className="badge badge-category">{props.data.rarity}</span>}
-  {props.data.contentLevel > 0 && <span className="muted">Lv {props.data.contentLevel}</span>}
-  {props.data.requiredLevel > 0 && <span className="muted">requires Lv {props.data.requiredLevel}</span>}
-  {!props.data.obtainable && <span className="badge badge-warn">unobtainable</span>}
-</p>
+<div className="entity-header">
+  {props.data.icon ? <div className="entity-header-icon"><Icon src={props.data.icon} alt={props.data.name} size={192} /></div> : null}
+  <div className="entity-meta muted">
+    <span className="badge badge-category">{props.data.type}{props.data.displayType && props.data.displayType !== props.data.type ? ` · ${props.data.displayType}` : ''}</span>
+    {props.data.rarity && <span className="badge badge-category">{props.data.rarity}</span>}
+    {props.data.contentLevel > 0 && <span className="badge badge-category">Level {props.data.contentLevel}</span>}
+    {!props.data.obtainable && <span className="badge badge-warn">unobtainable</span>}
+  </div>
+</div>
 
 {props.data.description && (
   <blockquote className="npc-comment">{props.data.description}</blockquote>
