@@ -128,6 +128,22 @@ export interface NpcVendorItem {
   itemKind: string;
 }
 
+export interface NpcTransportSpot {
+  areaZone: string;
+  areaId: string;
+  x: number;
+  y: number;
+  z: number;
+}
+
+export interface NpcTransportRoute {
+  routeId: number;
+  routeName: string;
+  moveType: string;
+  start: NpcTransportSpot | null;
+  landing: NpcTransportSpot | null;
+}
+
 export interface Npc {
   id: number;
   name: string;
@@ -142,6 +158,7 @@ export interface Npc {
   missionBarkers: Array<{ mission: Ref; text: string }>;
 
   vendorItems: NpcVendorItem[];
+  transportRoutes: NpcTransportRoute[];
 
   startedMissions: Ref[];
   journaledMissions: Ref[];
