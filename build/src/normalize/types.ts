@@ -55,8 +55,16 @@ export interface MissionTask {
   nextTaskOnEnd: number;
   timeLimitSeconds: number;
   waypointNPC: Ref | null;
-  /** Spawn point for the waypoint NPC, used by the task minimap. */
-  waypointPoint: { x: number; y: number; areaZone: string } | null;
+  /** Spawn point for the waypoint NPC, used by the task map. */
+  waypointPoint: {
+    x: number;
+    y: number;
+    z: number;
+    areaZone: string;
+    areaId: string;
+    instanceID: number;
+    instanceName: string;
+  } | null;
   escortNPC: Ref | null;
   requiredInstance: Ref | null;
   monsterRequirements: Array<{ ref: Ref; killCount: number }>;

@@ -83,7 +83,7 @@ async function main(): Promise<void> {
     const grouping = buildNpcGrouping(d.path);
     const instanceNames = buildInstanceNameIndex(d.path);
     const npcNameIndex = buildNpcNameIndex(d.path, iconMap, grouping);
-    const npcLocations = buildNpcLocationMap(d.path, grouping);
+    const npcLocations = buildNpcLocationMap(d.path, grouping, instanceNames);
 
     const m = await normalizeMissions(d.path, slug, iconMap, npcNameIndex, grouping, npcLocations);
     totalMissions += m.count;

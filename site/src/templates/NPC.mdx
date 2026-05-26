@@ -99,31 +99,20 @@ import MapSpot from '../components/MapSpot';
 
 {props.data.locations.length > 0 && (
   <Dropdown summary={`Spawn locations (${props.data.locations.length})`}>
-    <table className="location-table">
-      <thead>
-        <tr>
-          <th>Map</th>
-          <th>Area</th>
-        </tr>
-      </thead>
-      <tbody>
-        {props.data.locations.map((loc, i) => (
-          <tr key={i}>
-            <td>
-              <MapSpot
-                x={loc.x}
-                y={loc.y}
-                z={loc.z}
-                areaId={loc.areaId}
-                title={loc.areaZone}
-                instanceName={loc.instanceName}
-                instanceID={loc.instanceID}
-              />
-            </td>
-            <td>{loc.areaZone || <span className="muted">—</span>}</td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
+    <ul className="ref-list location-list">
+      {props.data.locations.map((loc, i) => (
+        <li key={i}>
+          <MapSpot
+            x={loc.x}
+            y={loc.y}
+            z={loc.z}
+            areaId={loc.areaId}
+            title={loc.areaZone}
+            instanceName={loc.instanceName}
+            instanceID={loc.instanceID}
+          />
+        </li>
+      ))}
+    </ul>
   </Dropdown>
 )}

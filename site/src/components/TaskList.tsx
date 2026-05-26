@@ -1,7 +1,7 @@
 import type { GuideEmail, MissionTask, TaskMessage } from '../data/types';
 import Dropdown from './Dropdown';
 import EntityLink from './EntityLink';
-import Minimap from './Minimap';
+import MapSpot from './MapSpot';
 
 function formatTimeLimit(seconds: number): string | null {
   if (!seconds || seconds <= 0) return null;
@@ -97,11 +97,15 @@ function TaskItem({ task, index }: { task: MissionTask; index: number }) {
           <span className="task-label">Go to:</span>
           <EntityLink entity={task.waypointNPC} />
           {task.waypointPoint && (
-            <Minimap
+            <MapSpot
               x={task.waypointPoint.x}
               y={task.waypointPoint.y}
+              z={task.waypointPoint.z}
               size={256}
+              areaId={task.waypointPoint.areaId}
               title={task.waypointPoint.areaZone}
+              instanceName={task.waypointPoint.instanceName}
+              instanceID={task.waypointPoint.instanceID}
             />
           )}
         </div>
