@@ -26,6 +26,7 @@ export default function MapSpot({
   z = 0,
   areaId = '',
   title,
+  instanceName = '',
   instanceID = 0,
   points = [],
   size = 256,
@@ -33,7 +34,9 @@ export default function MapSpot({
 }: MapSpotProps) {
   const { build = '' } = useParams();
   const areaLabel = title && title !== 'Unknown - Unknown' ? <span className="map-spot-area">{title}</span> : null;
-  const instanceLabel = instanceID > 0 ? <span className="map-spot-instance">Instance {instanceID}</span> : null;
+  const instanceLabel = instanceName
+    ? <span className="map-spot-instance">{instanceName}</span>
+    : instanceID > 0 ? <span className="map-spot-instance">Instance {instanceID}</span> : null;
   const map = <Minimap x={x} y={y} size={size} extent={extent} points={points} title={title} />;
   const coordinates = <span className="map-spot-coordinates">({x}, {y}, {z})</span>;
   const content = (

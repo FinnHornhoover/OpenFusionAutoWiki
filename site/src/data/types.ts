@@ -316,6 +316,14 @@ export interface MobIndexEntry {
 export interface AreaNpcEntry {
   ref: Ref;
   instanceCount: number;
+  x: number;
+  y: number;
+  z: number;
+  areaId: string;
+  areaZone: string;
+  instanceID: number;
+  instanceName: string;
+  points: Array<{ x: number; y: number }>;
 }
 
 export interface AreaMobEntry {
@@ -323,6 +331,27 @@ export interface AreaMobEntry {
   instanceCount: number;
   level: number;
   hp: number;
+  x: number;
+  y: number;
+  z: number;
+  areaId: string;
+  areaZone: string;
+  instanceID: number;
+  instanceName: string;
+  points: Array<{ x: number; y: number }>;
+}
+
+export interface AreaVendorEntry {
+  ref: Ref;
+  instanceCount: number;
+  x: number;
+  y: number;
+  z: number;
+  areaId: string;
+  areaZone: string;
+  instanceID: number;
+  instanceName: string;
+  points: Array<{ x: number; y: number }>;
 }
 
 export interface AreaEggEntry {
@@ -335,7 +364,10 @@ export interface AreaEggEntry {
   x: number;
   y: number;
   z: number;
+  areaId: string;
+  areaZone: string;
   instanceID: number;
+  instanceName: string;
 }
 
 export interface AreaTransport {
@@ -377,7 +409,7 @@ export interface Area {
 
   npcs: AreaNpcEntry[];
   mobs: AreaMobEntry[];
-  vendors: Ref[];
+  vendors: AreaVendorEntry[];
   eggs: AreaEggEntry[];
   transportation: AreaTransport[];
   instanceWarps: AreaInstanceWarp[];

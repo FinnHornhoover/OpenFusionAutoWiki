@@ -387,6 +387,14 @@ export interface MobIndexEntry {
 export interface AreaNpcEntry {
   ref: Ref;
   instanceCount: number;
+  x: number;
+  y: number;
+  z: number;
+  areaId: string;
+  areaZone: string;
+  instanceID: number;
+  instanceName: string;
+  points: Array<{ x: number; y: number }>;
 }
 
 /** A mob type appearing in an area, with how many instances and (when uniform) level/HP. */
@@ -395,6 +403,27 @@ export interface AreaMobEntry {
   instanceCount: number;
   level: number;
   hp: number;
+  x: number;
+  y: number;
+  z: number;
+  areaId: string;
+  areaZone: string;
+  instanceID: number;
+  instanceName: string;
+  points: Array<{ x: number; y: number }>;
+}
+
+export interface AreaVendorEntry {
+  ref: Ref;
+  instanceCount: number;
+  x: number;
+  y: number;
+  z: number;
+  areaId: string;
+  areaZone: string;
+  instanceID: number;
+  instanceName: string;
+  points: Array<{ x: number; y: number }>;
 }
 
 /** A single egg/crate location in the area. */
@@ -408,7 +437,10 @@ export interface AreaEggEntry {
   x: number;
   y: number;
   z: number;
+  areaId: string;
+  areaZone: string;
   instanceID: number;
+  instanceName: string;
 }
 
 /** A transportation route that has at least one stop in this area. */
@@ -459,7 +491,7 @@ export interface Area {
 
   npcs: AreaNpcEntry[];
   mobs: AreaMobEntry[];
-  vendors: Ref[];
+  vendors: AreaVendorEntry[];
   eggs: AreaEggEntry[];
   transportation: AreaTransport[];
   instanceWarps: AreaInstanceWarp[];

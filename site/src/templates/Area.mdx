@@ -2,6 +2,7 @@ import Dropdown from '../components/Dropdown';
 import EntityLink from '../components/EntityLink';
 import Icon from '../components/Icon';
 import InlineMeta from '../components/InlineMeta';
+import MapSpot from '../components/MapSpot';
 import Minimap from '../components/Minimap';
 import { formatDurationSeconds } from '../data/formatTime';
 
@@ -75,6 +76,7 @@ import { formatDurationSeconds } from '../data/formatTime';
         <tr>
           <th>NPC</th>
           <th>Count</th>
+          <th>Coordinates</th>
         </tr>
       </thead>
       <tbody>
@@ -82,6 +84,18 @@ import { formatDurationSeconds } from '../data/formatTime';
           <tr key={n.ref.id}>
             <td><EntityLink entity={n.ref} /></td>
             <td>{n.instanceCount.toLocaleString()}</td>
+            <td>
+              <MapSpot
+                x={n.x}
+                y={n.y}
+                z={n.z}
+                areaId={n.areaId}
+                title={n.areaZone}
+                instanceName={n.instanceName}
+                instanceID={n.instanceID}
+                points={n.points}
+              />
+            </td>
           </tr>
         ))}
       </tbody>
@@ -95,12 +109,27 @@ import { formatDurationSeconds } from '../data/formatTime';
       <thead>
         <tr>
           <th>Vendor</th>
+          <th>Count</th>
+          <th>Coordinates</th>
         </tr>
       </thead>
       <tbody>
         {props.data.vendors.map((v) => (
-          <tr key={v.id}>
-            <td><EntityLink entity={v} /></td>
+          <tr key={v.ref.id}>
+            <td><EntityLink entity={v.ref} /></td>
+            <td>{v.instanceCount.toLocaleString()}</td>
+            <td>
+              <MapSpot
+                x={v.x}
+                y={v.y}
+                z={v.z}
+                areaId={v.areaId}
+                title={v.areaZone}
+                instanceName={v.instanceName}
+                instanceID={v.instanceID}
+                points={v.points}
+              />
+            </td>
           </tr>
         ))}
       </tbody>
@@ -117,6 +146,7 @@ import { formatDurationSeconds } from '../data/formatTime';
           <th>Count</th>
           <th>Level</th>
           <th>HP</th>
+          <th>Coordinates</th>
         </tr>
       </thead>
       <tbody>
@@ -126,6 +156,18 @@ import { formatDurationSeconds } from '../data/formatTime';
             <td>{m.instanceCount.toLocaleString()}</td>
             <td>{m.level > 0 ? m.level : <span className="muted">—</span>}</td>
             <td>{m.hp > 0 ? m.hp.toLocaleString() : <span className="muted">—</span>}</td>
+            <td>
+              <MapSpot
+                x={m.x}
+                y={m.y}
+                z={m.z}
+                areaId={m.areaId}
+                title={m.areaZone}
+                instanceName={m.instanceName}
+                instanceID={m.instanceID}
+                points={m.points}
+              />
+            </td>
           </tr>
         ))}
       </tbody>
@@ -176,6 +218,7 @@ import { formatDurationSeconds } from '../data/formatTime';
           <th>Contains</th>
           <th>Power</th>
           <th>Duration</th>
+          <th>Coordinates</th>
         </tr>
       </thead>
       <tbody>
@@ -193,6 +236,17 @@ import { formatDurationSeconds } from '../data/formatTime';
               ) : <span className="muted">—</span>}
             </td>
             <td>{e.effectDuration > 0 ? formatDurationSeconds(e.effectDuration) : <span className="muted">—</span>}</td>
+            <td>
+              <MapSpot
+                x={e.x}
+                y={e.y}
+                z={e.z}
+                areaId={e.areaId}
+                title={e.areaZone}
+                instanceName={e.instanceName}
+                instanceID={e.instanceID}
+              />
+            </td>
           </tr>
         ))}
       </tbody>
