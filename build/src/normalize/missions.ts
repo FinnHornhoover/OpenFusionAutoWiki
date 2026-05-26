@@ -2,7 +2,6 @@ import AdmZip from 'adm-zip';
 
 import { chunkOf, writeChunks, writeIndex } from '../chunk.js';
 import type { IconMap } from '../icons.js';
-import type { NpcGrouping } from './npcGrouping.js';
 import type { NpcLocationMap } from './npcLocations.js';
 import type { NpcNameIndex } from './npcNameIndex.js';
 import {
@@ -145,10 +144,10 @@ interface RawMission {
   Tasks?: Record<string, RawTask>;
 }
 
-function normalizeMessage(raw: RawTaskMessage | undefined, iconMap: IconMap, grouping: NpcGrouping): TaskMessage | null {
+function normalizeMessage(raw: RawTaskMessage | undefined, iconMap: IconMap): TaskMessage | null {
   if (!raw) return null;
   const type = (raw.Type ?? 'None').trim();
-  const sender = npcRef(raw.SendNPCID ?? 0, raw.SendNPCName ?? '', raw.SendNPCIcon ?? '', iconMap, grouping);
+  const sender = npcRef(raw.SendNPCID ?? 0, raw.SendNPCName ?? '', raw.SendNPCIcon ?? '', iconMap);
   const journal = {
     detailedMission: raw.JournalDetailedMissionDescription ?? '',
     detailedTask: raw.JournalDetailedTaskDescription ?? '',
@@ -162,7 +161,6 @@ function normalizeMessage(raw: RawTaskMessage | undefined, iconMap: IconMap, gro
     raw.DialogBubbleNPCName ?? '',
     raw.DialogBubbleNPCIcon ?? '',
     iconMap,
-    grouping,
   );
   const bubble = bubbleText || bubbleNpc ? { sender: bubbleNpc, text: bubbleText } : null;
   const anyContent =
@@ -195,7 +193,6 @@ function normalizeTask(
   raw: RawTask,
   iconMap: IconMap,
   npcNameIndex: NpcNameIndex,
-  grouping: NpcGrouping,
   npcLocations: NpcLocationMap,
 ): MissionTask {
   const monsterRequirements = Object.entries(raw.QuestItemMonsterRequirements ?? {})
@@ -212,7 +209,6 @@ function normalizeTask(
     raw.WaypointNPCName ?? '',
     raw.WaypointNPCIcon ?? '',
     iconMap,
-    grouping,
   );
   const wpPoint = wpRef ? npcLocations.get(wpRef.id as number) ?? null : null;
 
@@ -230,14 +226,13 @@ function normalizeTask(
       raw.EscortNPCName ?? '',
       raw.EscortNPCIcon ?? '',
       iconMap,
-      grouping,
     ),
     requiredInstance: instanceRef(raw.RequiredInstanceID ?? 0, raw.RequiredInstance ?? ''),
     monsterRequirements,
     messages: {
-      start: normalizeMessage(raw.MessageOnStart, iconMap, grouping),
-      end: normalizeMessage(raw.MessageOnEnd, iconMap, grouping),
-      fail: normalizeMessage(raw.MessageOnFail, iconMap, grouping),
+      start: normalizeMessage(raw.MessageOnStart, iconMap),
+      end: normalizeMessage(raw.MessageOnEnd, iconMap),
+      fail: normalizeMessage(raw.MessageOnFail, iconMap),
     },
     guideEmails: normalizeGuideEmails(raw, npcNameIndex),
   };
@@ -247,13 +242,12 @@ function normalizeMission(
   raw: RawMission,
   iconMap: IconMap,
   npcNameIndex: NpcNameIndex,
-  grouping: NpcGrouping,
   npcLocations: NpcLocationMap,
   nanoRefs: Map<number, Ref>,
 ): Mission {
-  const startNPC = npcRef(raw.MissionStartNPCID ?? 0, raw.MissionStartNPCName ?? '', raw.MissionStartNPCIcon ?? '', iconMap, grouping);
-  const journalNPC = npcRef(raw.MissionJournalNPCID ?? 0, raw.MissionJournalNPCName ?? '', raw.MissionJournalNPCIcon ?? '', iconMap, grouping);
-  const endNPC = npcRef(raw.MissionEndNPCID ?? 0, raw.MissionEndNPCName ?? '', raw.MissionEndNPCIcon ?? '', iconMap, grouping);
+  const startNPC = npcRef(raw.MissionStartNPCID ?? 0, raw.MissionStartNPCName ?? '', raw.MissionStartNPCIcon ?? '', iconMap);
+  const journalNPC = npcRef(raw.MissionJournalNPCID ?? 0, raw.MissionJournalNPCName ?? '', raw.MissionJournalNPCIcon ?? '', iconMap);
+  const endNPC = npcRef(raw.MissionEndNPCID ?? 0, raw.MissionEndNPCName ?? '', raw.MissionEndNPCIcon ?? '', iconMap);
 
   const rewards = raw.Rewards ?? {};
   const items = (rewards.Items ?? [])
@@ -291,14 +285,14 @@ function normalizeMission(
   const barkers = Object.entries(raw.Barkers ?? {})
     .map(([key, text]) => {
       const { id, name } = parseCompoundKey(key);
-      const npc = npcRef(id, name, '', iconMap, grouping);
+      const npc = npcRef(id, name, '', iconMap);
       if (!npc) return null;
       return { npc, text };
     })
     .filter((x): x is { npc: Ref; text: string } => x !== null);
 
   const tasks = Object.values(raw.Tasks ?? {})
-    .map((t) => normalizeTask(t, iconMap, npcNameIndex, grouping, npcLocations))
+    .map((t) => normalizeTask(t, iconMap, npcNameIndex, npcLocations))
     .sort((a, b) => a.id - b.id);
 
   return {
@@ -380,7 +374,6 @@ export async function normalizeMissions(
   slug: string,
   iconMap: IconMap,
   npcNameIndex: NpcNameIndex,
-  grouping: NpcGrouping,
   npcLocations: NpcLocationMap,
 ): Promise<{
   count: number;
@@ -401,7 +394,7 @@ export async function normalizeMissions(
   const nanoRefs = buildNanoRefIndex(zip, iconMap);
 
   const missions: Mission[] = Object.values(raw)
-    .map((m) => normalizeMission(m, iconMap, npcNameIndex, grouping, npcLocations, nanoRefs))
+    .map((m) => normalizeMission(m, iconMap, npcNameIndex, npcLocations, nanoRefs))
     .sort((a, b) => a.id - b.id);
 
   // Build the inverted indexes:

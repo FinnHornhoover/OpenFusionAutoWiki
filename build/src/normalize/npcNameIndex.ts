@@ -1,7 +1,6 @@
 import AdmZip from 'adm-zip';
 
 import { iconFor } from './refs.js';
-import type { NpcGrouping } from './npcGrouping.js';
 import type { Ref } from './types.js';
 import type { IconMap } from '../icons.js';
 
@@ -22,7 +21,6 @@ interface RawNpcType {
 export function buildNpcNameIndex(
   zipPath: string,
   iconMap: IconMap,
-  grouping: NpcGrouping,
 ): NpcNameIndex {
   const zip = new AdmZip(zipPath);
   const entry = zip.getEntry('info/npc_type_info.json');
@@ -31,37 +29,28 @@ export function buildNpcNameIndex(
 
   const raw = JSON.parse(entry.getData().toString('utf8')) as Record<string, RawNpcType>;
 
-  // Collapse across grouping first: a name that maps to >1 canonical ID is ambiguous;
-  // a name that maps to exactly one canonical ID resolves cleanly even if many alias
-  // IDs share the same display name.
-  const canonByName = new Map<string, number>();
-  const ambiguous = new Set<string>();
+  const byName = new Map<string, RawNpcType[]>();
   for (const t of Object.values(raw)) {
     if (!t.InGame) continue;
     const name = (t.Name ?? '').trim();
     if (!name) continue;
     const key = name.toLowerCase();
-    const canonicalId = grouping.memberToCanonical.get(t.ID) ?? t.ID;
-    const existing = canonByName.get(key);
-    if (existing === undefined) canonByName.set(key, canonicalId);
-    else if (existing !== canonicalId) ambiguous.add(key);
+    const list = byName.get(key);
+    if (list) list.push(t);
+    else byName.set(key, [t]);
   }
 
-  // Re-walk to pick representative metadata for each unambiguous name.
-  for (const t of Object.values(raw)) {
-    if (!t.InGame) continue;
+  for (const [key, matches] of byName) {
+    if (matches.length !== 1) continue;
+    const t = matches[0];
     const name = (t.Name ?? '').trim();
-    if (!name) continue;
-    const key = name.toLowerCase();
-    if (ambiguous.has(key) || index.has(key)) continue;
-    const canonicalId = canonByName.get(key);
-    if (canonicalId === undefined || canonicalId !== t.ID) continue;
     index.set(key, {
       type: 'npc',
-      id: canonicalId,
+      id: t.ID,
       name,
       icon: iconFor(t.Icon ?? '', iconMap),
     });
   }
+
   return index;
 }

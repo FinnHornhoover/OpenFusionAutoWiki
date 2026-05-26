@@ -156,7 +156,6 @@ export interface Npc {
 
   locations: NpcLocation[];
 
-  aliasIds: number[];
 }
 
 export interface NpcIndexEntry {

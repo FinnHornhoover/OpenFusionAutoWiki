@@ -166,8 +166,6 @@ export interface Npc {
 
   locations: NpcLocation[];
 
-  /** Other NPC type-IDs that share this (category, name) and have been merged here. */
-  aliasIds: number[];
 }
 
 export interface NpcIndexEntry {

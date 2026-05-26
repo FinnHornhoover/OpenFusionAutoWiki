@@ -15,7 +15,6 @@ import { normalizeMissions } from './normalize/missions.js';
 import { normalizeMobs } from './normalize/mobs.js';
 import { normalizeNanos } from './normalize/nanos.js';
 import { normalizeNpcs } from './normalize/npcs.js';
-import { buildNpcGrouping } from './normalize/npcGrouping.js';
 import { buildNpcLocationMap } from './normalize/npcLocations.js';
 import { buildNpcNameIndex } from './normalize/npcNameIndex.js';
 import { writeSearchIndex } from './normalize/search.js';
@@ -58,7 +57,6 @@ async function main(): Promise<void> {
   let totalNpcChunks = 0;
   let totalVendors = 0;
   let totalLinkedNpcs = 0;
-  let totalMergedNpcs = 0;
   let totalItems = 0;
   let totalItemChunks = 0;
   let totalItemSources = 0;
@@ -79,24 +77,21 @@ async function main(): Promise<void> {
     const slug = slugForZip(d.asset.name);
     const iconMap = maps[slug] ?? {};
 
-    // Shared NPC grouping used by missions, NPCs, items, and area pages.
-    const grouping = buildNpcGrouping(d.path);
     const instanceNames = buildInstanceNameIndex(d.path);
-    const npcNameIndex = buildNpcNameIndex(d.path, iconMap, grouping);
-    const npcLocations = buildNpcLocationMap(d.path, grouping, instanceNames);
+    const npcNameIndex = buildNpcNameIndex(d.path, iconMap);
+    const npcLocations = buildNpcLocationMap(d.path, instanceNames);
 
-    const m = await normalizeMissions(d.path, slug, iconMap, npcNameIndex, grouping, npcLocations);
+    const m = await normalizeMissions(d.path, slug, iconMap, npcNameIndex, npcLocations);
     totalMissions += m.count;
     totalMissionChunks += m.chunks;
 
-    const n = await normalizeNpcs(d.path, slug, iconMap, grouping, m.npcMissions, instanceNames);
+    const n = await normalizeNpcs(d.path, slug, iconMap, m.npcMissions, instanceNames);
     totalNpcs += n.count;
     totalNpcChunks += n.chunks;
     totalVendors += n.vendors;
     totalLinkedNpcs += n.linked;
-    totalMergedNpcs += n.merged;
 
-    const it = await normalizeItems(d.path, slug, iconMap, grouping, instanceNames);
+    const it = await normalizeItems(d.path, slug, iconMap, instanceNames);
     totalItems += it.count;
     totalItemChunks += it.chunks;
     totalItemSources += it.sourceCount;
@@ -107,7 +102,7 @@ async function main(): Promise<void> {
     totalLinkedMobs += mb.linked;
     totalDroppingMobs += mb.dropping;
 
-    const ar = await normalizeAreas(d.path, slug, iconMap, grouping, m.npcMissions);
+    const ar = await normalizeAreas(d.path, slug, iconMap, m.npcMissions);
     totalAreas += ar.count;
     totalAreaChunks += ar.chunks;
     totalAreasWithMissions += ar.withMissions;
@@ -126,7 +121,7 @@ async function main(): Promise<void> {
     log.info(`${slug.padEnd(46)} missions=${m.count} npcs=${n.count} items=${it.count} mobs=${mb.count} areas=${ar.count} nanos=${na.count} search=${search.count}`);
   }
   log.done(`missions: ${totalMissions} → ${totalMissionChunks} chunks`);
-  log.done(`npcs: ${totalNpcs} → ${totalNpcChunks} chunks; ${totalLinkedNpcs} link to missions; ${totalVendors} vendors; ${totalMergedNpcs} merged groups`);
+  log.done(`npcs: ${totalNpcs} → ${totalNpcChunks} chunks; ${totalLinkedNpcs} link to missions; ${totalVendors} vendors`);
   log.done(`items: ${totalItems} → ${totalItemChunks} chunks; ${totalItemSources} source entries embedded`);
   log.done(`mobs: ${totalMobs} → ${totalMobChunks} chunks; ${totalLinkedMobs} link to missions; ${totalDroppingMobs} drop items`);
   log.done(`areas: ${totalAreas} → ${totalAreaChunks} chunks; ${totalAreasWithMissions} host missions; ${totalAreasWithTransport} have transport`);

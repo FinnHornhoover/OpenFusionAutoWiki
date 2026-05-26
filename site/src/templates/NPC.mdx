@@ -124,14 +124,6 @@ import MapSpot from '../components/MapSpot';
   </Dropdown>
 )}
 
-{props.data.aliasIds.length > 0 && (
-  <p className="muted alias-ids">
-    Also known internally as type ID{props.data.aliasIds.length === 1 ? '' : 's'}:{' '}
-    <code>{props.data.id}</code> (this page){props.data.aliasIds.map((id) => (
-      <span key={id}>, <code>{id}</code></span>
-    ))}
-  </p>
-)}
 
 {props.data.locations.length > 0 && (
   <Dropdown summary={`Spawn locations (${props.data.locations.length})`}>

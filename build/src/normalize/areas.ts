@@ -16,7 +16,6 @@ import type {
   Ref,
 } from './types.js';
 import type { IconMap } from '../icons.js';
-import type { NpcGrouping } from './npcGrouping.js';
 import type { NpcMissionsMap } from './missions.js';
 
 interface RawAreaInfo {
@@ -125,7 +124,7 @@ interface RawTransportRoute {
   InGame?: boolean;
   MoveType?: string;
   NPCID?: number;
-  NPCType?: { Name?: string; Icon?: string } | null;
+  NPCType?: { Name?: string; Icon?: string; Category?: string } | null;
   StartLocation?: { Name?: string; AreaZone?: string; X?: number; Y?: number; Z?: number };
   Transportations?: Record<string, {
     AreaZone?: string;
@@ -143,9 +142,6 @@ interface RawInstance {
   Name?: string;
 }
 
-function canonNpcId(id: number, grouping: NpcGrouping): number {
-  return grouping.memberToCanonical.get(id) ?? id;
-}
 
 /** True when a region has at least one piece of in-area content. */
 function isPopulated(r: RawAreaInfo): boolean {
@@ -218,6 +214,12 @@ function mergeRegions(regions: RawAreaInfo[]): RawAreaInfo {
   return merged;
 }
 
+function hasConsistentTransportOperator(route: RawTransportRoute): boolean {
+  const category = route.NPCType?.Category ?? '';
+  const moveType = route.MoveType ?? '';
+  return !category || !moveType || category === moveType;
+}
+
 function median(values: number[]): number {
   if (values.length === 0) return 0;
   const sorted = values.slice().sort((a, b) => a - b);
@@ -233,12 +235,11 @@ function sharedInstanceLabel(instanceIds: number[], instanceIndex: Map<number, R
   return { instanceID: 0, instanceName: unique.length > 1 ? 'Multiple instances' : '' };
 }
 
-/** Aggregate NPC instances by canonical type ID. */
+/** Aggregate NPC instances by type ID. */
 function buildAreaNpcs(
   npcs: Record<string, RawAreaNpc> | undefined,
   npcTypes: Record<string, RawAreaNpcType> | undefined,
   iconMap: IconMap,
-  grouping: NpcGrouping,
   areaId: string,
   fullName: string,
   instanceIndex: Map<number, RawInstance>,
@@ -246,13 +247,13 @@ function buildAreaNpcs(
   const counts = new Map<number, { name: string; icon: string; points: RawAreaNpc[] }>();
   for (const inst of Object.values(npcs ?? {})) {
     if (!inst || typeof inst !== 'object') continue;
-    const canon = canonNpcId(inst.TypeID, grouping);
-    const meta = npcTypes?.[String(inst.TypeID)] ?? npcTypes?.[String(canon)];
-    const name = meta?.Name ?? inst.TypeName ?? `NPC #${canon}`;
+    const tid = inst.TypeID;
+    const meta = npcTypes?.[String(tid)];
+    const name = meta?.Name ?? inst.TypeName ?? `NPC #${tid}`;
     const icon = iconFor(meta?.Icon ?? inst.TypeIcon ?? '', iconMap);
-    const cur = counts.get(canon);
+    const cur = counts.get(tid);
     if (cur) cur.points.push(inst);
-    else counts.set(canon, { name, icon, points: [inst] });
+    else counts.set(tid, { name, icon, points: [inst] });
   }
   return [...counts.entries()]
     .map(([id, { name, icon, points }]) => {
@@ -276,7 +277,6 @@ function buildAreaVendors(
   npcs: Record<string, RawAreaNpc> | undefined,
   npcTypes: Record<string, RawAreaNpcType> | undefined,
   iconMap: IconMap,
-  grouping: NpcGrouping,
   areaId: string,
   fullName: string,
   instanceIndex: Map<number, RawInstance>,
@@ -284,14 +284,14 @@ function buildAreaVendors(
   const counts = new Map<number, { name: string; icon: string; points: RawAreaNpc[] }>();
   for (const inst of Object.values(npcs ?? {})) {
     if (!inst || typeof inst !== 'object') continue;
-    const canon = canonNpcId(inst.TypeID, grouping);
-    const meta = npcTypes?.[String(inst.TypeID)] ?? npcTypes?.[String(canon)];
+    const tid = inst.TypeID;
+    const meta = npcTypes?.[String(tid)];
     if (!meta || !Array.isArray(meta.VendorItems) || meta.VendorItems.length === 0) continue;
-    const name = meta.Name ?? inst.TypeName ?? `NPC #${canon}`;
+    const name = meta.Name ?? inst.TypeName ?? `NPC #${tid}`;
     const icon = iconFor(meta.Icon ?? inst.TypeIcon ?? '', iconMap);
-    const cur = counts.get(canon);
+    const cur = counts.get(tid);
     if (cur) cur.points.push(inst);
-    else counts.set(canon, { name, icon, points: [inst] });
+    else counts.set(tid, { name, icon, points: [inst] });
   }
   return [...counts.entries()]
     .map(([id, { name, icon, points }]) => {
@@ -399,7 +399,7 @@ function buildTransportIndex(
 ): Map<string, AreaTransport[]> {
   const out = new Map<string, AreaTransport[]>();
   for (const [rid, route] of Object.entries(rawTransport)) {
-    if (!route || !route.InGame) continue;
+    if (!route || !route.InGame || !hasConsistentTransportOperator(route)) continue;
     const routeId = parseInt(rid, 10);
     const startNpc: Ref | null = route.NPCID && route.NPCID > 0 && route.NPCType
       ? { type: 'npc', id: route.NPCID, name: route.NPCType.Name ?? `NPC #${route.NPCID}`, icon: iconFor(route.NPCType.Icon ?? '', iconMap) }
@@ -452,7 +452,6 @@ function buildAreaInstanceWarps(
   warps: Record<string, RawAreaInstanceWarp> | undefined,
   instanceIndex: Map<number, RawInstance>,
   iconMap: IconMap,
-  grouping: NpcGrouping,
 ): AreaInstanceWarp[] {
   const out: AreaInstanceWarp[] = [];
   for (const w of Object.values(warps ?? {})) {
@@ -462,7 +461,7 @@ function buildAreaInstanceWarps(
     const npc: Ref | null = w.NPCTypeID && w.NPCTypeID > 0
       ? {
         type: 'npc',
-        id: canonNpcId(w.NPCTypeID, grouping),
+        id: w.NPCTypeID,
         name: w.NPCName ?? `NPC #${w.NPCTypeID}`,
         icon: iconFor(w.NPCIcon ?? '', iconMap),
       }
@@ -540,7 +539,6 @@ export async function normalizeAreas(
   zipPath: string,
   slug: string,
   iconMap: IconMap,
-  grouping: NpcGrouping,
   npcMissions: NpcMissionsMap,
 ): Promise<{ count: number; chunks: number; withMissions: number; withTransport: number }> {
   const zip = new AdmZip(zipPath);
@@ -574,15 +572,15 @@ export async function normalizeAreas(
     if (!raw) continue;
 
     const id = slugify(fullName);
-    const npcs = buildAreaNpcs(raw.NPCs, raw.NPCTypes, iconMap, grouping, id, fullName, instanceIndex);
+    const npcs = buildAreaNpcs(raw.NPCs, raw.NPCTypes, iconMap, id, fullName, instanceIndex);
     const mobs = buildAreaMobs(raw.Mobs, raw.MobTypes, iconMap, id, fullName, instanceIndex);
-    const vendors = buildAreaVendors(raw.NPCs, raw.NPCTypes, iconMap, grouping, id, fullName, instanceIndex);
+    const vendors = buildAreaVendors(raw.NPCs, raw.NPCTypes, iconMap, id, fullName, instanceIndex);
     const eggs = buildAreaEggs(raw.Eggs, raw.EggTypes, iconMap, id, fullName, instanceIndex);
     const transportation = transportIndex.get(fullName) ?? [];
-    const instanceWarps = buildAreaInstanceWarps(raw.InstanceWarps, instanceIndex, iconMap, grouping);
+    const instanceWarps = buildAreaInstanceWarps(raw.InstanceWarps, instanceIndex, iconMap);
     const infectedZone = summarizeInfectedZone(raw.InfectedZone, infectedZones);
 
-    // Missions starting in this area: any mission whose startNPC.id is one of our canonical NPC type IDs.
+    // Missions starting in this area: any mission whose startNPC.id is one of our NPC type IDs.
     const npcIdSet = new Set(npcs.map((n) => n.ref.id as number));
     const missionsStartingMap = new Map<number, Ref>();
     for (const npcId of npcIdSet) {

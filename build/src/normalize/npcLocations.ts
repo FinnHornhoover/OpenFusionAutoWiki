@@ -1,7 +1,6 @@
 import AdmZip from 'adm-zip';
 
 import type { InstanceNameIndex } from './instanceLookup.js';
-import type { NpcGrouping } from './npcGrouping.js';
 import { slugify } from './slug.js';
 
 interface RawNpcInstance {
@@ -23,12 +22,11 @@ export interface NpcPoint {
   instanceName: string;
 }
 
-/** First known spawn point per canonical NPC type, used for mission waypoints. */
+/** First known spawn point per NPC type, used for mission waypoints. */
 export type NpcLocationMap = Map<number, NpcPoint>;
 
 export function buildNpcLocationMap(
   zipPath: string,
-  grouping: NpcGrouping,
   instanceNames: InstanceNameIndex,
 ): NpcLocationMap {
   const zip = new AdmZip(zipPath);
@@ -40,11 +38,10 @@ export function buildNpcLocationMap(
     if (!typeBucket || typeof typeBucket !== 'object') continue;
     for (const inst of Object.values(typeBucket)) {
       if (!inst || typeof inst !== 'object') continue;
-      const canonical = grouping.memberToCanonical.get(inst.TypeID) ?? inst.TypeID;
-      if (out.has(canonical)) continue; // first spawn wins
+      if (out.has(inst.TypeID)) continue; // first spawn wins
       const areaZone = inst.AreaZone ?? '';
       const instanceID = inst.InstanceID ?? 0;
-      out.set(canonical, {
+      out.set(inst.TypeID, {
         x: inst.X ?? 0,
         y: inst.Y ?? 0,
         z: inst.Z ?? 0,
