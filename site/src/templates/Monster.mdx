@@ -2,6 +2,7 @@ import Dropdown from '../components/Dropdown';
 import DropChance from '../components/DropChance';
 import EntityLink from '../components/EntityLink';
 import Icon from '../components/Icon';
+import InlineMeta from '../components/InlineMeta';
 import MapSpot from '../components/MapSpot';
 import { formatDurationSeconds } from '../data/formatTime';
 
@@ -67,8 +68,10 @@ import { formatDurationSeconds } from '../data/formatTime';
       {props.data.drops.map((d, i) => (
         <li key={`${d.item.id}-${i}`}>
           <EntityLink entity={d.item} />
-          {d.areaZone && <span className="muted"> · {d.areaZone}</span>}
-          <DropChance data={d} />
+          <InlineMeta leading>
+            {d.areaZone && <span>{d.areaZone}</span>}
+            <DropChance data={d} leadingSeparator={false} />
+          </InlineMeta>
         </li>
       ))}
     </ul>

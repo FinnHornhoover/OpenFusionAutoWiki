@@ -538,6 +538,19 @@ details.dropdown > .dropdown-body {
 .reward-card-meta:empty {
   display: none;
 }
+.inline-meta {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-2);
+  vertical-align: baseline;
+}
+.inline-meta-leading {
+  margin-left: var(--space-2);
+}
+.inline-meta-item {
+  min-width: 0;
+}
 .reward-items {
   list-style: none;
   padding: 0;
@@ -851,6 +864,20 @@ details.dropdown > .dropdown-body {
 }
 .area-index-name .minimap {
   flex-shrink: 0;
+}
+.entity-index-table .icon,
+.entity-index-table .icon-empty {
+  width: 64px;
+  height: 64px;
+}
+.entity-index-name {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 220px;
+}
+.entity-index-link {
+  font-weight: 600;
 }
 
 /* Index controls (search + filters) */

@@ -115,25 +115,37 @@ export default function MobIndex({ build, rows, loading }: Props) {
       {!loading && filtered.length === 0 && <p className="muted">No matches.</p>}
       {!loading && filtered.length > 0 && (
         <>
-          <ul className="entity-index">
-            {pageRows.map((r) => (
-              <li key={r.id} className="entity-index-row">
-                {r.icon
-                  ? <Icon src={r.icon} alt={r.name} size={112} />
-                  : <span className="icon icon-empty" aria-hidden style={{ width: 112, height: 112 }} />}
-                <span className="entity-index-main">
-                  <Link to={`/${build}/monsters/${r.id}`}>{r.name}</Link>
-                  <span className="muted">
-                    {r.level > 0 && ` · Lv ${r.level}`}
-                    {r.standardHP > 0 && ` · ${r.standardHP.toLocaleString()} HP`}
-                    {r.colorType && ` · ${r.colorType}`}
-                    {r.instanceCount > 0 && ` · ${r.instanceCount} spawn${r.instanceCount === 1 ? '' : 's'}`}
-                    {!r.inGame && ' · cut'}
-                  </span>
-                </span>
-              </li>
-            ))}
-          </ul>
+          <table className="location-table source-table entity-index-table">
+            <thead>
+              <tr>
+                <th>Monster</th>
+                <th>Level</th>
+                <th>HP</th>
+                <th>Type</th>
+                <th>Spawns</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {pageRows.map((r) => (
+                <tr key={r.id}>
+                  <td>
+                    <div className="entity-index-name">
+                      {r.icon
+                        ? <Icon src={r.icon} alt={r.name} size={64} />
+                        : <span className="icon icon-empty" aria-hidden />}
+                      <Link className="entity-index-link" to={`/${build}/monsters/${r.id}`}>{r.name}</Link>
+                    </div>
+                  </td>
+                  <td>{r.level > 0 ? r.level : <span className="muted">—</span>}</td>
+                  <td>{r.standardHP > 0 ? r.standardHP.toLocaleString() : <span className="muted">—</span>}</td>
+                  <td>{r.colorType || <span className="muted">—</span>}</td>
+                  <td>{r.instanceCount > 0 ? r.instanceCount.toLocaleString() : <span className="muted">—</span>}</td>
+                  <td>{r.inGame ? 'In game' : 'Cut'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
           {totalPages > 1 && (
             <nav className="pager" aria-label="Pagination">
               <button onClick={() => setPage(Math.max(0, page - 1))} disabled={page === 0}>‹ Prev</button>

@@ -1,6 +1,7 @@
 import type { GuideEmail, MissionTask, TaskMessage } from '../data/types';
 import Dropdown from './Dropdown';
 import EntityLink from './EntityLink';
+import InlineMeta from './InlineMeta';
 import MapSpot from './MapSpot';
 
 function formatTimeLimit(seconds: number): string | null {
@@ -69,8 +70,10 @@ function TaskItem({ task, index }: { task: MissionTask; index: number }) {
         <span>
           <span className="task-index">{index + 1}.</span>{' '}
           <strong>{task.objective || task.type}</strong>
-          {task.type && <span className="muted"> · {task.type}</span>}
-          {timeLimit && <span className="muted"> · ⏱ {timeLimit}</span>}
+          <InlineMeta leading>
+            {task.type && <span>{task.type}</span>}
+            {timeLimit && <span>⏱ {timeLimit}</span>}
+          </InlineMeta>
         </span>
       }
     >

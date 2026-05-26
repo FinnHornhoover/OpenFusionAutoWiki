@@ -1,6 +1,7 @@
 import Dropdown from '../components/Dropdown';
 import EntityLink from '../components/EntityLink';
 import Icon from '../components/Icon';
+import InlineMeta from '../components/InlineMeta';
 import { formatDurationSeconds } from '../data/formatTime';
 
 # {props.data.name}
@@ -24,7 +25,7 @@ import { formatDurationSeconds } from '../data/formatTime';
         <h3>
           {p.icon && <Icon src={p.icon} alt={p.name} size={112} />}
           {' '}{p.skillName || p.name}
-          {p.typeName && <span className="muted"> · {p.typeName}</span>}
+          <InlineMeta leading>{p.typeName && <span>{p.typeName}</span>}</InlineMeta>
         </h3>
         {p.comment && <p>{p.comment}</p>}
         <dl className="stat-grid">
@@ -38,7 +39,7 @@ import { formatDurationSeconds } from '../data/formatTime';
               <dt>Power item</dt>
               <dd>
                 <EntityLink entity={p.powerItem} />
-                {p.powerItemCount > 0 && <span className="muted"> · ×{p.powerItemCount}</span>}
+                <InlineMeta leading>{p.powerItemCount > 0 && <span>×{p.powerItemCount}</span>}</InlineMeta>
               </dd>
             </>
           )}

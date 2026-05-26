@@ -1,6 +1,7 @@
 import type { Mission } from '../data/types';
 import EntityLink from './EntityLink';
 import Icon from './Icon';
+import InlineMeta from './InlineMeta';
 
 interface RewardBoxProps {
   rewards: Mission['rewards'];
@@ -52,11 +53,11 @@ export default function RewardBox({ rewards }: RewardBoxProps) {
             {it.ref.icon ? <Icon src={it.ref.icon} alt="" size={48} /> : <span className="icon icon-empty" aria-hidden style={{ width: 48, height: 48 }} />}
             <span className="reward-card-main">
               <EntityLink entity={it.ref} withIcon={false} />
-              <span className="reward-card-meta muted">
-                {[it.rarity, it.requiredLevel > 0 ? `Lv ${it.requiredLevel}` : '', it.itemKind]
-                  .filter(Boolean)
-                  .join(' · ')}
-              </span>
+              <InlineMeta className="reward-card-meta muted">
+                {it.rarity && <span>{it.rarity}</span>}
+                {it.requiredLevel > 0 && <span>Lv {it.requiredLevel}</span>}
+                {it.itemKind && <span>{it.itemKind}</span>}
+              </InlineMeta>
             </span>
           </li>
         ))}

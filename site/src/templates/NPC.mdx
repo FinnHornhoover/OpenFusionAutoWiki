@@ -1,6 +1,7 @@
 import Dropdown from '../components/Dropdown';
 import EntityLink from '../components/EntityLink';
 import Icon from '../components/Icon';
+import InlineMeta from '../components/InlineMeta';
 import MapSpot from '../components/MapSpot';
 
 # {props.data.name}
@@ -58,10 +59,12 @@ import MapSpot from '../components/MapSpot';
       {props.data.vendorItems.map((v, i) => (
         <li key={`${v.ref.id}-${i}`}>
           <EntityLink entity={v.ref} />
-          <span className="muted">{' · '}{v.buyPrice.toLocaleString()} Taros</span>
-          {v.rarity && <span className="muted">{' · '}{v.rarity}</span>}
-          {v.requiredLevel > 0 && <span className="muted">{' · '}Lv {v.requiredLevel}</span>}
-          {v.itemKind && <span className="muted">{' · '}{v.itemKind}</span>}
+          <InlineMeta leading>
+            <span>{v.buyPrice.toLocaleString()} Taros</span>
+            {v.rarity && <span>{v.rarity}</span>}
+            {v.requiredLevel > 0 && <span>Lv {v.requiredLevel}</span>}
+            {v.itemKind && <span>{v.itemKind}</span>}
+          </InlineMeta>
         </li>
       ))}
     </ul>

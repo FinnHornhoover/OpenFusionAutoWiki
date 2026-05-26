@@ -2,6 +2,7 @@ import Dropdown from '../components/Dropdown';
 import DropChance from '../components/DropChance';
 import EntityLink from '../components/EntityLink';
 import Icon from '../components/Icon';
+import InlineMeta from '../components/InlineMeta';
 import SimilarItems from '../components/SimilarItems';
 
 # {props.data.name}
@@ -9,7 +10,8 @@ import SimilarItems from '../components/SimilarItems';
 <div className="entity-header">
   {props.data.icon ? <div className="entity-header-icon"><Icon src={props.data.icon} alt={props.data.name} size={192} /></div> : null}
   <div className="entity-meta muted">
-    <span className="badge badge-category">{props.data.type}{props.data.displayType && props.data.displayType !== props.data.type ? ` · ${props.data.displayType}` : ''}</span>
+    <span className="badge badge-category">{props.data.type}</span>
+    {props.data.displayType && props.data.displayType !== props.data.type && <span className="badge badge-category">{props.data.displayType}</span>}
     {props.data.rarity && <span className="badge badge-category">{props.data.rarity}</span>}
     {props.data.contentLevel > 0 && <span className="badge badge-category">Level {props.data.contentLevel}</span>}
     {!props.data.obtainable && <span className="badge badge-warn">unobtainable</span>}
@@ -173,7 +175,7 @@ import SimilarItems from '../components/SimilarItems';
                 <li key={i}>
                   <span className="task-label requirement-label">{s.kind === 'mission-crate' ? 'From Reward CRATE:' : 'Direct Reward:'}</span>
                   <EntityLink entity={s.mission} />
-                  {s.selectionNeeded && <span className="muted"> · choose one</span>}
+                  <InlineMeta leading>{s.selectionNeeded && <span>choose one</span>}</InlineMeta>
                 </li>
               );
             }
@@ -181,9 +183,11 @@ import SimilarItems from '../components/SimilarItems';
               return (
                 <li key={i}>
                   {s.npc ? <EntityLink entity={s.npc} withIcon={false} /> : <strong>Race</strong>}
-                  {s.instanceName && <span className="muted"> · {s.instanceName}</span>}
-                  {s.requiredScore > 0 && <span className="muted"> · score {s.requiredScore.toLocaleString()}+</span>}
-                  {s.requiredStars > 0 && <span className="muted"> · {s.requiredStars}★</span>}
+                  <InlineMeta leading>
+                    {s.instanceName && <span>{s.instanceName}</span>}
+                    {s.requiredScore > 0 && <span>score {s.requiredScore.toLocaleString()}+</span>}
+                    {s.requiredStars > 0 && <span>{s.requiredStars}★</span>}
+                  </InlineMeta>
                 </li>
               );
             }
@@ -212,4 +216,9 @@ import SimilarItems from '../components/SimilarItems';
 
 <SimilarItems current={props.data} />
 
-<p className="muted alias-ids">Type ID <code>{props.data.typeId}</code> · Item ID <code>{props.data.itemId}</code></p>
+<p className="muted alias-ids">
+  <InlineMeta>
+    <span>Type ID <code>{props.data.typeId}</code></span>
+    <span>Item ID <code>{props.data.itemId}</code></span>
+  </InlineMeta>
+</p>

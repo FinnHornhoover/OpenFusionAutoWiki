@@ -1,6 +1,7 @@
 import Dropdown from '../components/Dropdown';
 import EntityLink from '../components/EntityLink';
 import Icon from '../components/Icon';
+import InlineMeta from '../components/InlineMeta';
 import Minimap from '../components/Minimap';
 import { formatDurationSeconds } from '../data/formatTime';
 
@@ -138,8 +139,10 @@ import { formatDurationSeconds } from '../data/formatTime';
       {props.data.transportation.map((t, i) => (
         <li key={`${t.routeId}-${i}`}>
           <strong>{t.routeName}</strong>
-          {t.moveType && <span className="muted"> · {t.moveType}</span>}
-          {t.startNpc && <span className="muted"> · operated by <EntityLink entity={t.startNpc} withIcon={false} /></span>}
+          <InlineMeta leading>
+            {t.moveType && <span>{t.moveType}</span>}
+            {t.startNpc && <span>operated by <EntityLink entity={t.startNpc} withIcon={false} /></span>}
+          </InlineMeta>
         </li>
       ))}
     </ul>
@@ -152,9 +155,11 @@ import { formatDurationSeconds } from '../data/formatTime';
       {props.data.instanceWarps.map((w, i) => (
         <li key={`${w.instanceID}-${i}`}>
           <strong>→ {w.instanceName}</strong>
-          {w.npc && <span className="muted"> · via <EntityLink entity={w.npc} withIcon={false} /></span>}
-          {w.requiredMinLevel > 0 && <span className="muted"> · Lv {w.requiredMinLevel}+</span>}
-          {w.requiredItem && <span className="muted"> · needs <EntityLink entity={w.requiredItem} withIcon={false} /></span>}
+          <InlineMeta leading>
+            {w.npc && <span>via <EntityLink entity={w.npc} withIcon={false} /></span>}
+            {w.requiredMinLevel > 0 && <span>Lv {w.requiredMinLevel}+</span>}
+            {w.requiredItem && <span>needs <EntityLink entity={w.requiredItem} withIcon={false} /></span>}
+          </InlineMeta>
         </li>
       ))}
     </ul>
