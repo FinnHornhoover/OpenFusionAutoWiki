@@ -438,6 +438,63 @@ export interface MobIndexEntry {
   inGame: boolean;
 }
 
+
+// ---- Instances --------------------------------------------------------------
+
+export interface InstanceWarpLocation {
+  areaZone: string;
+  areaId: string;
+  x: number;
+  y: number;
+  z: number;
+  instanceID: number;
+  instanceName: string;
+}
+
+export interface InstanceWarpExitLocation {
+  areaZone: string;
+  areaId: string;
+  x: number;
+  y: number;
+  z: number;
+}
+
+export interface InstanceWarp {
+  id: number;
+  npc: Ref | null;
+  entryLocation: InstanceWarpLocation | null;
+  exitLocation: InstanceWarpExitLocation | null;
+  requiredItem: Ref | null;
+  requiredMission: Ref | null;
+  requiredTaskId: number;
+  requiredTaskObjective: string;
+  requiredMinLevel: number;
+  warpPrice: number;
+}
+
+export interface Instance {
+  id: number;
+  name: string;
+  areaZone: string;
+  areaId: string;
+  inGame: boolean;
+  infectedZoneId: number;
+  infectedZoneName: string;
+  epMaxScore: number;
+  entryWarps: InstanceWarp[];
+  exitWarps: InstanceWarp[];
+}
+
+export interface InstanceIndexEntry {
+  id: number;
+  name: string;
+  inGame: boolean;
+  infectedZoneId: number;
+  infectedZoneName: string;
+  entryWarpCount: number;
+  exitWarpCount: number;
+}
+
 // ---- Areas ------------------------------------------------------------------
 
 /** An NPC type appearing in an area, with how many instances of it live there. */

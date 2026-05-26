@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import { DATA_OUT } from '../paths.js';
 import type {
   AreaIndexEntry,
+  InstanceIndexEntry,
   ItemIndexEntry,
   MissionIndexEntry,
   MobIndexEntry,
@@ -15,7 +16,7 @@ import type {
 /** Per-build search row — one entry per searchable entity, all 6 types unioned. */
 export interface SearchRow {
   /** URL segment for this entity type (matches the route segment + builtTypes). */
-  type: 'missions' | 'npcs' | 'items' | 'monsters' | 'areas' | 'nanos';
+  type: 'missions' | 'npcs' | 'items' | 'monsters' | 'areas' | 'instances' | 'nanos';
   /** URL identifier (numeric or compound string, same shape Ref.id uses). */
   id: number | string;
   name: string;
@@ -41,12 +42,13 @@ async function loadIndex<T>(slug: string, type: string): Promise<T[]> {
  * via the per-type indexes' "Hide out-of-game" toggles.
  */
 export async function writeSearchIndex(slug: string): Promise<{ count: number; bytes: number }> {
-  const [missions, npcs, items, monsters, areas, nanos] = await Promise.all([
+  const [missions, npcs, items, monsters, areas, instances, nanos] = await Promise.all([
     loadIndex<MissionIndexEntry>(slug, 'missions'),
     loadIndex<NpcIndexEntry>(slug, 'npcs'),
     loadIndex<ItemIndexEntry>(slug, 'items'),
     loadIndex<MobIndexEntry>(slug, 'monsters'),
     loadIndex<AreaIndexEntry>(slug, 'areas'),
+    loadIndex<InstanceIndexEntry>(slug, 'instances'),
     loadIndex<NanoIndexEntry>(slug, 'nanos'),
   ]);
 
@@ -67,6 +69,10 @@ export async function writeSearchIndex(slug: string): Promise<{ count: number; b
   }
   for (const a of areas) {
     rows.push({ type: 'areas', id: a.id, name: a.name, icon: '' });
+  }
+  for (const inst of instances) {
+    if (!inst.inGame) continue;
+    rows.push({ type: 'instances', id: inst.id, name: inst.name, icon: '' });
   }
   for (const na of nanos) {
     rows.push({ type: 'nanos', id: na.id, name: na.name, icon: na.icon });

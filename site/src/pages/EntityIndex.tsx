@@ -1,12 +1,13 @@
 import { useParams } from 'react-router-dom';
 
 import ErrorState from '../components/ErrorState';
-import type { AreaIndexEntry, ItemIndexEntry, MissionIndexEntry, MobIndexEntry, NanoIndexEntry, NpcIndexEntry } from '../data/types';
+import type { AreaIndexEntry, InstanceIndexEntry, ItemIndexEntry, MissionIndexEntry, MobIndexEntry, NanoIndexEntry, NpcIndexEntry } from '../data/types';
 import { useBuildEntry } from '../data/useBuildEntry';
 import { useBuildMeta } from '../data/useBuildMeta';
 import { useDocumentTitle } from '../data/useDocumentTitle';
 import { useIndex } from '../data/useIndex';
 import AreaIndex from './index/AreaIndex';
+import InstanceIndex from './index/InstanceIndex';
 import ItemIndex from './index/ItemIndex';
 import MissionIndex from './index/MissionIndex';
 import MobIndex from './index/MobIndex';
@@ -19,6 +20,7 @@ const TYPE_TITLES: Record<string, string> = {
   monsters: 'Monsters',
   items: 'Items',
   areas: 'Areas',
+  instances: 'Instances',
   nanos: 'Nanos',
 };
 
@@ -27,7 +29,7 @@ export default function EntityIndex() {
   const entry = useBuildEntry(build);
   const meta = useBuildMeta(build);
   const supported = meta?.builtTypes?.includes(type ?? '') ?? false;
-  const { rows, loading, error } = useIndex<MissionIndexEntry | NpcIndexEntry | ItemIndexEntry | MobIndexEntry | AreaIndexEntry | NanoIndexEntry>(
+  const { rows, loading, error } = useIndex<MissionIndexEntry | NpcIndexEntry | ItemIndexEntry | MobIndexEntry | AreaIndexEntry | InstanceIndexEntry | NanoIndexEntry>(
     supported ? build : undefined,
     supported ? type : undefined,
   );
@@ -73,6 +75,9 @@ export default function EntityIndex() {
     }
     if (type === 'areas') {
       return <AreaIndex build={build} rows={(rows ?? []) as AreaIndexEntry[]} loading={loading} />;
+    }
+    if (type === 'instances') {
+      return <InstanceIndex build={build} rows={(rows ?? []) as InstanceIndexEntry[]} loading={loading} />;
     }
     if (type === 'nanos') {
       return <NanoIndex build={build} rows={(rows ?? []) as NanoIndexEntry[]} loading={loading} />;

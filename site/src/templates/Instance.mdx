@@ -1,0 +1,98 @@
+import Dropdown from '../components/Dropdown';
+import EntityLink from '../components/EntityLink';
+import InlineMeta from '../components/InlineMeta';
+import MapSpot from '../components/MapSpot';
+
+# {props.data.name}
+
+<div className="entity-header">
+  <div className="entity-meta muted">
+    <span className="badge badge-category">Instance ID {props.data.id}</span>
+    {props.data.infectedZoneId > 0 && <span className="badge badge-warn">infected zone</span>}
+    {props.data.inGame === false && <span className="badge badge-warn">Out of game</span>}
+  </div>
+</div>
+
+{props.data.infectedZoneId > 0 && (
+  <dl className="stat-grid">
+    <dt>Infected zone</dt>
+    <dd>{props.data.infectedZoneName || `Infected Zone #${props.data.infectedZoneId}`}</dd>
+    <dt>Infected zone ID</dt>
+    <dd>{props.data.infectedZoneId}</dd>
+    {props.data.epMaxScore > 0 && <dt>Max score</dt>}
+    {props.data.epMaxScore > 0 && <dd>{props.data.epMaxScore.toLocaleString()}</dd>}
+  </dl>
+)}
+
+{props.data.entryWarps.length > 0 && (
+  <Dropdown summary={`Entry warps (${props.data.entryWarps.length})`} open>
+    <table className="location-table source-table">
+      <thead>
+        <tr>
+          <th>Warp NPC</th>
+          <th>Entry location</th>
+          <th>Required mission</th>
+          <th>Level</th>
+        </tr>
+      </thead>
+      <tbody>
+        {props.data.entryWarps.map((warp) => (
+          <tr key={warp.id}>
+            <td>
+              {warp.npc ? <EntityLink entity={warp.npc} /> : <span className="muted">-</span>}
+              <InlineMeta leading>
+                {warp.requiredItem && <span><EntityLink entity={warp.requiredItem} /></span>}
+                {warp.warpPrice > 0 && <span>{warp.warpPrice.toLocaleString()} Taros</span>}
+              </InlineMeta>
+            </td>
+            <td>{warp.entryLocation ? (
+              <MapSpot
+                x={warp.entryLocation.x}
+                y={warp.entryLocation.y}
+                z={warp.entryLocation.z}
+                areaId={warp.entryLocation.areaId}
+                title={warp.entryLocation.areaZone}
+                instanceName={warp.entryLocation.instanceName}
+                instanceID={warp.entryLocation.instanceID}
+              />
+            ) : <span className="muted">-</span>}</td>
+            <td>
+              {warp.requiredMission ? <EntityLink entity={warp.requiredMission} /> : <span className="muted">-</span>}
+              {warp.requiredTaskObjective && <div><InlineMeta leading><span>{warp.requiredTaskObjective}</span></InlineMeta></div>}
+            </td>
+            <td>{warp.requiredMinLevel > 0 ? warp.requiredMinLevel : <span className="muted">-</span>}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </Dropdown>
+)}
+
+{props.data.exitWarps.length > 0 && (
+  <Dropdown summary={`Exit destinations (${props.data.exitWarps.length})`}>
+    <table className="location-table source-table">
+      <thead>
+        <tr>
+          <th>Warp NPC</th>
+          <th>Destination</th>
+        </tr>
+      </thead>
+      <tbody>
+        {props.data.exitWarps.map((warp) => (
+          <tr key={warp.id}>
+            <td>{warp.npc ? <EntityLink entity={warp.npc} /> : <span className="muted">-</span>}</td>
+            <td>{warp.exitLocation ? (
+              <MapSpot
+                x={warp.exitLocation.x}
+                y={warp.exitLocation.y}
+                z={warp.exitLocation.z}
+                areaId={warp.exitLocation.areaId}
+                title={warp.exitLocation.areaZone}
+              />
+            ) : <span className="muted">-</span>}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </Dropdown>
+)}

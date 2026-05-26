@@ -12,6 +12,7 @@ const TYPE_LABEL: Record<SearchRow['type'], string> = {
   items: 'Item',
   monsters: 'Monster',
   areas: 'Area',
+  instances: 'Instance',
   nanos: 'Nano',
 };
 
@@ -117,7 +118,7 @@ function SearchOverlay({ build, onClose }: OverlayProps) {
           )}
           {!q.trim() && (
             <div className="search-empty muted">
-              Type to search across missions, NPCs, items, monsters, areas, and nanos.
+              Type to search across missions, NPCs, items, monsters, areas, instances, and nanos.
             </div>
           )}
           {results.map((r, i) => (
