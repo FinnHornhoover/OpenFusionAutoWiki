@@ -399,6 +399,17 @@ details.dropdown > .dropdown-body {
   box-shadow: 0 0 4px rgba(0, 0, 0, 0.6);
   pointer-events: none;
 }
+.minimap-dot {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  margin: -2px 0 0 -2px;
+  border-radius: 50%;
+  background: var(--color-link);
+  border: 1px solid rgba(255, 255, 255, 0.85);
+  box-shadow: 0 0 3px rgba(0, 0, 0, 0.55);
+  pointer-events: none;
+}
 .minimap-bbox {
   position: absolute;
   top: 50%;

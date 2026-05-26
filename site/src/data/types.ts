@@ -241,6 +241,19 @@ export interface MobLocation {
   groupId: string;
 }
 
+export interface MobLocationGroup {
+  areaZone: string;
+  areaId: string;
+  x: number;
+  y: number;
+  z: number;
+  instanceID: number;
+  instanceName: string;
+  hp: number;
+  spawnCount: number;
+  points: Array<{ x: number; y: number }>;
+}
+
 export interface MobDrop extends DropChance {
   item: Ref;
   areaZone: string;
@@ -285,6 +298,7 @@ export interface Mob {
   drops: MobDrop[];
 
   locations: MobLocation[];
+  locationGroups: MobLocationGroup[];
 }
 
 export interface MobIndexEntry {

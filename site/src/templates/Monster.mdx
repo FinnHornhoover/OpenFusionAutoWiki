@@ -83,10 +83,10 @@ import { formatDurationSeconds } from '../data/formatTime';
   </Dropdown>
 )}
 
-{props.data.locations.length > 0 && (
-  <Dropdown summary={`Spawn locations (${props.data.locations.length})`}>
+{props.data.locationGroups.length > 0 && (
+  <Dropdown summary={`Spawn locations (${props.data.locationGroups.length} group${props.data.locationGroups.length === 1 ? '' : 's'})`}>
     <ul className="ref-list location-list">
-      {props.data.locations.map((loc, i) => (
+      {props.data.locationGroups.map((loc, i) => (
         <li key={i}>
           <MapSpot
             x={loc.x}
@@ -96,7 +96,11 @@ import { formatDurationSeconds } from '../data/formatTime';
             title={loc.areaZone}
             instanceName={loc.instanceName}
             instanceID={loc.instanceID}
+            points={loc.points}
           />
+          <span className="muted location-list-meta">
+            {loc.spawnCount.toLocaleString()} spawn{loc.spawnCount === 1 ? '' : 's'}
+          </span>
           {loc.hp > 0 && loc.hp !== props.data.displayHP && (
             <span className="muted location-list-meta">HP {loc.hp.toLocaleString()}</span>
           )}

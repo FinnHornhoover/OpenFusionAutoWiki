@@ -6,6 +6,7 @@ import type {
   Mob,
   MobIndexEntry,
   MobLocation,
+  MobLocationGroup,
   Ref,
 } from './types.js';
 import type { IconMap } from '../icons.js';
@@ -97,20 +98,66 @@ function buildLocationsByType(
   return out;
 }
 
-function mostCommonSpawnHP(locations: MobLocation[]): number {
+function mostCommonHP(values: number[]): number {
   const counts = new Map<number, number>();
   let bestHP = 0;
   let bestCount = 0;
-  for (const loc of locations) {
-    if (loc.hp <= 0) continue;
-    const count = (counts.get(loc.hp) ?? 0) + 1;
-    counts.set(loc.hp, count);
+  for (const hp of values) {
+    if (hp <= 0) continue;
+    const count = (counts.get(hp) ?? 0) + 1;
+    counts.set(hp, count);
     if (count > bestCount) {
-      bestHP = loc.hp;
+      bestHP = hp;
       bestCount = count;
     }
   }
   return bestHP;
+}
+
+function mostCommonSpawnHP(locations: MobLocation[]): number {
+  return mostCommonHP(locations.map((loc) => loc.hp));
+}
+
+function median(values: number[]): number {
+  if (!values.length) return 0;
+  const sorted = values.slice().sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  if (sorted.length % 2) return sorted[mid];
+  return Math.round((sorted[mid - 1] + sorted[mid]) / 2);
+}
+
+function groupLocations(locations: MobLocation[]): MobLocationGroup[] {
+  const groups = new Map<string, MobLocation[]>();
+  for (const loc of locations) {
+    const key = `${loc.areaZone}|${loc.areaId}|${loc.instanceID}`;
+    const group = groups.get(key);
+    if (group) group.push(loc);
+    else groups.set(key, [loc]);
+  }
+
+  return Array.from(groups.values())
+    .map((group) => {
+      const first = group[0];
+      return {
+        areaZone: first.areaZone,
+        areaId: first.areaId,
+        x: median(group.map((loc) => loc.x)),
+        y: median(group.map((loc) => loc.y)),
+        z: median(group.map((loc) => loc.z)),
+        instanceID: first.instanceID,
+        instanceName: first.instanceName,
+        hp: mostCommonHP(group.map((loc) => loc.hp)),
+        spawnCount: group.length,
+        points: group.map((loc) => ({ x: loc.x, y: loc.y })),
+      };
+    })
+    .sort((a, b) =>
+      a.areaZone.localeCompare(b.areaZone) ||
+      a.instanceID - b.instanceID ||
+      b.spawnCount - a.spawnCount ||
+      a.x - b.x ||
+      a.y - b.y
+    );
 }
 
 function normalizeMob(
@@ -122,6 +169,7 @@ function normalizeMob(
 ): Mob {
   const standardHP = raw.StandardHP ?? 0;
   const displayHP = mostCommonSpawnHP(locations) || standardHP;
+  const locationGroups = groupLocations(locations);
 
   return {
     id: raw.ID,
@@ -168,6 +216,7 @@ function normalizeMob(
       }),
 
     locations,
+    locationGroups,
   };
 }
 
