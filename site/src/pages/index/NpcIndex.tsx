@@ -24,6 +24,67 @@ function npcCategoryRank(c: string): number {
   return NPC_CAT_RANK.get(c) ?? NPC_TAB_CATEGORIES.length;
 }
 
+
+interface NpcIndexMemberView {
+  id: number;
+  category: string;
+  inGame: boolean;
+}
+
+function npcMembers(r: NpcIndexEntry): NpcIndexMemberView[] {
+  if (r.members?.length) return r.members;
+  return typeof r.id === 'number' ? [{ id: r.id, category: r.category, inGame: r.inGame }] : [];
+}
+
+function visibleNpcMembers(r: NpcIndexEntry, hideOutOfGame: boolean): NpcIndexMemberView[] {
+  const members = npcMembers(r);
+  return hideOutOfGame ? members.filter((m) => m.inGame) : members;
+}
+
+function statusFromMembers(members: NpcIndexMemberView[]): 'in-game' | 'out-of-game' | 'mixed' {
+  const inGame = members.some((m) => m.inGame);
+  const outOfGame = members.some((m) => !m.inGame);
+  if (inGame && outOfGame) return 'mixed';
+  return inGame ? 'in-game' : 'out-of-game';
+}
+
+function npcStatus(r: NpcIndexEntry, hideOutOfGame: boolean): 'in-game' | 'out-of-game' | 'mixed' {
+  const members = visibleNpcMembers(r, hideOutOfGame);
+  if (members.length > 0) return statusFromMembers(members);
+  return r.status ?? (r.inGame ? 'in-game' : 'out-of-game');
+}
+
+function npcCategories(r: NpcIndexEntry, hideOutOfGame: boolean): string[] {
+  const allMembers = npcMembers(r);
+  if (allMembers.length > 0) {
+    const members = visibleNpcMembers(r, hideOutOfGame);
+    return Array.from(new Set(members.map((m) => m.category).filter(Boolean))).sort((a, b) => a.localeCompare(b));
+  }
+  return r.categories?.length ? r.categories : (r.category ? [r.category] : []);
+}
+
+function npcCategory(r: NpcIndexEntry, hideOutOfGame: boolean): string {
+  const categories = npcCategories(r, hideOutOfGame);
+  if (categories.length === 0) return '';
+  return categories.length === 1 ? categories[0] : 'Mixed';
+}
+
+function npcVisibleIdCount(r: NpcIndexEntry, hideOutOfGame: boolean): number {
+  const allMembers = npcMembers(r);
+  if (allMembers.length > 0) return visibleNpcMembers(r, hideOutOfGame).length;
+  return r.idCount;
+}
+
+function npcRouteId(r: NpcIndexEntry, hideOutOfGame: boolean): string | number {
+  const members = visibleNpcMembers(r, hideOutOfGame);
+  return members.length === 1 ? members[0].id : r.id;
+}
+
+function npcStatusLabel(r: NpcIndexEntry, hideOutOfGame: boolean): string {
+  const status = npcStatus(r, hideOutOfGame);
+  return status === 'mixed' ? 'Mixed' : status === 'in-game' ? 'In game' : 'Out of game';
+}
+
 function tabFromParam(p: string | null): NpcTab {
   if (!p) return 'All';
   const lc = p.toLowerCase();
@@ -50,10 +111,13 @@ export default function NpcIndex({ build, rows, loading }: Props) {
   const counts = useMemo(() => {
     const acc: Record<NpcTab, number> = { All: 0, Quest: 0, Vendor: 0, Normal: 0, Combi: 0, Bank: 0, Warp: 0, Location: 0 };
     for (const r of rows) {
-      if (hideOutOfGame && !r.inGame) continue;
+      if (npcVisibleIdCount(r, hideOutOfGame) === 0) continue;
       acc.All++;
-      if ((NPC_TAB_CATEGORIES as readonly string[]).includes(r.category)) {
-        acc[r.category as NpcTab]++;
+      const categories = npcCategories(r, hideOutOfGame);
+      for (const category of categories) {
+        if ((NPC_TAB_CATEGORIES as readonly string[]).includes(category)) {
+          acc[category as NpcTab]++;
+        }
       }
     }
     return acc;
@@ -62,18 +126,20 @@ export default function NpcIndex({ build, rows, loading }: Props) {
   const filtered = useMemo(() => {
     const needle = q.trim().toLowerCase();
     let pool = rows;
-    if (hideOutOfGame) pool = pool.filter((r) => r.inGame);
-    if (activeTab !== 'All') pool = pool.filter((r) => r.category === activeTab);
+    pool = pool.filter((r) => npcVisibleIdCount(r, hideOutOfGame) > 0);
+    if (activeTab !== 'All') pool = pool.filter((r) => npcCategories(r, hideOutOfGame).includes(activeTab));
     if (needle) pool = pool.filter((r) => r.name.toLowerCase().includes(needle));
     return pool.slice().sort((a, b) => {
-      const ra = npcCategoryRank(a.category);
-      const rb = npcCategoryRank(b.category);
+      const aCategory = npcCategory(a, hideOutOfGame);
+      const bCategory = npcCategory(b, hideOutOfGame);
+      const ra = npcCategoryRank(aCategory);
+      const rb = npcCategoryRank(bCategory);
       if (ra !== rb) return ra - rb;
       // For categories outside the tab list, group alphabetically by category first.
-      if (ra === NPC_TAB_CATEGORIES.length && a.category !== b.category) {
-        return a.category.localeCompare(b.category);
+      if (ra === NPC_TAB_CATEGORIES.length && aCategory !== bCategory) {
+        return aCategory.localeCompare(bCategory);
       }
-      return a.name.localeCompare(b.name) || a.id - b.id;
+      return a.name.localeCompare(b.name) || String(a.id).localeCompare(String(b.id));
     });
   }, [rows, q, activeTab, hideOutOfGame]);
 
@@ -135,26 +201,26 @@ export default function NpcIndex({ build, rows, loading }: Props) {
           <table className="location-table source-table entity-index-table">
             <thead>
               <tr>
+                <th>ID</th>
                 <th>NPC</th>
                 <th>Category</th>
-                <th>Spawns</th>
                 <th>Status</th>
               </tr>
             </thead>
             <tbody>
               {pageRows.map((r) => (
                 <tr key={r.id}>
+                  <td>{npcVisibleIdCount(r, hideOutOfGame) === 1 ? <code className="entity-index-id-code">{npcRouteId(r, hideOutOfGame)}</code> : <em>{npcVisibleIdCount(r, hideOutOfGame).toLocaleString()} IDs</em>}</td>
                   <td>
                     <div className="entity-index-name">
                       {r.icon
                         ? <Icon src={r.icon} alt={r.name} size={64} />
                         : <span className="icon icon-empty" aria-hidden />}
-                      <Link className="entity-index-link" to={`/${build}/npcs/${r.id}`}>{r.name}</Link>
+                      <Link className="entity-index-link" to={`/${build}/npcs/${npcRouteId(r, hideOutOfGame)}`}>{r.name}</Link>
                     </div>
                   </td>
-                  <td>{r.category || <span className="muted">—</span>}</td>
-                  <td>{r.instanceCount > 0 ? r.instanceCount.toLocaleString() : <span className="muted">—</span>}</td>
-                  <td>{r.inGame ? 'In game' : 'Cut'}</td>
+                  <td>{npcCategory(r, hideOutOfGame) || <span className="muted">—</span>}</td>
+                  <td>{npcStatusLabel(r, hideOutOfGame)}</td>
                 </tr>
               ))}
             </tbody>

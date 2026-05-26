@@ -1,0 +1,62 @@
+import { Link } from 'react-router-dom';
+import Icon from '../components/Icon';
+import InlineMeta from '../components/InlineMeta';
+import MapSpot from '../components/MapSpot';
+
+# {props.data.name}
+
+<div className="entity-header">
+  {props.data.icon ? <div className="entity-header-icon"><Icon src={props.data.icon} alt={props.data.name} size={192} /></div> : null}
+  <div className="entity-meta muted">
+    {props.data.category && <span className="badge badge-category">{props.data.category}</span>}
+    <span className="badge badge-category">{props.data.members.length} NPC IDs</span>
+    {props.data.status === 'mixed' && <span className="badge badge-warn">Mixed availability</span>}
+    {props.data.status === 'out-of-game' && <span className="badge badge-warn">Out of game</span>}
+  </div>
+</div>
+
+<table className="location-table source-table">
+  <thead>
+    <tr>
+      <th>NPC type</th>
+      <th>Transport</th>
+      <th>Mission starts</th>
+      <th>Spawns</th>
+      <th>Location</th>
+    </tr>
+  </thead>
+  <tbody>
+    {props.data.members.map((member) => (
+      <tr key={member.id}>
+        <td>
+          <div className="entity-index-name">
+            {member.icon
+              ? <Icon src={member.icon} alt={member.name} size={48} />
+              : <span className="icon icon-empty" aria-hidden />}
+            <div>
+              <Link className="entity-index-link" to={`/${props.build}/npcs/${member.id}`}>ID {member.id}</Link>
+              <InlineMeta leading>
+                {member.category && <span>{member.category}</span>}
+                {!member.inGame && <span>cut from final build</span>}
+              </InlineMeta>
+            </div>
+          </div>
+        </td>
+        <td>{member.transportRouteCount.toLocaleString()}</td>
+        <td>{member.startedMissionCount.toLocaleString()}</td>
+        <td>{member.spawnCount.toLocaleString()}</td>
+        <td>{member.firstLocation ? (
+          <MapSpot
+            x={member.firstLocation.x}
+            y={member.firstLocation.y}
+            z={member.firstLocation.z}
+            areaId={member.firstLocation.areaId}
+            title={member.firstLocation.areaZone}
+            instanceName={member.firstLocation.instanceName}
+            instanceID={member.firstLocation.instanceID}
+          />
+        ) : <span className="muted">-</span>}</td>
+      </tr>
+    ))}
+  </tbody>
+</table>

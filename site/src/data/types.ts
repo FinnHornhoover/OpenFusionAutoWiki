@@ -158,13 +158,48 @@ export interface Npc {
 
 }
 
-export interface NpcIndexEntry {
+export interface NpcAmbiguityMember {
   id: number;
   name: string;
   icon: string;
   category: string;
+  inGame: boolean;
+  transportRouteCount: number;
+  startedMissionCount: number;
+  spawnCount: number;
+  firstLocation: NpcLocation | null;
+}
+
+export interface NpcAmbiguity {
+  kind: 'npc-ambiguity';
+  id: string;
+  name: string;
+  icon: string;
+  category: string;
+  inGame: boolean;
+  status: 'in-game' | 'out-of-game' | 'mixed';
+  members: NpcAmbiguityMember[];
+}
+
+export interface NpcIndexMember {
+  id: number;
+  category: string;
+  inGame: boolean;
+}
+
+export interface NpcIndexEntry {
+  id: number | string;
+  name: string;
+  icon: string;
+  category: string;
+  categories: string[];
   instanceCount: number;
   inGame: boolean;
+  status: 'in-game' | 'out-of-game' | 'mixed';
+  idCount: number;
+  transportRouteCount: number;
+  startedMissionCount: number;
+  members: NpcIndexMember[];
 }
 
 export interface DropChance {

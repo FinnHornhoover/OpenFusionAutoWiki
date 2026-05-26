@@ -6,10 +6,12 @@ const CHUNK_SIZE = 250;
  * Type-aware chunk computation. Most entity types address by a numeric id; items
  * use a compound URL id "typeId-itemId" that maps onto the same numeric space the
  * build pipeline uses (typeId * 10000 + itemId); areas use a string slug and the
- * build pipeline puts them all in chunk 0 (there are only ~70 per build).
+ * build pipeline puts them all in chunk 0 (there are only ~70 per build). NPC
+ * ambiguity pages use name slugs and also live in chunk 0.
  */
 function chunkFor(type: string, urlId: string): number {
   if (type === 'areas') return 0;
+  if (type === 'npcs' && !/^\d+$/.test(urlId)) return 0;
   if (type === 'items') {
     const m = /^(\d+)-(\d+)$/.exec(urlId);
     if (!m) return -1;

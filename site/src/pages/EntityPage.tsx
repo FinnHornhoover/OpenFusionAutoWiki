@@ -1,7 +1,7 @@
 import { Link, useParams } from 'react-router-dom';
 import EntityPageSkeleton from '../components/EntityPageSkeleton';
 import ErrorState from '../components/ErrorState';
-import type { Area, Item, Mission, Mob, Nano, Npc } from '../data/types';
+import type { Area, Item, Mission, Mob, Nano, Npc, NpcAmbiguity } from '../data/types';
 import { useBuildEntry } from '../data/useBuildEntry';
 import { useBuildMeta } from '../data/useBuildMeta';
 import { useDelayedFlag } from '../data/useDelayedFlag';
@@ -13,6 +13,7 @@ import MissionTemplate from '../templates/Mission.mdx';
 import MonsterTemplate from '../templates/Monster.mdx';
 import NanoTemplate from '../templates/Nano.mdx';
 import NPCTemplate from '../templates/NPC.mdx';
+import NPCAmbiguityTemplate from '../templates/NPCAmbiguity.mdx';
 
 export default function EntityPage() {
   const { build, type, id } = useParams();
@@ -20,7 +21,7 @@ export default function EntityPage() {
   const meta = useBuildMeta(build);
   const supported = meta?.builtTypes?.includes(type ?? '') ?? false;
 
-  const { entity, loading, notFound, error } = useEntity<Mission | Npc | Item | Mob | Area | Nano>(
+  const { entity, loading, notFound, error } = useEntity<Mission | Npc | NpcAmbiguity | Item | Mob | Area | Nano>(
     supported ? build : undefined,
     supported ? type : undefined,
     supported ? id : undefined,
@@ -91,7 +92,9 @@ export default function EntityPage() {
           {' · '}
           <Link to={`/${build}/npcs`}>NPCs</Link>
         </p>
-        <NPCTemplate data={entity as Npc} />
+        {'kind' in (entity as object) && (entity as NpcAmbiguity).kind === 'npc-ambiguity'
+          ? <NPCAmbiguityTemplate data={entity as NpcAmbiguity} build={build} />
+          : <NPCTemplate data={entity as Npc} />}
       </section>
     );
   }

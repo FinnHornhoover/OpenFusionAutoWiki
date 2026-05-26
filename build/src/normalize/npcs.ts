@@ -4,6 +4,7 @@ import { chunkOf, writeChunks, writeIndex } from '../chunk.js';
 import { iconFor, itemRef, parseCompoundKey } from './refs.js';
 import type {
   Npc,
+  NpcAmbiguity,
   NpcIndexEntry,
   NpcLocation,
   NpcTransportRoute,
@@ -214,20 +215,100 @@ function buildNpc(
   };
 }
 
-function indexEntry(n: Npc): NpcIndexEntry {
+function trimmedNpcName(n: Npc): string {
+  return n.name.trim() || `NPC #${n.id}`;
+}
+
+type NpcStatus = 'in-game' | 'out-of-game' | 'mixed';
+
+function aggregateStatus(npcs: Npc[]): NpcStatus {
+  const inGame = npcs.some((n) => n.inGame);
+  const outOfGame = npcs.some((n) => !n.inGame);
+  if (inGame && outOfGame) return 'mixed';
+  return inGame ? 'in-game' : 'out-of-game';
+}
+
+function aggregateCategories(npcs: Npc[]): string[] {
+  return Array.from(new Set(npcs.map((n) => n.category).filter(Boolean))).sort((a, b) => a.localeCompare(b));
+}
+
+function aggregateCategory(npcs: Npc[]): string {
+  const categories = aggregateCategories(npcs);
+  if (categories.length === 0) return '';
+  return categories.length === 1 ? categories[0] : 'Mixed';
+}
+
+function indexEntryForGroup(name: string, npcs: Npc[]): NpcIndexEntry {
+  const first = npcs[0];
+  const status = aggregateStatus(npcs);
   return {
-    id: n.id,
-    name: n.name,
-    icon: n.icon,
-    category: n.category,
-    instanceCount: n.locations.length,
-    inGame: n.inGame,
+    id: npcs.length === 1 ? first.id : slugify(name),
+    name,
+    icon: first.icon,
+    category: aggregateCategory(npcs),
+    categories: aggregateCategories(npcs),
+    instanceCount: npcs.reduce((sum, n) => sum + n.locations.length, 0),
+    inGame: status !== 'out-of-game',
+    status,
+    idCount: npcs.length,
+    transportRouteCount: npcs.reduce((sum, n) => sum + n.transportRoutes.length, 0),
+    startedMissionCount: npcs.reduce((sum, n) => sum + n.startedMissions.length, 0),
+    members: npcs.map((n) => ({ id: n.id, category: n.category, inGame: n.inGame })),
   };
+}
+
+function groupedNpcsByName(npcs: Npc[]): Map<string, Npc[]> {
+  const groups = new Map<string, Npc[]>();
+  for (const npc of npcs) {
+    const name = trimmedNpcName(npc);
+    const group = groups.get(name) ?? [];
+    group.push(npc);
+    groups.set(name, group);
+  }
+  for (const group of groups.values()) {
+    group.sort((a, b) => a.id - b.id);
+  }
+  return groups;
+}
+
+function buildNpcAmbiguities(groups: Map<string, Npc[]>): NpcAmbiguity[] {
+  const out: NpcAmbiguity[] = [];
+  for (const [name, group] of groups) {
+    if (group.length < 2) continue;
+    const first = group[0];
+    const status = aggregateStatus(group);
+    out.push({
+      kind: 'npc-ambiguity',
+      id: slugify(name),
+      name,
+      icon: first.icon,
+      category: aggregateCategory(group),
+      inGame: status !== 'out-of-game',
+      status,
+      members: group.map((n) => ({
+        id: n.id,
+        name: trimmedNpcName(n),
+        icon: n.icon,
+        category: n.category,
+        inGame: n.inGame,
+        transportRouteCount: n.transportRoutes.length,
+        startedMissionCount: n.startedMissions.length,
+        spawnCount: n.locations.length,
+        firstLocation: n.locations[0] ?? null,
+      })),
+    });
+  }
+  return out.sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id));
+}
+
+function buildNpcIndex(npcs: Npc[]): NpcIndexEntry[] {
+  return Array.from(groupedNpcsByName(npcs), ([name, group]) => indexEntryForGroup(name, group))
+    .sort((a, b) => a.name.localeCompare(b.name) || String(a.id).localeCompare(String(b.id)));
 }
 
 /**
  * Read npc_type_info.json + npc_info.json, normalize every NPC type with its
- * world instances, and emit one page/index row per raw NPC type ID.
+ * world instances, and emit exact NPC pages plus duplicate-name ambiguity pages.
  */
 export async function normalizeNpcs(
   zipPath: string,
@@ -261,11 +342,15 @@ export async function normalizeNpcs(
     (n) => n.startedMissions.length || n.journaledMissions.length || n.endedMissions.length,
   ).length;
 
-  const { chunks } = await writeChunks(slug, 'npcs', npcs, (n) => ({
+  const groups = groupedNpcsByName(npcs);
+  const ambiguities = buildNpcAmbiguities(groups);
+  const npcRecords: Array<Npc | NpcAmbiguity> = [...npcs, ...ambiguities];
+
+  const { chunks } = await writeChunks(slug, 'npcs', npcRecords, (n) => ({
     url: n.id,
-    chunk: chunkOf(n.id),
+    chunk: typeof n.id === 'number' ? chunkOf(n.id) : 0,
   }));
-  await writeIndex(slug, 'npcs', npcs.map(indexEntry));
+  await writeIndex(slug, 'npcs', buildNpcIndex(npcs));
 
   return { count: npcs.length, chunks, vendors, linked };
 }
