@@ -8,13 +8,42 @@ import { useDelayedFlag } from '../../data/useDelayedFlag';
 
 const PAGE_SIZE = 50;
 
-/**
- * NPC categories surfaced as tabs. "All" is implicit. Categories not in this
- * list still show under "All" but don't get a tab of their own. Order matches
- * how a reader actually browses: people you talk to first, then services, then
- * environment markers.
- */
-const NPC_TAB_CATEGORIES = ['Quest', 'Vendor', 'Normal', 'Combi', 'Bank', 'Warp', 'Location'] as const;
+/** NPC categories surfaced as tabs. Order follows FFInfoPacks' NPC_TYPES ids, with Unknown for fallback rows. */
+const NPC_TAB_CATEGORIES = [
+  'Normal',
+  'Vendor',
+  'Quest',
+  'VendorQuest',
+  'Warp',
+  'Defense',
+  'NanoCreateMachine',
+  'NanoTuneMachine',
+  'NanoManager',
+  'Xcom',
+  'IXcom',
+  'Bank',
+  'StartEcom',
+  'EndEcom',
+  'SCAMPER',
+  'MonkeySkyway',
+  'RXcom',
+  'Guide1',
+  'Guide2',
+  'Guide3',
+  'Guide4',
+  'Guide5',
+  'GuideStarter',
+  'Offer',
+  'NoReaction',
+  'Combi',
+  'Enchant',
+  'Invisible',
+  'InvisibleWarp',
+  'InvisibleNoClick',
+  'NonCheck',
+  'Location',
+  'Unknown',
+] as const;
 type NpcTab = (typeof NPC_TAB_CATEGORIES)[number] | 'All';
 
 const NPC_CAT_RANK = new Map<string, number>(
@@ -109,7 +138,7 @@ export default function NpcIndex({ build, rows, loading }: Props) {
   const showSkeleton = useDelayedFlag(loading);
 
   const counts = useMemo(() => {
-    const acc: Record<NpcTab, number> = { All: 0, Quest: 0, Vendor: 0, Normal: 0, Combi: 0, Bank: 0, Warp: 0, Location: 0 };
+    const acc = Object.fromEntries((['All', ...NPC_TAB_CATEGORIES] as NpcTab[]).map((t) => [t, 0])) as Record<NpcTab, number>;
     for (const r of rows) {
       if (npcVisibleIdCount(r, hideOutOfGame) === 0) continue;
       acc.All++;
