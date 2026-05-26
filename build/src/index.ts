@@ -95,7 +95,7 @@ async function main(): Promise<void> {
     totalVendors += n.vendors;
     totalLinkedNpcs += n.linked;
 
-    const ins = await normalizeInstances(d.path, slug, iconMap);
+    const ins = await normalizeInstances(d.path, slug, iconMap, m.missionLevels);
     totalInstances += ins.count;
     totalInstanceChunks += ins.chunks;
     totalInfectedInstances += ins.infected;
@@ -111,7 +111,7 @@ async function main(): Promise<void> {
     totalLinkedMobs += mb.linked;
     totalDroppingMobs += mb.dropping;
 
-    const ar = await normalizeAreas(d.path, slug, iconMap, m.npcMissions);
+    const ar = await normalizeAreas(d.path, slug, iconMap, m.npcMissions, m.missionLevels);
     totalAreas += ar.count;
     totalAreaChunks += ar.chunks;
     totalAreasWithMissions += ar.withMissions;

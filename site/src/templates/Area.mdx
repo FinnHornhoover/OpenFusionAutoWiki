@@ -213,18 +213,46 @@ import { formatDurationSeconds } from '../data/formatTime';
 
 {props.data.instanceWarps.length > 0 && (
   <Dropdown summary={`Instance warps (${props.data.instanceWarps.length})`}>
-    <ul className="ref-list">
-      {props.data.instanceWarps.map((w, i) => (
-        <li key={`${w.instanceID}-${i}`}>
-          <strong>→ {w.instanceName}</strong>
-          <InlineMeta leading>
-            {w.npc && <span>via <EntityLink entity={w.npc} withIcon={false} /></span>}
-            {w.requiredMinLevel > 0 && <span>Lv {w.requiredMinLevel}+</span>}
-            {w.requiredItem && <span>needs <EntityLink entity={w.requiredItem} withIcon={false} /></span>}
-          </InlineMeta>
-        </li>
-      ))}
-    </ul>
+    <table className="location-table source-table">
+      <thead>
+        <tr>
+          <th>Warp NPC</th>
+          <th>Instance</th>
+          <th>Entry location</th>
+          <th>Required mission</th>
+          <th>Level</th>
+        </tr>
+      </thead>
+      <tbody>
+        {props.data.instanceWarps.map((w, i) => (
+          <tr key={`${w.id}-${w.instanceID}-${i}`}>
+            <td>{w.npc ? <EntityLink entity={w.npc} /> : <span className="muted">-</span>}</td>
+            <td>
+              <EntityLink entity={w.instance} withIcon={false} />
+              <InlineMeta leading>
+                {w.requiredItem && <span>needs <EntityLink entity={w.requiredItem} withIcon={false} /></span>}
+              </InlineMeta>
+            </td>
+            <td>{w.entryLocation ? (
+              <MapSpot
+                x={w.entryLocation.x}
+                y={w.entryLocation.y}
+                z={w.entryLocation.z}
+                areaId={w.entryLocation.areaId}
+                title={w.entryLocation.areaZone}
+                instanceName={w.entryLocation.instanceName}
+                instanceID={w.entryLocation.instanceID}
+              />
+            ) : <span className="muted">-</span>}</td>
+            <td>
+              {w.requiredMission ? <EntityLink entity={w.requiredMission} /> : <span className="muted">-</span>}
+              {w.requiredTaskObjective && <div><InlineMeta leading><span>{w.requiredTaskObjective}</span></InlineMeta></div>}
+            </td>
+            <td>{w.requiredMinLevel > 0 ? w.requiredMinLevel : <span className="muted">-</span>}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
   </Dropdown>
 )}
 

@@ -569,10 +569,24 @@ export interface AreaTransport {
 
 /** A warp door in the area leading to an instance. */
 export interface AreaInstanceWarp {
+  id: number;
+  instance: Ref;
   instanceID: number;
   instanceName: string;
   npc: Ref | null;
+  entryLocation: {
+    areaZone: string;
+    areaId: string;
+    x: number;
+    y: number;
+    z: number;
+    instanceID: number;
+    instanceName: string;
+  } | null;
   requiredItem: Ref | null;
+  requiredMission: Ref | null;
+  requiredTaskId: number;
+  requiredTaskObjective: string;
   requiredMinLevel: number;
 }
 

@@ -97,16 +97,25 @@ interface RawAreaEggType {
   EffectDuration?: number;
 }
 interface RawAreaInstanceWarp {
+  ID?: number;
   EntryInstanceID?: number;
   EntryInstance?: string;
+  NPCID?: number;
   NPCTypeID?: number;
   NPCName?: string;
   NPCIcon?: string;
+  NPCType?: { Name?: string; Icon?: string } | null;
+  NPCs?: Record<string, { AreaZone?: string; InstanceID?: number; X?: number; Y?: number; Z?: number; TypeID?: number; TypeName?: string; TypeIcon?: string }>;
   RequiredItemID?: number;
   RequiredItemType?: number;
   RequiredItem?: { Name?: string; Icon?: string } | null;
   RequiredMinLevel?: number;
+  RequiredMission?: string;
+  RequiredMissionID?: number;
+  RequiredTaskID?: number;
+  RequiredTaskObjective?: string;
 }
+
 interface RawAreaInfectedZone {
   ID?: number;
   EPID?: number;
@@ -452,29 +461,53 @@ function buildAreaInstanceWarps(
   warps: Record<string, RawAreaInstanceWarp> | undefined,
   instanceIndex: Map<number, RawInstance>,
   iconMap: IconMap,
+  missionLevels: Map<number, number>,
 ): AreaInstanceWarp[] {
   const out: AreaInstanceWarp[] = [];
   for (const w of Object.values(warps ?? {})) {
     if (!w || typeof w !== 'object') continue;
     const instId = w.EntryInstanceID ?? 0;
     const inst = instanceIndex.get(instId);
-    const npc: Ref | null = w.NPCTypeID && w.NPCTypeID > 0
+    const entryNpc = Object.values(w.NPCs ?? {})[0];
+    const npcId = w.NPCID && w.NPCID > 0 ? w.NPCID : w.NPCTypeID && w.NPCTypeID > 0 ? w.NPCTypeID : entryNpc?.TypeID ?? 0;
+    const npc: Ref | null = npcId > 0
       ? {
         type: 'npc',
-        id: w.NPCTypeID,
-        name: w.NPCName ?? `NPC #${w.NPCTypeID}`,
-        icon: iconFor(w.NPCIcon ?? '', iconMap),
+        id: npcId,
+        name: w.NPCType?.Name ?? w.NPCName ?? entryNpc?.TypeName ?? `NPC #${npcId}`,
+        icon: iconFor(w.NPCType?.Icon ?? w.NPCIcon ?? entryNpc?.TypeIcon ?? '', iconMap),
       }
       : null;
     const requiredItem: Ref | null = w.RequiredItemID && w.RequiredItemID > 0
       ? itemRef(w.RequiredItemType ?? 0, w.RequiredItemID, w.RequiredItem?.Name ?? '', w.RequiredItem?.Icon ?? '', iconMap)
       : null;
+    const requiredMission: Ref | null = w.RequiredMissionID && w.RequiredMissionID > 0
+      ? { type: 'mission', id: w.RequiredMissionID, name: w.RequiredMission || `Mission #${w.RequiredMissionID}` }
+      : null;
+    const entryAreaZone = entryNpc?.AreaZone ?? '';
+    const entryInstanceID = entryNpc?.InstanceID ?? 0;
     out.push({
+      id: w.ID ?? 0,
+      instance: { type: 'instance', id: instId, name: inst?.Name ?? w.EntryInstance ?? `Instance ${instId}` },
       instanceID: instId,
       instanceName: inst?.Name ?? w.EntryInstance ?? `Instance ${instId}`,
       npc,
+      entryLocation: entryNpc ? {
+        areaZone: entryAreaZone,
+        areaId: entryAreaZone && entryAreaZone !== 'Unknown - Unknown' ? slugify(entryAreaZone) : '',
+        x: entryNpc.X ?? 0,
+        y: entryNpc.Y ?? 0,
+        z: entryNpc.Z ?? 0,
+        instanceID: entryInstanceID,
+        instanceName: instanceIndex.get(entryInstanceID)?.Name ?? '',
+      } : null,
       requiredItem,
-      requiredMinLevel: w.RequiredMinLevel ?? 0,
+      requiredMission,
+      requiredTaskId: w.RequiredTaskID ?? 0,
+      requiredTaskObjective: w.RequiredTaskObjective ?? '',
+      requiredMinLevel: w.RequiredMinLevel && w.RequiredMinLevel > 0
+        ? w.RequiredMinLevel
+        : missionLevels.get(w.RequiredMissionID ?? 0) ?? 0,
     });
   }
   return out;
@@ -540,6 +573,7 @@ export async function normalizeAreas(
   slug: string,
   iconMap: IconMap,
   npcMissions: NpcMissionsMap,
+  missionLevels: Map<number, number>,
 ): Promise<{ count: number; chunks: number; withMissions: number; withTransport: number }> {
   const zip = new AdmZip(zipPath);
   const areaEntry = zip.getEntry('info/area_info.json');
@@ -577,7 +611,7 @@ export async function normalizeAreas(
     const vendors = buildAreaVendors(raw.NPCs, raw.NPCTypes, iconMap, id, fullName, instanceIndex);
     const eggs = buildAreaEggs(raw.Eggs, raw.EggTypes, iconMap, id, fullName, instanceIndex);
     const transportation = transportIndex.get(fullName) ?? [];
-    const instanceWarps = buildAreaInstanceWarps(raw.InstanceWarps, instanceIndex, iconMap);
+    const instanceWarps = buildAreaInstanceWarps(raw.InstanceWarps, instanceIndex, iconMap, missionLevels);
     const infectedZone = summarizeInfectedZone(raw.InfectedZone, infectedZones);
 
     // Missions starting in this area: any mission whose startNPC.id is one of our NPC type IDs.

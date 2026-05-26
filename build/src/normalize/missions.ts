@@ -381,14 +381,16 @@ export async function normalizeMissions(
   npcMissions: NpcMissionsMap;
   mobMissions: MobMissionsMap;
   nanoMissions: NanoMissionsMap;
+  missionLevels: Map<number, number>;
 }> {
   const zip = new AdmZip(zipPath);
   const entry = zip.getEntry('info/mission_info.json');
   const npcMissions: NpcMissionsMap = new Map();
   const mobMissions: MobMissionsMap = new Map();
   const nanoMissions: NanoMissionsMap = new Map();
+  const missionLevels = new Map<number, number>();
   if (!entry) {
-    return { count: 0, chunks: 0, npcMissions, mobMissions, nanoMissions };
+    return { count: 0, chunks: 0, npcMissions, mobMissions, nanoMissions, missionLevels };
   }
   const raw = JSON.parse(entry.getData().toString('utf8')) as Record<string, RawMission>;
   const nanoRefs = buildNanoRefIndex(zip, iconMap);
@@ -402,7 +404,10 @@ export async function normalizeMissions(
   //   mob → missions that require killing it
   //   mission → missions that name it as a prereq
   const byId = new Map<number, Mission>();
-  for (const m of missions) byId.set(m.id, m);
+  for (const m of missions) {
+    byId.set(m.id, m);
+    missionLevels.set(m.id, m.level);
+  }
 
   for (const m of missions) {
     const giver = m.startNPC ?? m.journalNPC;
@@ -458,7 +463,7 @@ export async function normalizeMissions(
   }));
   await writeIndex(slug, 'missions', missions.map(indexEntry));
 
-  return { count: missions.length, chunks, npcMissions, mobMissions, nanoMissions };
+  return { count: missions.length, chunks, npcMissions, mobMissions, nanoMissions, missionLevels };
 }
 
 /** Used by the orchestrator to advertise which entity types have data for a build. */

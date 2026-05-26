@@ -83,6 +83,7 @@ function normalizeWarp(
   raw: RawInstanceWarp,
   iconMap: IconMap,
   instanceNames: Map<number, string>,
+  missionLevels: Map<number, number>,
 ): InstanceWarp {
   const entryNpc = Object.values(raw.NPCs ?? {})[0] ?? null;
   const npcId = raw.NPCID && raw.NPCID > 0 ? raw.NPCID : entryNpc?.TypeID ?? 0;
@@ -110,7 +111,9 @@ function normalizeWarp(
     requiredMission,
     requiredTaskId: raw.RequiredTaskID ?? 0,
     requiredTaskObjective: raw.RequiredTaskObjective ?? '',
-    requiredMinLevel: raw.RequiredMinLevel ?? 0,
+    requiredMinLevel: raw.RequiredMinLevel && raw.RequiredMinLevel > 0
+      ? raw.RequiredMinLevel
+      : missionLevels.get(raw.RequiredMissionID ?? 0) ?? 0,
     warpPrice: raw.WarpPrice ?? 0,
   };
 }
@@ -119,10 +122,11 @@ function normalizeInstance(
   raw: RawInstanceInfo,
   iconMap: IconMap,
   instanceNames: Map<number, string>,
+  missionLevels: Map<number, number>,
 ): Instance {
   const id = raw.ID ?? 0;
   const entryWarps = Object.values(raw.EntryWarps ?? {})
-    .map((w) => normalizeWarp(w, iconMap, instanceNames))
+    .map((w) => normalizeWarp(w, iconMap, instanceNames, missionLevels))
     .sort((a, b) => a.id - b.id);
   const exitWarps = entryWarps.filter((w) => w.exitLocation);
   const epId = raw.EPID ?? 0;
@@ -156,6 +160,7 @@ export async function normalizeInstances(
   zipPath: string,
   slug: string,
   iconMap: IconMap,
+  missionLevels: Map<number, number>,
 ): Promise<{ count: number; chunks: number; infected: number }> {
   const zip = new AdmZip(zipPath);
   const entry = zip.getEntry('info/instance_info.json');
@@ -171,7 +176,7 @@ export async function normalizeInstances(
   }
   const rows = rawRows
     .filter((r) => r && typeof r === 'object')
-    .map((r) => normalizeInstance(r, iconMap, instanceNames))
+    .map((r) => normalizeInstance(r, iconMap, instanceNames, missionLevels))
     .filter((r) => r.id > 0)
     .sort((a, b) => a.name.localeCompare(b.name) || a.id - b.id);
 
