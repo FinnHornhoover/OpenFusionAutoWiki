@@ -375,7 +375,7 @@ export interface AreaTransport {
   routeName: string;
   moveType: string;
   startNpc: Ref | null;
-  stops: Array<{ areaZone: string; x: number; y: number; z: number; isHere: boolean }>;
+  stops: Array<{ areaZone: string; areaId: string; x: number; y: number; z: number; isHere: boolean; isStopPoint: boolean }>;
 }
 
 export interface AreaInstanceWarp {

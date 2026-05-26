@@ -449,8 +449,8 @@ export interface AreaTransport {
   routeName: string;          // human label
   moveType: string;           // "Slider", "MonkeySkyway", "SCAMPER", …
   startNpc: Ref | null;
-  /** All stops on the route, in order — first stop in this area gets `hereIndex`. */
-  stops: Array<{ areaZone: string; x: number; y: number; z: number; isHere: boolean }>;
+  /** Visible route points in order; non-Slider routes are indexed only by their first point. */
+  stops: Array<{ areaZone: string; areaId: string; x: number; y: number; z: number; isHere: boolean; isStopPoint: boolean }>;
 }
 
 /** A warp door in the area leading to an instance. */

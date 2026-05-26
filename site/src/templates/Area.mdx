@@ -177,17 +177,37 @@ import { formatDurationSeconds } from '../data/formatTime';
 
 {props.data.transportation.length > 0 && (
   <Dropdown summary={`Transportation (${props.data.transportation.length})`}>
-    <ul className="ref-list">
-      {props.data.transportation.map((t, i) => (
-        <li key={`${t.routeId}-${i}`}>
-          <strong>{t.routeName}</strong>
-          <InlineMeta leading>
-            {t.moveType && <span>{t.moveType}</span>}
-            {t.startNpc && <span>operated by <EntityLink entity={t.startNpc} withIcon={false} /></span>}
-          </InlineMeta>
-        </li>
-      ))}
-    </ul>
+    <table className="location-table source-table">
+      <thead>
+        <tr>
+          <th>Route</th>
+          <th>Operator</th>
+          <th>Start</th>
+          <th>Landing</th>
+        </tr>
+      </thead>
+      <tbody>
+        {props.data.transportation.map((t, i) => {
+          const start = t.stops[0];
+          const landing = t.stops[t.stops.length - 1];
+          return (
+            <tr key={`${t.routeId}-${i}`}>
+              <td>
+                <strong>{t.routeName}</strong>
+                {t.moveType && <div><InlineMeta>{t.moveType && <span>{t.moveType}</span>}</InlineMeta></div>}
+              </td>
+              <td>{t.startNpc ? <EntityLink entity={t.startNpc} /> : <span className="muted">—</span>}</td>
+              <td>{start ? (
+                <MapSpot x={start.x} y={start.y} z={start.z} areaId={start.areaId} title={start.areaZone} />
+              ) : <span className="muted">—</span>}</td>
+              <td>{landing ? (
+                <MapSpot x={landing.x} y={landing.y} z={landing.z} areaId={landing.areaId} title={landing.areaZone} />
+              ) : <span className="muted">—</span>}</td>
+            </tr>
+          );
+        })}
+      </tbody>
+    </table>
   </Dropdown>
 )}
 

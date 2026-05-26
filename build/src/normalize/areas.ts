@@ -126,10 +126,14 @@ interface RawTransportRoute {
   MoveType?: string;
   NPCID?: number;
   NPCType?: { Name?: string; Icon?: string } | null;
-  StartLocation?: { Name?: string; AreaZone?: string };
+  StartLocation?: { Name?: string; AreaZone?: string; X?: number; Y?: number; Z?: number };
   Transportations?: Record<string, {
+    AreaZone?: string;
     Name?: string;
     Icon?: string;
+    X?: number;
+    Y?: number;
+    Z?: number;
     Route?: Array<{ AreaZone?: string; X?: number; Y?: number; Z?: number; IsStopPoint?: boolean }>;
   }>;
 }
@@ -403,14 +407,28 @@ function buildTransportIndex(
 
     for (const sub of Object.values(route.Transportations ?? {})) {
       const stopsRaw = sub.Route ?? [];
-      const stops = stopsRaw.map((s) => ({
-        areaZone: s.AreaZone ?? '',
-        x: s.X ?? 0,
-        y: s.Y ?? 0,
-        z: s.Z ?? 0,
-        isHere: false,
-      }));
-      const zones = new Set(stops.map((s) => s.areaZone).filter(Boolean));
+      const visibleStopsRaw = route.MoveType === 'SCAMPER'
+        ? [
+            route.StartLocation ? { ...route.StartLocation, IsStopPoint: true } : null,
+            { AreaZone: sub.AreaZone, X: sub.X, Y: sub.Y, Z: sub.Z, IsStopPoint: true },
+          ]
+        : route.MoveType === 'Slider'
+          ? stopsRaw.filter((s) => s.IsStopPoint)
+          : stopsRaw.length > 1 ? [stopsRaw[0], stopsRaw[stopsRaw.length - 1]] : stopsRaw;
+      const stops = visibleStopsRaw
+        .filter((s): s is NonNullable<typeof s> => Boolean(s))
+        .map((s) => ({
+          areaZone: s.AreaZone ?? '',
+          areaId: s.AreaZone ? slugify(s.AreaZone) : '',
+          x: s.X ?? 0,
+          y: s.Y ?? 0,
+          z: s.Z ?? 0,
+          isHere: false,
+          isStopPoint: s.IsStopPoint ?? false,
+        }));
+      const zones = route.MoveType === 'Slider'
+        ? new Set(stops.map((s) => s.areaZone).filter(Boolean))
+        : new Set(stops[0]?.areaZone ? [stops[0].areaZone] : []);
       for (const z of zones) {
         let list = out.get(z);
         if (!list) {
@@ -419,7 +437,7 @@ function buildTransportIndex(
         }
         list.push({
           routeId,
-          routeName: sub.Name ?? route.MoveType ?? `Route ${routeId}`,
+          routeName: sub.Name || route.MoveType || `Route ${routeId}`,
           moveType: route.MoveType ?? '',
           startNpc,
           stops: stops.map((s) => ({ ...s, isHere: s.areaZone === z })),
