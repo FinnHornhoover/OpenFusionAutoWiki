@@ -96,7 +96,7 @@ async function main(): Promise<void> {
     totalLinkedNpcs += n.linked;
     totalMergedNpcs += n.merged;
 
-    const it = await normalizeItems(d.path, slug, iconMap, grouping);
+    const it = await normalizeItems(d.path, slug, iconMap, grouping, instanceNames);
     totalItems += it.count;
     totalItemChunks += it.chunks;
     totalItemSources += it.sourceCount;

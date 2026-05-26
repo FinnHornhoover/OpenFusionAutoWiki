@@ -205,9 +205,16 @@ export type ItemSource =
     }
   | ({
       kind: 'egg';
+      eggId: string;
       eggName: string;
       eggComment: string;
       areaZone: string;
+      areaId: string;
+      instanceID: number;
+      instanceName: string;
+      x: number;
+      y: number;
+      z: number;
     } & DropChance)
   | ({
       kind: 'racing';

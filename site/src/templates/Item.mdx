@@ -3,6 +3,7 @@ import DropChance from '../components/DropChance';
 import EntityLink from '../components/EntityLink';
 import Icon from '../components/Icon';
 import InlineMeta from '../components/InlineMeta';
+import MapSpot from '../components/MapSpot';
 import SimilarItems from '../components/SimilarItems';
 
 # {props.data.name}
@@ -161,7 +162,18 @@ import SimilarItems from '../components/SimilarItems';
                   <td>
                     <strong>{s.eggName || 'Egg'}</strong>
                   </td>
-                  <td>{s.areaZone || <span className="muted">—</span>}</td>
+                  <td>
+                    {s.areaZone ? (
+                      <MapSpot
+                        x={s.x}
+                        y={s.y}
+                        z={s.z}
+                        areaId={s.areaId}
+                        title={s.areaZone}
+                        instanceName={s.instanceName}
+                      />
+                    ) : <span className="muted">—</span>}
+                  </td>
                   <td><DropChance data={s} leadingSeparator={false} /></td>
                 </tr>
               ))}
