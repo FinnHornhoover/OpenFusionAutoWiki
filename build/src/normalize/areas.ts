@@ -104,6 +104,10 @@ interface RawAreaInfectedZone {
   RecommendedLevel?: number;
   MaxScore?: number;
 }
+interface RawInfectedZoneInfo {
+  ID?: number;
+  Name?: string;
+}
 
 interface RawTransportRoute {
   InGame?: boolean;
@@ -361,12 +365,34 @@ function buildAreaInstanceWarps(
   return out;
 }
 
-function summarizeInfectedZone(iz: RawAreaInfectedZone | null | undefined): AreaInfectedZoneSummary | null {
+function buildInfectedZoneIndex(zip: AdmZip): Map<number, { name: string; icon: string }> {
+  const out = new Map<number, { name: string; icon: string }>();
+  const entry = zip.getEntry('info/infected_zone_info.json');
+  if (!entry) return out;
+  const raw = JSON.parse(entry.getData().toString('utf8')) as Record<string, RawInfectedZoneInfo>;
+  for (const row of Object.values(raw)) {
+    const id = row.ID ?? 0;
+    if (id <= 0) continue;
+    out.set(id, {
+      name: row.Name ?? `Infected Zone #${id}`,
+      icon: `/ui/ep/ep_big_${String(id).padStart(2, '0')}.png`,
+    });
+  }
+  return out;
+}
+
+function summarizeInfectedZone(
+  iz: RawAreaInfectedZone | null | undefined,
+  infectedZones: Map<number, { name: string; icon: string }>,
+): AreaInfectedZoneSummary | null {
   if (!iz || typeof iz !== 'object') return null;
   const id = iz.ID ?? iz.EPID ?? 0;
   if (!id) return null;
+  const info = infectedZones.get(id);
   return {
     iznId: id,
+    name: info?.name ?? `Infected Zone #${id}`,
+    icon: info?.icon ?? '',
     description: (iz.Description ?? '').trim(),
     difficultyLabel: iz.DifficultyLabel ?? '',
     recommendedLevel: iz.RecommendedLevel ?? 0,
@@ -406,6 +432,7 @@ export async function normalizeAreas(
   if (!areaEntry) return { count: 0, chunks: 0, withMissions: 0, withTransport: 0 };
 
   const rawAreas = JSON.parse(areaEntry.getData().toString('utf8')) as Record<string, RawAreaInfo[]>;
+  const infectedZones = buildInfectedZoneIndex(zip);
 
   const transportEntry = zip.getEntry('info/transportation_info.json');
   const rawTransport = transportEntry
@@ -436,7 +463,7 @@ export async function normalizeAreas(
     const eggs = buildAreaEggs(raw.Eggs, raw.EggTypes, iconMap);
     const transportation = transportIndex.get(fullName) ?? [];
     const instanceWarps = buildAreaInstanceWarps(raw.InstanceWarps, instanceIndex, iconMap, grouping);
-    const infectedZone = summarizeInfectedZone(raw.InfectedZone);
+    const infectedZone = summarizeInfectedZone(raw.InfectedZone, infectedZones);
 
     // Vendors with items for sale in this area.
     const vendors: Ref[] = [];

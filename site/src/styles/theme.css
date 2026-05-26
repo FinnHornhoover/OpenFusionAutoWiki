@@ -714,6 +714,37 @@ details.dropdown > .dropdown-body {
   font-variant-numeric: tabular-nums;
 }
 
+.infected-zone-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  max-width: 520px;
+}
+.infected-zone-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+.infected-zone-icon {
+  flex-shrink: 0;
+}
+.infected-zone-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+.infected-zone-details {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  color: var(--color-text-muted);
+}
+.infected-zone-details strong {
+  color: var(--color-text);
+}
+.infected-zone-description {
+  margin: 0;
+}
+
 /* Badges */
 .badge {
   display: inline-block;

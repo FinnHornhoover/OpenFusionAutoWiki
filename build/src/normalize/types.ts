@@ -433,6 +433,8 @@ export interface AreaInstanceWarp {
 /** When the area is part of an Infected Zone, a compact summary. */
 export interface AreaInfectedZoneSummary {
   iznId: number;
+  name: string;
+  icon: string;
   description: string;
   difficultyLabel: string;
   recommendedLevel: number;

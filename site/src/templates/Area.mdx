@@ -8,7 +8,7 @@ import { formatDurationSeconds } from '../data/formatTime';
 
 <p className="entity-meta muted">
   {props.data.zoneName && <span className="badge badge-category">{props.data.zoneName}</span>}
-  {props.data.infectedZone && <span className="badge badge-warn">Infected Zone</span>}
+  {props.data.infectedZone && <span className="badge badge-warn">has infected zone</span>}
   <span>{props.data.npcs.length} NPC types</span>
   <span>{props.data.mobs.length} monster types</span>
   {props.data.missionsStarting.length > 0 && (
@@ -32,12 +32,17 @@ import { formatDurationSeconds } from '../data/formatTime';
 
 {props.data.infectedZone && (
   <Dropdown summary="Infected Zone" open>
-    <dl className="stat-grid">
-      <><dt>Recommended level</dt><dd>{props.data.infectedZone.recommendedLevel || '—'}</dd></>
-      {props.data.infectedZone.difficultyLabel && <><dt>Difficulty</dt><dd>{props.data.infectedZone.difficultyLabel}</dd></>}
-      {props.data.infectedZone.maxScore > 0 && <><dt>Max score</dt><dd>{props.data.infectedZone.maxScore.toLocaleString()}</dd></>}
-    </dl>
-    {props.data.infectedZone.description && <p>{props.data.infectedZone.description}</p>}
+    <div className="infected-zone-card">
+      <div className="infected-zone-header">
+        {props.data.infectedZone.icon && <img src={props.data.infectedZone.icon} alt="" loading="lazy" className="icon infected-zone-icon" />}
+        <div className="infected-zone-title">{props.data.infectedZone.name}</div>
+      </div>
+      <div className="infected-zone-details">
+        {props.data.infectedZone.difficultyLabel && <div><strong>Difficulty:</strong> {props.data.infectedZone.difficultyLabel}</div>}
+        {props.data.infectedZone.maxScore > 0 && <div><strong>Max score:</strong> {props.data.infectedZone.maxScore.toLocaleString()}</div>}
+      </div>
+      {props.data.infectedZone.description && <p className="infected-zone-description">{props.data.infectedZone.description}</p>}
+    </div>
   </Dropdown>
 )}
 

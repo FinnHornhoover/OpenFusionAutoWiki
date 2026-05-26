@@ -356,6 +356,8 @@ export interface AreaInstanceWarp {
 
 export interface AreaInfectedZoneSummary {
   iznId: number;
+  name: string;
+  icon: string;
   description: string;
   difficultyLabel: string;
   recommendedLevel: number;
