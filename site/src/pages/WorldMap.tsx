@@ -1,11 +1,17 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { type CSSProperties, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import ErrorState from '../components/ErrorState';
-import { MINIMAP_PX, worldToPx } from '../data/minimapCoords';
+import { MINIMAP_PX, TILE_PX, worldToPx } from '../data/minimapCoords';
 import { buildWorldMapMarkers, buildWorldTransportRoutes } from '../data/mapMarkers';
 import type { Area } from '../data/types';
 import { buildPageTitle, useBuildEntry } from '../data/useBuildEntry';
 import { useDocumentTitle } from '../data/useDocumentTitle';
+
+const WORLD_MARKER_SCREEN_SIZE = 32;
+const WORLD_ROUTE_SCREEN_WIDTH = 2;
+const WORLD_ROUTE_ACTIVE_SCREEN_WIDTH = 4;
+const MIN_WORLD_MAP_ZOOM = 1.5;
+const MAX_WORLD_MAP_ZOOM = 24;
 
 const ROUTE_CLASS: Record<string, string> = {
   monkeyskyway: 'monkey-skyway',
@@ -18,6 +24,10 @@ const ROUTE_CLASS: Record<string, string> = {
 function routeClass(moveType: string): string {
   const key = moveType.toLowerCase().replace(/[^a-z]/g, '');
   return ROUTE_CLASS[key] ?? 'other';
+}
+
+function clampZoom(value: number): number {
+  return Math.min(MAX_WORLD_MAP_ZOOM, Math.max(MIN_WORLD_MAP_ZOOM, value));
 }
 
 function useAreas(build: string | undefined) {
@@ -52,13 +62,34 @@ export default function WorldMap() {
   const entry = useBuildEntry(build);
   const { areas, loading, error } = useAreas(build);
   const [offset, setOffset] = useState({ x: -520, y: -520 });
-  const [hoverRoute, setHoverRoute] = useState<string | null>(null);
+  const [zoom, setZoom] = useState(7);
+  const [hoverRoutes, setHoverRoutes] = useState<string[]>([]);
+  const viewportRef = useRef<HTMLDivElement | null>(null);
   const drag = useRef<{ pointerId: number; startX: number; startY: number; originX: number; originY: number } | null>(null);
 
   useDocumentTitle(entry ? `World Map · ${buildPageTitle(entry)}` : build ? `World Map · ${build}` : null);
 
   const markers = useMemo(() => build && areas.length > 0 ? buildWorldMapMarkers(areas, build) : [], [areas, build]);
   const routes = useMemo(() => buildWorldTransportRoutes(areas), [areas]);
+  const markerScale = 1 / zoom;
+
+  useEffect(() => {
+    const viewport = viewportRef.current;
+    if (!viewport) return;
+    const applyZoom = () => {
+      const rect = viewport.getBoundingClientRect();
+      const nextZoom = clampZoom(rect.width / TILE_PX);
+      setZoom(nextZoom);
+      setOffset({
+        x: rect.width / 2 - (MINIMAP_PX / 2) * nextZoom,
+        y: rect.height / 2 - (MINIMAP_PX / 2) * nextZoom,
+      });
+    };
+    applyZoom();
+    const observer = new ResizeObserver(applyZoom);
+    observer.observe(viewport);
+    return () => observer.disconnect();
+  }, []);
 
   if (!build) return null;
 
@@ -72,7 +103,22 @@ export default function WorldMap() {
       {loading && <p className="muted">Loading map...</p>}
       {!error && (
         <div
+          ref={viewportRef}
           className="world-map-viewport"
+          onWheel={(event) => {
+            event.preventDefault();
+            const rect = event.currentTarget.getBoundingClientRect();
+            const nextZoom = clampZoom(zoom * (event.deltaY < 0 ? 1.2 : 1 / 1.2));
+            const cursorX = event.clientX - rect.left;
+            const cursorY = event.clientY - rect.top;
+            const worldX = (cursorX - offset.x) / zoom;
+            const worldY = (cursorY - offset.y) / zoom;
+            setZoom(nextZoom);
+            setOffset({
+              x: cursorX - worldX * nextZoom,
+              y: cursorY - worldY * nextZoom,
+            });
+          }}
           onPointerDown={(event) => {
             if ((event.target as Element).closest('a')) return;
             event.currentTarget.setPointerCapture(event.pointerId);
@@ -88,13 +134,20 @@ export default function WorldMap() {
           }}
           onPointerCancel={() => { drag.current = null; }}
         >
-          <div className="world-map-canvas" style={{ transform: `translate(${offset.x}px, ${offset.y}px)` }}>
+          <div
+            className="world-map-canvas"
+            style={{
+              transform: `translate(${offset.x}px, ${offset.y}px) scale(${zoom})`,
+              '--world-map-route-width': `${WORLD_ROUTE_SCREEN_WIDTH / zoom}px`,
+              '--world-map-route-active-width': `${WORLD_ROUTE_ACTIVE_SCREEN_WIDTH / zoom}px`,
+            } as CSSProperties}
+          >
             <img src="/minimap/all.png" alt="" className="world-map-image" draggable={false} />
             <svg className="world-map-routes" viewBox={`0 0 ${MINIMAP_PX} ${MINIMAP_PX}`} aria-hidden>
               {routes.map((route) => (
                 <polyline
                   key={route.key}
-                  className={`world-map-route world-map-route-${routeClass(route.moveType)} ${hoverRoute === route.key ? 'is-active' : ''}`}
+                  className={`world-map-route world-map-route-${routeClass(route.moveType)} ${hoverRoutes.includes(route.key) ? 'is-active' : ''}`}
                   points={route.points.map((p) => {
                     const pos = worldToPx(p.x, p.y);
                     return `${pos.px},${pos.py}`;
@@ -109,12 +162,15 @@ export default function WorldMap() {
                   key={marker.id}
                   href={marker.to}
                   className={`world-map-marker world-map-marker-${marker.kind}`}
-                  style={{ left: pos.px, top: pos.py }}
-                  title={marker.label}
-                  onMouseEnter={() => setHoverRoute(marker.routeKey ?? null)}
-                  onMouseLeave={() => setHoverRoute(null)}
+                  style={{ left: pos.px, top: pos.py, width: WORLD_MARKER_SCREEN_SIZE, height: WORLD_MARKER_SCREEN_SIZE, '--world-marker-scale': markerScale } as CSSProperties}
+                  aria-label={marker.label}
+                  onMouseEnter={() => setHoverRoutes(marker.routeKeys ?? (marker.routeKey ? [marker.routeKey] : []))}
+                  onMouseLeave={() => setHoverRoutes([])}
+                  onFocus={() => setHoverRoutes(marker.routeKeys ?? (marker.routeKey ? [marker.routeKey] : []))}
+                  onBlur={() => setHoverRoutes([])}
                 >
                   <img src={marker.icon} alt="" draggable={false} />
+                  <span className="world-map-marker-tooltip">{marker.label}</span>
                 </a>
               );
             })}

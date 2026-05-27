@@ -507,6 +507,9 @@ export interface InfectedZoneIndexEntry {
 
 export interface AreaNpcEntry {
   ref: Ref;
+  category: string;
+  mapIcon: string;
+  showOnMap: boolean;
   instanceCount: number;
   x: number;
   y: number;
@@ -535,6 +538,9 @@ export interface AreaMobEntry {
 
 export interface AreaVendorEntry {
   ref: Ref;
+  category: string;
+  mapIcon: string;
+  showOnMap: boolean;
   instanceCount: number;
   x: number;
   y: number;

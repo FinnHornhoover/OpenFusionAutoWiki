@@ -476,14 +476,8 @@ details.dropdown > .dropdown-body {
 .world-map-image {
   image-rendering: auto;
 }
-.area-map-bounds {
-  fill: rgba(244, 162, 97, 0.14);
-  stroke: var(--color-accent);
-  stroke-width: 2;
-  vector-effect: non-scaling-stroke;
-}
 .area-map-marker-image {
-  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.8));
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.45));
   transform-box: fill-box;
   transform-origin: center;
   transition: transform 0.12s ease, filter 0.12s ease;
@@ -491,15 +485,30 @@ details.dropdown > .dropdown-body {
 .area-map-marker:hover .area-map-marker-image,
 .area-map-marker:focus .area-map-marker-image {
   transform: scale(1.45);
-  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.9));
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.55));
+}
+.area-map-marker-tooltip {
+  opacity: 0;
+  pointer-events: none;
+  fill: var(--color-text);
+  stroke: var(--color-bg);
+  stroke-width: 5px;
+  paint-order: stroke fill;
+  font-size: 15px;
+  font-weight: 700;
+  transition: opacity 0.04s ease;
+}
+.area-map-marker:hover .area-map-marker-tooltip,
+.area-map-marker:focus .area-map-marker-tooltip {
+  opacity: 1;
 }
 .world-map-page h1 {
   margin-top: 0;
 }
 .world-map-viewport {
   position: relative;
-  height: min(78vh, 900px);
-  min-height: 520px;
+  width: min(100%, 78vh, 900px);
+  aspect-ratio: 1;
   overflow: hidden;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
@@ -531,7 +540,7 @@ details.dropdown > .dropdown-body {
 }
 .world-map-route {
   fill: none;
-  stroke-width: 4;
+  stroke-width: var(--world-map-route-width, 1px);
   stroke-linecap: round;
   stroke-linejoin: round;
   opacity: 0.42;
@@ -539,7 +548,7 @@ details.dropdown > .dropdown-body {
 }
 .world-map-route.is-active {
   opacity: 0.9;
-  stroke-width: 7;
+  stroke-width: var(--world-map-route-active-width, 2px);
 }
 .world-map-route-monkey-skyway { stroke: #8f5cff; }
 .world-map-route-scamper { stroke: #e05252; }
@@ -548,23 +557,54 @@ details.dropdown > .dropdown-body {
 .world-map-route-other { stroke: var(--color-text-muted); }
 .world-map-marker {
   position: absolute;
-  width: 28px;
-  height: 28px;
-  margin: -14px 0 0 -14px;
   display: block;
-  transition: transform 0.12s ease, z-index 0.12s ease;
+  transform: translate(-50%, -50%) scale(var(--world-marker-scale, 1));
+  transform-origin: center;
+  transition: z-index 0.12s ease;
   z-index: 2;
 }
 .world-map-marker img {
   width: 100%;
   height: 100%;
   display: block;
-  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.85));
+  object-fit: contain;
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.45));
+  transition: transform 0.12s ease;
 }
 .world-map-marker:hover,
 .world-map-marker:focus {
-  transform: scale(1.45);
   z-index: 5;
+}
+.world-map-marker:hover img,
+.world-map-marker:focus img {
+  transform: scale(1.45);
+}
+.world-map-marker-tooltip {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 6px);
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: min(260px, 70vw);
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  background: rgba(18, 22, 28, 0.92);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.2;
+  text-align: center;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.04s ease;
+}
+.world-map-marker:hover .world-map-marker-tooltip,
+.world-map-marker:focus .world-map-marker-tooltip {
+  opacity: 1;
 }
 .task-row-waypoint {
   display: flex;
