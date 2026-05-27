@@ -1,4 +1,4 @@
-import { useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 
 import ErrorState from '../components/ErrorState';
 import type { AreaIndexEntry, InfectedZoneIndexEntry, InstanceIndexEntry, ItemIndexEntry, MissionIndexEntry, MobIndexEntry, NanoIndexEntry, NpcIndexEntry } from '../data/types';
@@ -38,13 +38,14 @@ export default function EntityIndex() {
 
   const buildLabel = entry ? entry.displayName : build;
   const heading = TYPE_TITLES[type ?? ''] ?? type ?? '';
+  const buildLink = build ? <Link to={`/${build}`}>{buildLabel}</Link> : buildLabel;
   useDocumentTitle(`${heading} · ${buildLabel ?? ''}`.trim());
 
   if (!supported) {
     return (
       <section>
         <h1>{heading}</h1>
-        <p className="muted">Build: {buildLabel}</p>
+        <p className="muted">Build: {buildLink}</p>
         <div className="placeholder">
           {heading} aren't normalized yet for this build. Coming in a later phase.
         </div>
@@ -93,7 +94,7 @@ export default function EntityIndex() {
   return (
     <section>
       <h1>{heading}</h1>
-      <p className="muted">Build: {buildLabel}</p>
+      <p className="muted">Build: {buildLink}</p>
       {body}
     </section>
   );
