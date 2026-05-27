@@ -435,6 +435,17 @@ function buildTransportIndex(
           isHere: false,
           isStopPoint: s.IsStopPoint ?? false,
         }));
+      const routePointsRaw = route.MoveType === 'Slider' && stopsRaw.length > 0 ? stopsRaw : visibleStopsRaw;
+      const routePoints = routePointsRaw
+        .filter((s): s is NonNullable<typeof s> => Boolean(s))
+        .map((s) => ({
+          areaZone: s.AreaZone ?? '',
+          areaId: s.AreaZone ? slugify(s.AreaZone) : '',
+          x: s.X ?? 0,
+          y: s.Y ?? 0,
+          z: s.Z ?? 0,
+          isStopPoint: s.IsStopPoint ?? false,
+        }));
       const zones = route.MoveType === 'Slider'
         ? new Set(stops.map((s) => s.areaZone).filter(Boolean))
         : new Set(stops[0]?.areaZone ? [stops[0].areaZone] : []);
@@ -450,6 +461,7 @@ function buildTransportIndex(
           moveType: route.MoveType ?? '',
           startNpc,
           stops: stops.map((s) => ({ ...s, isHere: s.areaZone === z })),
+          routePoints,
         });
       }
     }
@@ -630,6 +642,21 @@ export async function normalizeAreas(
     const missionsStarting = [...missionsStartingMap.values()].sort(
       (a, b) => (a.id as number) - (b.id as number),
     );
+    const missionStarts = npcs.flatMap((n) => {
+      const entry = npcMissions.get(n.ref.id as number);
+      if (!entry) return [];
+      return entry.starts.map((mission) => ({
+        mission,
+        npc: n.ref,
+        x: n.x,
+        y: n.y,
+        z: n.z,
+        areaId: n.areaId,
+        areaZone: n.areaZone,
+        instanceID: n.instanceID,
+        instanceName: n.instanceName,
+      }));
+    }).sort((a, b) => (a.mission.id as number) - (b.mission.id as number));
 
     areas.push({
       id,
@@ -647,6 +674,7 @@ export async function normalizeAreas(
       transportation,
       instanceWarps,
       infectedZone,
+      missionStarts,
       missionsStarting,
     });
   }

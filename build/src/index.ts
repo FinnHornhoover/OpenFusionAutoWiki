@@ -156,9 +156,9 @@ async function main(): Promise<void> {
   log.done(`nanos: ${totalNanos} → ${totalNanoChunks} chunks; ${totalLinkedNanos} link to missions`);
   log.done(`search: ${totalSearchRows} rows across ${downloaded.length} builds (${(totalSearchBytes / (1024 * 1024)).toFixed(1)} MB total raw)`);
 
-  log.step('fetching world minimap');
+  log.step('checking world minimap asset');
   const mm = await downloadMinimap();
-  log.done(`minimap: ${mm.cached ? 'cached' : 'downloaded'} ${(mm.bytes / 1024).toFixed(1)} KB`);
+  log.done(`minimap: checked-in ${(mm.bytes / 1024).toFixed(1)} KB`);
 
   log.step('writing sitemap + robots.txt');
   const slugs = downloaded.map((d) => slugForZip(d.asset.name));

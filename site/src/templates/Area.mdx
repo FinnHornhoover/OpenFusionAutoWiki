@@ -2,8 +2,8 @@ import Dropdown from '../components/Dropdown';
 import EntityLink from '../components/EntityLink';
 import Icon from '../components/Icon';
 import InlineMeta from '../components/InlineMeta';
+import AreaMap from '../components/AreaMap';
 import MapSpot from '../components/MapSpot';
-import Minimap from '../components/Minimap';
 import { formatDurationSeconds } from '../data/formatTime';
 
 # {props.data.name}
@@ -22,15 +22,7 @@ import { formatDurationSeconds } from '../data/formatTime';
 
 {props.data.width > 0 && props.data.height > 0 && (
   <div className="area-map">
-    <Minimap
-      x={props.data.x + props.data.width / 2}
-      y={props.data.y + props.data.height / 2}
-      width={props.data.width}
-      height={props.data.height}
-      size={960}
-      extent={Math.max(props.data.width, props.data.height) / 2 + 16384}
-      title={props.data.fullName}
-    />
+    <AreaMap area={props.data} build={props.build} />
   </div>
 )}
 

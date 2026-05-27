@@ -149,7 +149,7 @@ export default function EntityPage() {
           {' · '}
           <Link to={`/${build}/areas`}>Areas</Link>
         </p>
-        <AreaTemplate data={entity as Area} />
+        <AreaTemplate data={entity as Area} build={build} />
       </section>
     );
   }

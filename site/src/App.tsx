@@ -7,6 +7,7 @@ import BuildHome from './pages/BuildHome';
 import EntityIndex from './pages/EntityIndex';
 import EntityPage from './pages/EntityPage';
 import NotFound from './pages/NotFound';
+import WorldMap from './pages/WorldMap';
 
 export default function App() {
   return (
@@ -21,6 +22,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/:build" element={<BuildHome />} />
+          <Route path="/:build/map" element={<WorldMap />} />
           <Route path="/:build/:type" element={<EntityIndex />} />
           <Route path="/:build/:type/:id" element={<EntityPage />} />
           <Route path="*" element={<NotFound />} />

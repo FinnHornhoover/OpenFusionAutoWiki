@@ -625,6 +625,18 @@ export interface AreaVendorEntry {
   points: Array<{ x: number; y: number }>;
 }
 
+export interface AreaMissionStartEntry {
+  mission: Ref;
+  npc: Ref;
+  x: number;
+  y: number;
+  z: number;
+  areaId: string;
+  areaZone: string;
+  instanceID: number;
+  instanceName: string;
+}
+
 /** A single egg/crate location in the area. */
 export interface AreaEggEntry {
   typeName: string;          // e.g., "14Lv Item shiny"
@@ -648,8 +660,10 @@ export interface AreaTransport {
   routeName: string;          // human label
   moveType: string;           // "Slider", "MonkeySkyway", "SCAMPER", …
   startNpc: Ref | null;
-  /** Visible route points in order; non-Slider routes are indexed only by their first point. */
+  /** Visible route stops in order; non-Slider routes are indexed only by their first point. */
   stops: Array<{ areaZone: string; areaId: string; x: number; y: number; z: number; isHere: boolean; isStopPoint: boolean }>;
+  /** Full drawable route points; Slider keeps the full circuit while markers use stops. */
+  routePoints?: Array<{ areaZone: string; areaId: string; x: number; y: number; z: number; isStopPoint: boolean }>;
 }
 
 /** A warp door in the area leading to an instance. */
@@ -710,6 +724,7 @@ export interface Area {
   transportation: AreaTransport[];
   instanceWarps: AreaInstanceWarp[];
   infectedZone: AreaInfectedZoneSummary | null;
+  missionStarts: AreaMissionStartEntry[];
 
   /** Missions whose start NPC lives in this area. */
   missionsStarting: Ref[];
