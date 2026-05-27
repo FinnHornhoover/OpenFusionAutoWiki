@@ -421,6 +421,59 @@ export interface InstanceIndexEntry {
   exitWarpCount: number;
 }
 
+
+// ---- Infected Zones ---------------------------------------------------------
+
+export interface InfectedZoneRankReward {
+  stars: number;
+  rank: number;
+  label: string;
+  requiredScore: number;
+  item: Ref | null;
+  crateDrops: CrateDrop[];
+}
+
+export interface InfectedZone {
+  id: number;
+  name: string;
+  icon: string;
+  areaZone: string;
+  areaId: string;
+  inGame: boolean;
+  podCount: number;
+  timeLimit: string;
+  timeLimitSeconds: number;
+  maxScore: number;
+  originalMaxScore: number;
+  podFactor: number;
+  timeFactor: number;
+  scaleFactor: number;
+  scoreFunction: string;
+  fmRewardFunction: string;
+  firstEntryLocation: InstanceWarpLocation | null;
+  entryWarps: InstanceWarp[];
+  exitWarps: InstanceWarp[];
+  rankRewards: InfectedZoneRankReward[];
+}
+
+export interface InfectedZoneIndexEntry {
+  id: number;
+  name: string;
+  icon: string;
+  areaZone: string;
+  areaId: string;
+  firstEntryX: number;
+  firstEntryY: number;
+  firstEntryZ: number;
+  inGame: boolean;
+  podCount: number;
+  timeLimit: string;
+  timeLimitSeconds: number;
+  maxScore: number;
+  entryWarpCount: number;
+  exitWarpCount: number;
+}
+
 export interface AreaNpcEntry {
   ref: Ref;
   instanceCount: number;

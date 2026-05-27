@@ -1,13 +1,14 @@
 import { Link, useParams } from 'react-router-dom';
 import EntityPageSkeleton from '../components/EntityPageSkeleton';
 import ErrorState from '../components/ErrorState';
-import type { Area, Instance, Item, Mission, Mob, Nano, Npc, NpcAmbiguity } from '../data/types';
+import type { Area, InfectedZone, Instance, Item, Mission, Mob, Nano, Npc, NpcAmbiguity } from '../data/types';
 import { useBuildEntry } from '../data/useBuildEntry';
 import { useBuildMeta } from '../data/useBuildMeta';
 import { useDelayedFlag } from '../data/useDelayedFlag';
 import { useDocumentTitle } from '../data/useDocumentTitle';
 import { useEntity } from '../data/useEntity';
 import AreaTemplate from '../templates/Area.mdx';
+import InfectedZoneTemplate from '../templates/InfectedZone.mdx';
 import InstanceTemplate from '../templates/Instance.mdx';
 import ItemTemplate from '../templates/Item.mdx';
 import MissionTemplate from '../templates/Mission.mdx';
@@ -22,7 +23,7 @@ export default function EntityPage() {
   const meta = useBuildMeta(build);
   const supported = meta?.builtTypes?.includes(type ?? '') ?? false;
 
-  const { entity, loading, notFound, error } = useEntity<Mission | Npc | NpcAmbiguity | Item | Mob | Area | Instance | Nano>(
+  const { entity, loading, notFound, error } = useEntity<Mission | Npc | NpcAmbiguity | Item | Mob | Area | Instance | InfectedZone | Nano>(
     supported ? build : undefined,
     supported ? type : undefined,
     supported ? id : undefined,
@@ -148,6 +149,19 @@ export default function EntityPage() {
           <Link to={`/${build}/instances`}>Instances</Link>
         </p>
         <InstanceTemplate data={entity as Instance} />
+      </section>
+    );
+  }
+
+  if (type === 'infected-zones') {
+    return (
+      <section className="entity-page infected-zone-page">
+        <p className="breadcrumb muted">
+          <Link to={`/${build}`}>{buildLabel}</Link>
+          {' · '}
+          <Link to={`/${build}/infected-zones`}>Infected Zones</Link>
+        </p>
+        <InfectedZoneTemplate data={entity as InfectedZone} />
       </section>
     );
   }

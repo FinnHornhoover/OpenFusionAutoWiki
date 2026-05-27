@@ -10,6 +10,7 @@ import { slugForZip, writeManifest } from './manifest.js';
 import { downloadMinimap } from './minimap.js';
 import { normalizeAreas } from './normalize/areas.js';
 import { buildInstanceNameIndex } from './normalize/instanceLookup.js';
+import { normalizeInfectedZones } from './normalize/infectedZones.js';
 import { normalizeInstances } from './normalize/instances.js';
 import { normalizeItems } from './normalize/items.js';
 import { normalizeMissions } from './normalize/missions.js';
@@ -58,6 +59,8 @@ async function main(): Promise<void> {
   let totalNpcChunks = 0;
   let totalVendors = 0;
   let totalLinkedNpcs = 0;
+  let totalInfectedZones = 0;
+  let totalInfectedZoneChunks = 0;
   let totalInstances = 0;
   let totalInstanceChunks = 0;
   let totalInfectedInstances = 0;
@@ -95,6 +98,10 @@ async function main(): Promise<void> {
     totalVendors += n.vendors;
     totalLinkedNpcs += n.linked;
 
+    const iz = await normalizeInfectedZones(d.path, slug, iconMap, m.missionLevels);
+    totalInfectedZones += iz.count;
+    totalInfectedZoneChunks += iz.chunks;
+
     const ins = await normalizeInstances(d.path, slug, iconMap, m.missionLevels);
     totalInstances += ins.count;
     totalInstanceChunks += ins.chunks;
@@ -126,15 +133,16 @@ async function main(): Promise<void> {
     totalSearchRows += search.count;
     totalSearchBytes += search.bytes;
 
-    await writeBuildMeta(slug, ['missions', 'npcs', 'items', 'monsters', 'areas', 'instances', 'nanos']);
-    log.info(`${slug.padEnd(46)} missions=${m.count} npcs=${n.count} items=${it.count} mobs=${mb.count} areas=${ar.count} instances=${ins.count} nanos=${na.count} search=${search.count}`);
+    await writeBuildMeta(slug, ['missions', 'npcs', 'items', 'monsters', 'areas', 'instances', 'infected-zones', 'nanos']);
+    log.info(`${slug.padEnd(46)} missions=${m.count} npcs=${n.count} items=${it.count} mobs=${mb.count} areas=${ar.count} instances=${ins.count} infectedZones=${iz.count} nanos=${na.count} search=${search.count}`);
   }
   log.done(`missions: ${totalMissions} → ${totalMissionChunks} chunks`);
   log.done(`npcs: ${totalNpcs} → ${totalNpcChunks} chunks; ${totalLinkedNpcs} link to missions; ${totalVendors} vendors`);
   log.done(`items: ${totalItems} → ${totalItemChunks} chunks; ${totalItemSources} source entries embedded`);
   log.done(`mobs: ${totalMobs} → ${totalMobChunks} chunks; ${totalLinkedMobs} link to missions; ${totalDroppingMobs} drop items`);
   log.done(`areas: ${totalAreas} → ${totalAreaChunks} chunks; ${totalAreasWithMissions} host missions; ${totalAreasWithTransport} have transport`);
-  log.done(`instances: ${totalInstances} → ${totalInstanceChunks} chunks; ${totalInfectedInstances} infected zones`);
+  log.done(`instances: ${totalInstances} → ${totalInstanceChunks} chunks; ${totalInfectedInstances} infected instances`);
+  log.done(`infected zones: ${totalInfectedZones} → ${totalInfectedZoneChunks} chunks`);
   log.done(`nanos: ${totalNanos} → ${totalNanoChunks} chunks; ${totalLinkedNanos} link to missions`);
   log.done(`search: ${totalSearchRows} rows across ${downloaded.length} builds (${(totalSearchBytes / (1024 * 1024)).toFixed(1)} MB total raw)`);
 

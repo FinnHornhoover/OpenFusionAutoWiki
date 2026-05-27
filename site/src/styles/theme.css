@@ -132,7 +132,7 @@ pre {
   border-top: 1px solid var(--color-border);
   color: var(--color-text-muted);
   font-size: 0.875rem;
-  text-align: center;
+  text-align: left;
 }
 
 /* Skeleton loaders */
@@ -472,6 +472,7 @@ details.dropdown > .dropdown-body {
   border-radius: var(--radius-sm);
   background: rgba(255, 255, 255, 0.04);
   flex-shrink: 0;
+  object-fit: contain;
 }
 .icon-empty { background: transparent; }
 
@@ -887,6 +888,26 @@ details.dropdown > .dropdown-body {
   border: 1px solid var(--color-border);
   color: var(--color-text);
   font-variant-numeric: tabular-nums;
+}
+
+
+.infected-zone-header-icon .icon {
+  width: 239px;
+  height: 127px;
+}
+.infected-zone-index-card {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+  min-width: 239px;
+  max-width: 239px;
+  text-align: center;
+}
+.infected-zone-index-card .icon,
+.infected-zone-index-card .icon-empty {
+  width: 239px;
+  height: 127px;
 }
 
 /* Index controls (search + filters) */

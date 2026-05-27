@@ -1,12 +1,13 @@
 import { useParams } from 'react-router-dom';
 
 import ErrorState from '../components/ErrorState';
-import type { AreaIndexEntry, InstanceIndexEntry, ItemIndexEntry, MissionIndexEntry, MobIndexEntry, NanoIndexEntry, NpcIndexEntry } from '../data/types';
+import type { AreaIndexEntry, InfectedZoneIndexEntry, InstanceIndexEntry, ItemIndexEntry, MissionIndexEntry, MobIndexEntry, NanoIndexEntry, NpcIndexEntry } from '../data/types';
 import { useBuildEntry } from '../data/useBuildEntry';
 import { useBuildMeta } from '../data/useBuildMeta';
 import { useDocumentTitle } from '../data/useDocumentTitle';
 import { useIndex } from '../data/useIndex';
 import AreaIndex from './index/AreaIndex';
+import InfectedZoneIndex from './index/InfectedZoneIndex';
 import InstanceIndex from './index/InstanceIndex';
 import ItemIndex from './index/ItemIndex';
 import MissionIndex from './index/MissionIndex';
@@ -21,6 +22,7 @@ const TYPE_TITLES: Record<string, string> = {
   items: 'Items',
   areas: 'Areas',
   instances: 'Instances',
+  'infected-zones': 'Infected Zones',
   nanos: 'Nanos',
 };
 
@@ -29,7 +31,7 @@ export default function EntityIndex() {
   const entry = useBuildEntry(build);
   const meta = useBuildMeta(build);
   const supported = meta?.builtTypes?.includes(type ?? '') ?? false;
-  const { rows, loading, error } = useIndex<MissionIndexEntry | NpcIndexEntry | ItemIndexEntry | MobIndexEntry | AreaIndexEntry | InstanceIndexEntry | NanoIndexEntry>(
+  const { rows, loading, error } = useIndex<MissionIndexEntry | NpcIndexEntry | ItemIndexEntry | MobIndexEntry | AreaIndexEntry | InstanceIndexEntry | InfectedZoneIndexEntry | NanoIndexEntry>(
     supported ? build : undefined,
     supported ? type : undefined,
   );
@@ -78,6 +80,9 @@ export default function EntityIndex() {
     }
     if (type === 'instances') {
       return <InstanceIndex build={build} rows={(rows ?? []) as InstanceIndexEntry[]} loading={loading} />;
+    }
+    if (type === 'infected-zones') {
+      return <InfectedZoneIndex build={build} rows={(rows ?? []) as InfectedZoneIndexEntry[]} loading={loading} />;
     }
     if (type === 'nanos') {
       return <NanoIndex build={build} rows={(rows ?? []) as NanoIndexEntry[]} loading={loading} />;

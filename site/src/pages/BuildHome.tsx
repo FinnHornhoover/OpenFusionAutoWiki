@@ -9,6 +9,7 @@ const ENTITY_TYPES = [
   { type: 'items', label: 'Items' },
   { type: 'areas', label: 'Areas' },
   { type: 'instances', label: 'Instances' },
+  { type: 'infected-zones', label: 'Infected Zones' },
   { type: 'nanos', label: 'Nanos' },
 ];
 

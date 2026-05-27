@@ -178,7 +178,7 @@ export async function normalizeInstances(
     .filter((r) => r && typeof r === 'object')
     .map((r) => normalizeInstance(r, iconMap, instanceNames, missionLevels))
     .filter((r) => r.id > 0)
-    .sort((a, b) => a.name.localeCompare(b.name) || a.id - b.id);
+    .sort((a, b) => a.id - b.id);
 
   const { chunks } = await writeChunks(slug, 'instances', rows, (r) => ({
     url: r.id,

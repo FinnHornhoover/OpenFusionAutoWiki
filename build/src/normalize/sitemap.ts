@@ -33,7 +33,7 @@ function escapeXml(s: string): string {
     .replace(/'/g, '&apos;');
 }
 
-const ENTITY_TYPES = ['missions', 'npcs', 'items', 'monsters', 'areas', 'instances', 'nanos'] as const;
+const ENTITY_TYPES = ['missions', 'npcs', 'items', 'monsters', 'areas', 'instances', 'infected-zones', 'nanos'] as const;
 
 /** Per-build sitemap: landing page, type indexes, and entity pages. */
 async function writeBuildSitemap(slug: string, base: string): Promise<number> {
