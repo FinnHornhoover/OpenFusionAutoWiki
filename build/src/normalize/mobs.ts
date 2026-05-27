@@ -6,11 +6,14 @@ import type {
   Mob,
   MobIndexEntry,
   MobLocation,
+  MobLocationGroup,
   Ref,
 } from './types.js';
 import type { IconMap } from '../icons.js';
 import type { MobMissionsMap } from './missions.js';
 import type { MobItemsMap } from './items.js';
+import type { InstanceNameIndex } from './instanceLookup.js';
+import { slugify } from './slug.js';
 
 interface RawMobType {
   ID: number;
@@ -63,6 +66,7 @@ interface RawMobInstance {
 /** Group locations under the mob type they spawn for. mob_info is keyed by group→instances. */
 function buildLocationsByType(
   rawInstances: Record<string, Record<string, RawMobInstance>>,
+  instanceNames: InstanceNameIndex,
 ): Map<number, MobLocation[]> {
   const out = new Map<number, MobLocation[]>();
   for (const [groupId, group] of Object.entries(rawInstances)) {
@@ -76,18 +80,84 @@ function buildLocationsByType(
         list = [];
         out.set(tid, list);
       }
+      const areaZone = inst.AreaZone ?? '';
+      const instanceID = inst.InstanceID ?? 0;
       list.push({
-        areaZone: inst.AreaZone ?? '',
+        areaZone,
+        areaId: areaZone && areaZone !== 'Unknown - Unknown' ? slugify(areaZone) : '',
         x: inst.X ?? 0,
         y: inst.Y ?? 0,
         z: inst.Z ?? 0,
-        instanceID: inst.InstanceID ?? 0,
+        instanceID,
+        instanceName: instanceNames.get(instanceID) ?? '',
         hp: inst.HP ?? 0,
         groupId,
       });
     }
   }
   return out;
+}
+
+function mostCommonHP(values: number[]): number {
+  const counts = new Map<number, number>();
+  let bestHP = 0;
+  let bestCount = 0;
+  for (const hp of values) {
+    if (hp <= 0) continue;
+    const count = (counts.get(hp) ?? 0) + 1;
+    counts.set(hp, count);
+    if (count > bestCount) {
+      bestHP = hp;
+      bestCount = count;
+    }
+  }
+  return bestHP;
+}
+
+function mostCommonSpawnHP(locations: MobLocation[]): number {
+  return mostCommonHP(locations.map((loc) => loc.hp));
+}
+
+function median(values: number[]): number {
+  if (!values.length) return 0;
+  const sorted = values.slice().sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  if (sorted.length % 2) return sorted[mid];
+  return Math.round((sorted[mid - 1] + sorted[mid]) / 2);
+}
+
+function groupLocations(locations: MobLocation[]): MobLocationGroup[] {
+  const groups = new Map<string, MobLocation[]>();
+  for (const loc of locations) {
+    const key = `${loc.areaZone}|${loc.areaId}|${loc.instanceID}`;
+    const group = groups.get(key);
+    if (group) group.push(loc);
+    else groups.set(key, [loc]);
+  }
+
+  return Array.from(groups.values())
+    .map((group) => {
+      const first = group[0];
+      return {
+        areaZone: first.areaZone,
+        areaId: first.areaId,
+        x: median(group.map((loc) => loc.x)),
+        y: median(group.map((loc) => loc.y)),
+        z: median(group.map((loc) => loc.z)),
+        instanceID: first.instanceID,
+        instanceName: first.instanceName,
+        hp: mostCommonHP(group.map((loc) => loc.hp)),
+        spawnCount: group.length,
+        points: group.map((loc) => ({ x: loc.x, y: loc.y })),
+      };
+    })
+    .sort((a, b) =>
+      a.areaZone.localeCompare(b.areaZone) ||
+      a.instanceID - b.instanceID ||
+      b.spawnCount - a.spawnCount ||
+      a.x - b.x ||
+      a.y - b.y
+    );
 }
 
 function normalizeMob(
@@ -97,6 +167,10 @@ function normalizeMob(
   mobMissions: MobMissionsMap,
   mobItems: MobItemsMap,
 ): Mob {
+  const standardHP = raw.StandardHP ?? 0;
+  const displayHP = mostCommonSpawnHP(locations) || standardHP;
+  const locationGroups = groupLocations(locations);
+
   return {
     id: raw.ID,
     name: raw.Name,
@@ -110,7 +184,8 @@ function normalizeMob(
     scale: raw.Scale ?? 1,
     radius: raw.Radius ?? 0,
 
-    standardHP: raw.StandardHP ?? 0,
+    standardHP,
+    displayHP,
     attackPower: raw.AttackPower ?? 0,
     attackRange: raw.AttackRange ?? 0,
     combatRange: raw.CombatRange ?? 0,
@@ -141,6 +216,7 @@ function normalizeMob(
       }),
 
     locations,
+    locationGroups,
   };
 }
 
@@ -169,6 +245,7 @@ export async function normalizeMobs(
   iconMap: IconMap,
   mobMissions: MobMissionsMap,
   mobItems: MobItemsMap,
+  instanceNames: InstanceNameIndex,
 ): Promise<{ count: number; chunks: number; linked: number; dropping: number }> {
   const zip = new AdmZip(zipPath);
   const typeEntry = zip.getEntry('info/mob_type_info.json');
@@ -182,7 +259,7 @@ export async function normalizeMobs(
     ? (JSON.parse(instEntry.getData().toString('utf8')) as Record<string, Record<string, RawMobInstance>>)
     : {};
 
-  const locationsByType = buildLocationsByType(rawInsts);
+  const locationsByType = buildLocationsByType(rawInsts, instanceNames);
 
   const mobs: Mob[] = Object.values(rawTypes)
     .map((t) => normalizeMob(t, iconMap, locationsByType.get(t.ID) ?? [], mobMissions, mobItems))

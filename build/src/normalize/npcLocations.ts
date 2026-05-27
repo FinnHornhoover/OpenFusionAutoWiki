@@ -1,28 +1,34 @@
 import AdmZip from 'adm-zip';
 
-import type { NpcGrouping } from './npcGrouping.js';
+import type { InstanceNameIndex } from './instanceLookup.js';
+import { slugify } from './slug.js';
 
 interface RawNpcInstance {
   TypeID: number;
   X?: number;
   Y?: number;
+  Z?: number;
   AreaZone?: string;
+  InstanceID?: number;
 }
 
 export interface NpcPoint {
   x: number;
   y: number;
+  z: number;
   areaZone: string;
+  areaId: string;
+  instanceID: number;
+  instanceName: string;
 }
 
-/**
- * Map canonical NPC type-ID → first known spawn point. Used to give mission
- * task waypoints a renderable location without a separate fetch at runtime.
- * Falls back to {} when npc_info.json is missing.
- */
+/** First known spawn point per NPC type, used for mission waypoints. */
 export type NpcLocationMap = Map<number, NpcPoint>;
 
-export function buildNpcLocationMap(zipPath: string, grouping: NpcGrouping): NpcLocationMap {
+export function buildNpcLocationMap(
+  zipPath: string,
+  instanceNames: InstanceNameIndex,
+): NpcLocationMap {
   const zip = new AdmZip(zipPath);
   const entry = zip.getEntry('info/npc_info.json');
   const out: NpcLocationMap = new Map();
@@ -32,12 +38,17 @@ export function buildNpcLocationMap(zipPath: string, grouping: NpcGrouping): Npc
     if (!typeBucket || typeof typeBucket !== 'object') continue;
     for (const inst of Object.values(typeBucket)) {
       if (!inst || typeof inst !== 'object') continue;
-      const canonical = grouping.memberToCanonical.get(inst.TypeID) ?? inst.TypeID;
-      if (out.has(canonical)) continue; // first spawn wins
-      out.set(canonical, {
+      if (out.has(inst.TypeID)) continue; // first spawn wins
+      const areaZone = inst.AreaZone ?? '';
+      const instanceID = inst.InstanceID ?? 0;
+      out.set(inst.TypeID, {
         x: inst.X ?? 0,
         y: inst.Y ?? 0,
-        areaZone: inst.AreaZone ?? '',
+        z: inst.Z ?? 0,
+        areaZone,
+        areaId: areaZone && areaZone !== 'Unknown - Unknown' ? slugify(areaZone) : '',
+        instanceID,
+        instanceName: instanceNames.get(instanceID) ?? '',
       });
     }
   }

@@ -1,20 +1,23 @@
 import Dropdown from '../components/Dropdown';
 import EntityLink from '../components/EntityLink';
 import Icon from '../components/Icon';
-import Minimap from '../components/Minimap';
+import InlineMeta from '../components/InlineMeta';
+import MapSpot from '../components/MapSpot';
 
 # {props.data.name}
 
-<p className="entity-meta muted">
-  {props.data.icon ? <Icon src={props.data.icon} alt={props.data.name} size={192} /> : null}
-  {props.data.category && <span className="badge badge-category">{props.data.category}</span>}
-  {props.data.inGame === false && <span className="badge badge-warn">cut from final build</span>}
-  {props.data.locations.length > 0 && (
-    <span className="muted">
-      {props.data.locations.length} spawn{props.data.locations.length === 1 ? '' : 's'}
-    </span>
-  )}
-</p>
+<div className="entity-header">
+  {props.data.icon ? <div className="entity-header-icon"><Icon src={props.data.icon} alt={props.data.name} size={192} /></div> : null}
+  <div className="entity-meta muted">
+    {props.data.category && <span className="badge badge-category">{props.data.category}</span>}
+    {props.data.inGame === false && <span className="badge badge-warn">cut from final build</span>}
+    {props.data.locations.length > 0 && (
+      <span className="badge badge-category">
+        {props.data.locations.length} spawn{props.data.locations.length === 1 ? '' : 's'}
+      </span>
+    )}
+  </div>
+</div>
 
 {props.data.comment.trim() && (
   <blockquote className="npc-comment">"{props.data.comment.trim()}"</blockquote>
@@ -50,16 +53,49 @@ import Minimap from '../components/Minimap';
   </Dropdown>
 )}
 
+
+{props.data.transportRoutes.length > 0 && (
+  <Dropdown summary={`Transportation (${props.data.transportRoutes.length})`} open>
+    <table className="location-table source-table">
+      <thead>
+        <tr>
+          <th>Route</th>
+          <th>Start</th>
+          <th>Landing</th>
+        </tr>
+      </thead>
+      <tbody>
+        {props.data.transportRoutes.map((route, i) => (
+          <tr key={`${route.routeId}-${route.routeName}-${i}`}>
+            <td>
+              <strong>{route.routeName}</strong>
+              {route.moveType && <div><InlineMeta>{route.moveType && <span>{route.moveType}</span>}</InlineMeta></div>}
+            </td>
+            <td>{route.start ? (
+              <MapSpot x={route.start.x} y={route.start.y} z={route.start.z} areaId={route.start.areaId} title={route.start.areaZone} />
+            ) : <span className="muted">—</span>}</td>
+            <td>{route.landing ? (
+              <MapSpot x={route.landing.x} y={route.landing.y} z={route.landing.z} areaId={route.landing.areaId} title={route.landing.areaZone} />
+            ) : <span className="muted">—</span>}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </Dropdown>
+)}
+
 {props.data.vendorItems.length > 0 && (
   <Dropdown summary={`Sells ${props.data.vendorItems.length} item${props.data.vendorItems.length === 1 ? '' : 's'}`}>
     <ul className="reward-items">
       {props.data.vendorItems.map((v, i) => (
         <li key={`${v.ref.id}-${i}`}>
           <EntityLink entity={v.ref} />
-          <span className="muted">{' · '}{v.buyPrice.toLocaleString()} Taros</span>
-          {v.rarity && <span className="muted">{' · '}{v.rarity}</span>}
-          {v.requiredLevel > 0 && <span className="muted">{' · '}Lv {v.requiredLevel}</span>}
-          {v.itemKind && <span className="muted">{' · '}{v.itemKind}</span>}
+          <InlineMeta leading>
+            <span>{v.buyPrice.toLocaleString()} Taros</span>
+            {v.rarity && <span>{v.rarity}</span>}
+            {v.requiredLevel > 0 && <span>Lv {v.requiredLevel}</span>}
+            {v.itemKind && <span>{v.itemKind}</span>}
+          </InlineMeta>
         </li>
       ))}
     </ul>
@@ -88,36 +124,23 @@ import Minimap from '../components/Minimap';
   </Dropdown>
 )}
 
-{props.data.aliasIds.length > 0 && (
-  <p className="muted alias-ids">
-    Also known internally as type ID{props.data.aliasIds.length === 1 ? '' : 's'}:{' '}
-    <code>{props.data.id}</code> (this page){props.data.aliasIds.map((id) => (
-      <span key={id}>, <code>{id}</code></span>
-    ))}
-  </p>
-)}
 
 {props.data.locations.length > 0 && (
   <Dropdown summary={`Spawn locations (${props.data.locations.length})`}>
-    <table className="location-table">
-      <thead>
-        <tr>
-          <th>Map</th>
-          <th>Area</th>
-          <th>Coordinates</th>
-          <th>Instance</th>
-        </tr>
-      </thead>
-      <tbody>
-        {props.data.locations.map((loc, i) => (
-          <tr key={i}>
-            <td><Minimap x={loc.x} y={loc.y} size={256} title={loc.areaZone} /></td>
-            <td>{loc.areaZone || <span className="muted">—</span>}</td>
-            <td className="muted">{loc.x}, {loc.y}, {loc.z}</td>
-            <td className="muted">{loc.instanceID || '—'}</td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
+    <ul className="ref-list location-list">
+      {props.data.locations.map((loc, i) => (
+        <li key={i}>
+          <MapSpot
+            x={loc.x}
+            y={loc.y}
+            z={loc.z}
+            areaId={loc.areaId}
+            title={loc.areaZone}
+            instanceName={loc.instanceName}
+            instanceID={loc.instanceID}
+          />
+        </li>
+      ))}
+    </ul>
   </Dropdown>
 )}

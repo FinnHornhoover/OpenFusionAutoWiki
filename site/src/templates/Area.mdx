@@ -1,20 +1,24 @@
 import Dropdown from '../components/Dropdown';
 import EntityLink from '../components/EntityLink';
 import Icon from '../components/Icon';
+import InlineMeta from '../components/InlineMeta';
+import MapSpot from '../components/MapSpot';
 import Minimap from '../components/Minimap';
 import { formatDurationSeconds } from '../data/formatTime';
 
 # {props.data.name}
 
-<p className="entity-meta muted">
-  {props.data.zoneName && <span className="badge badge-category">{props.data.zoneName}</span>}
-  {props.data.infectedZone && <span className="badge badge-warn">Infected Zone</span>}
-  <span>{props.data.npcs.length} NPC types</span>
-  <span>{props.data.mobs.length} monster types</span>
-  {props.data.missionsStarting.length > 0 && (
-    <span>{props.data.missionsStarting.length} mission{props.data.missionsStarting.length === 1 ? '' : 's'} start here</span>
-  )}
-</p>
+<div className="entity-header">
+  <div className="entity-meta muted">
+    {props.data.zoneName && <span className="badge badge-category">{props.data.zoneName}</span>}
+    {props.data.infectedZone && <span className="badge badge-warn">has infected zone</span>}
+    <span className="badge badge-category">{props.data.npcs.length} NPC types</span>
+    <span className="badge badge-category">{props.data.mobs.length} monster types</span>
+    {props.data.missionsStarting.length > 0 && (
+      <span className="badge badge-category">{props.data.missionsStarting.length} mission{props.data.missionsStarting.length === 1 ? '' : 's'} start here</span>
+    )}
+  </div>
+</div>
 
 {props.data.width > 0 && props.data.height > 0 && (
   <div className="area-map">
@@ -32,12 +36,16 @@ import { formatDurationSeconds } from '../data/formatTime';
 
 {props.data.infectedZone && (
   <Dropdown summary="Infected Zone" open>
-    <dl className="stat-grid">
-      <><dt>Recommended level</dt><dd>{props.data.infectedZone.recommendedLevel || '—'}</dd></>
-      {props.data.infectedZone.difficultyLabel && <><dt>Difficulty</dt><dd>{props.data.infectedZone.difficultyLabel}</dd></>}
-      {props.data.infectedZone.maxScore > 0 && <><dt>Max score</dt><dd>{props.data.infectedZone.maxScore.toLocaleString()}</dd></>}
-    </dl>
-    {props.data.infectedZone.description && <p>{props.data.infectedZone.description}</p>}
+    <div className="infected-zone-card">
+      <div className="infected-zone-header">
+        <EntityLink entity={props.data.infectedZone.ref} iconSize={96} />
+      </div>
+      <div className="infected-zone-details">
+        {props.data.infectedZone.difficultyLabel && <div><strong>Difficulty:</strong> {props.data.infectedZone.difficultyLabel}</div>}
+        {props.data.infectedZone.maxScore > 0 && <div><strong>Max score:</strong> {props.data.infectedZone.maxScore.toLocaleString()}</div>}
+      </div>
+      {props.data.infectedZone.description && <p className="infected-zone-description">{props.data.infectedZone.description}</p>}
+    </div>
   </Dropdown>
 )}
 
@@ -67,6 +75,7 @@ import { formatDurationSeconds } from '../data/formatTime';
         <tr>
           <th>NPC</th>
           <th>Count</th>
+          <th>Coordinates</th>
         </tr>
       </thead>
       <tbody>
@@ -74,6 +83,18 @@ import { formatDurationSeconds } from '../data/formatTime';
           <tr key={n.ref.id}>
             <td><EntityLink entity={n.ref} /></td>
             <td>{n.instanceCount.toLocaleString()}</td>
+            <td>
+              <MapSpot
+                x={n.x}
+                y={n.y}
+                z={n.z}
+                areaId={n.areaId}
+                title={n.areaZone}
+                instanceName={n.instanceName}
+                instanceID={n.instanceID}
+                points={n.points}
+              />
+            </td>
           </tr>
         ))}
       </tbody>
@@ -87,12 +108,27 @@ import { formatDurationSeconds } from '../data/formatTime';
       <thead>
         <tr>
           <th>Vendor</th>
+          <th>Count</th>
+          <th>Coordinates</th>
         </tr>
       </thead>
       <tbody>
         {props.data.vendors.map((v) => (
-          <tr key={v.id}>
-            <td><EntityLink entity={v} /></td>
+          <tr key={v.ref.id}>
+            <td><EntityLink entity={v.ref} /></td>
+            <td>{v.instanceCount.toLocaleString()}</td>
+            <td>
+              <MapSpot
+                x={v.x}
+                y={v.y}
+                z={v.z}
+                areaId={v.areaId}
+                title={v.areaZone}
+                instanceName={v.instanceName}
+                instanceID={v.instanceID}
+                points={v.points}
+              />
+            </td>
           </tr>
         ))}
       </tbody>
@@ -109,6 +145,7 @@ import { formatDurationSeconds } from '../data/formatTime';
           <th>Count</th>
           <th>Level</th>
           <th>HP</th>
+          <th>Coordinates</th>
         </tr>
       </thead>
       <tbody>
@@ -118,6 +155,18 @@ import { formatDurationSeconds } from '../data/formatTime';
             <td>{m.instanceCount.toLocaleString()}</td>
             <td>{m.level > 0 ? m.level : <span className="muted">—</span>}</td>
             <td>{m.hp > 0 ? m.hp.toLocaleString() : <span className="muted">—</span>}</td>
+            <td>
+              <MapSpot
+                x={m.x}
+                y={m.y}
+                z={m.z}
+                areaId={m.areaId}
+                title={m.areaZone}
+                instanceName={m.instanceName}
+                instanceID={m.instanceID}
+                points={m.points}
+              />
+            </td>
           </tr>
         ))}
       </tbody>
@@ -127,30 +176,82 @@ import { formatDurationSeconds } from '../data/formatTime';
 
 {props.data.transportation.length > 0 && (
   <Dropdown summary={`Transportation (${props.data.transportation.length})`}>
-    <ul className="ref-list">
-      {props.data.transportation.map((t, i) => (
-        <li key={`${t.routeId}-${i}`}>
-          <strong>{t.routeName}</strong>
-          {t.moveType && <span className="muted"> · {t.moveType}</span>}
-          {t.startNpc && <span className="muted"> · operated by <EntityLink entity={t.startNpc} withIcon={false} /></span>}
-        </li>
-      ))}
-    </ul>
+    <table className="location-table source-table">
+      <thead>
+        <tr>
+          <th>Route</th>
+          <th>Operator</th>
+          <th>Start</th>
+          <th>Landing</th>
+        </tr>
+      </thead>
+      <tbody>
+        {props.data.transportation.map((t, i) => {
+          const start = t.stops[0];
+          const landing = t.stops[t.stops.length - 1];
+          return (
+            <tr key={`${t.routeId}-${i}`}>
+              <td>
+                <strong>{t.routeName}</strong>
+                {t.moveType && <div><InlineMeta>{t.moveType && <span>{t.moveType}</span>}</InlineMeta></div>}
+              </td>
+              <td>{t.startNpc ? <EntityLink entity={t.startNpc} /> : <span className="muted">—</span>}</td>
+              <td>{start ? (
+                <MapSpot x={start.x} y={start.y} z={start.z} areaId={start.areaId} title={start.areaZone} />
+              ) : <span className="muted">—</span>}</td>
+              <td>{landing ? (
+                <MapSpot x={landing.x} y={landing.y} z={landing.z} areaId={landing.areaId} title={landing.areaZone} />
+              ) : <span className="muted">—</span>}</td>
+            </tr>
+          );
+        })}
+      </tbody>
+    </table>
   </Dropdown>
 )}
 
 {props.data.instanceWarps.length > 0 && (
   <Dropdown summary={`Instance warps (${props.data.instanceWarps.length})`}>
-    <ul className="ref-list">
-      {props.data.instanceWarps.map((w, i) => (
-        <li key={`${w.instanceID}-${i}`}>
-          <strong>→ {w.instanceName}</strong>
-          {w.npc && <span className="muted"> · via <EntityLink entity={w.npc} withIcon={false} /></span>}
-          {w.requiredMinLevel > 0 && <span className="muted"> · Lv {w.requiredMinLevel}+</span>}
-          {w.requiredItem && <span className="muted"> · needs <EntityLink entity={w.requiredItem} withIcon={false} /></span>}
-        </li>
-      ))}
-    </ul>
+    <table className="location-table source-table">
+      <thead>
+        <tr>
+          <th>Warp NPC</th>
+          <th>Instance</th>
+          <th>Entry location</th>
+          <th>Required mission</th>
+          <th>Level</th>
+        </tr>
+      </thead>
+      <tbody>
+        {props.data.instanceWarps.map((w, i) => (
+          <tr key={`${w.id}-${w.instanceID}-${i}`}>
+            <td>{w.npc ? <EntityLink entity={w.npc} /> : <span className="muted">-</span>}</td>
+            <td>
+              <EntityLink entity={w.instance} withIcon={false} />
+              <InlineMeta leading>
+                {w.requiredItem && <span>needs <EntityLink entity={w.requiredItem} withIcon={false} /></span>}
+              </InlineMeta>
+            </td>
+            <td>{w.entryLocation ? (
+              <MapSpot
+                x={w.entryLocation.x}
+                y={w.entryLocation.y}
+                z={w.entryLocation.z}
+                areaId={w.entryLocation.areaId}
+                title={w.entryLocation.areaZone}
+                instanceName={w.entryLocation.instanceName}
+                instanceID={w.entryLocation.instanceID}
+              />
+            ) : <span className="muted">-</span>}</td>
+            <td>
+              {w.requiredMission ? <EntityLink entity={w.requiredMission} /> : <span className="muted">-</span>}
+              {w.requiredTaskObjective && <div><InlineMeta leading><span>{w.requiredTaskObjective}</span></InlineMeta></div>}
+            </td>
+            <td>{w.requiredMinLevel > 0 ? w.requiredMinLevel : <span className="muted">-</span>}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
   </Dropdown>
 )}
 
@@ -164,6 +265,7 @@ import { formatDurationSeconds } from '../data/formatTime';
           <th>Contains</th>
           <th>Power</th>
           <th>Duration</th>
+          <th>Coordinates</th>
         </tr>
       </thead>
       <tbody>
@@ -181,6 +283,17 @@ import { formatDurationSeconds } from '../data/formatTime';
               ) : <span className="muted">—</span>}
             </td>
             <td>{e.effectDuration > 0 ? formatDurationSeconds(e.effectDuration) : <span className="muted">—</span>}</td>
+            <td>
+              <MapSpot
+                x={e.x}
+                y={e.y}
+                z={e.z}
+                areaId={e.areaId}
+                title={e.areaZone}
+                instanceName={e.instanceName}
+                instanceID={e.instanceID}
+              />
+            </td>
           </tr>
         ))}
       </tbody>

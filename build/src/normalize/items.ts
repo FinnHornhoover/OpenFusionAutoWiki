@@ -2,6 +2,7 @@ import AdmZip from 'adm-zip';
 
 import { chunkOf, writeChunks, writeIndex } from '../chunk.js';
 import { iconFor, itemChunkKey, itemRef, missionRef, monsterRef, npcRef } from './refs.js';
+import { slugify } from './slug.js';
 import type {
   Item,
   ItemIndexEntry,
@@ -11,7 +12,7 @@ import type {
   Ref,
 } from './types.js';
 import type { IconMap } from '../icons.js';
-import type { NpcGrouping } from './npcGrouping.js';
+import type { InstanceNameIndex } from './instanceLookup.js';
 
 /** Back-reference: items dropped by a specific mob type, with full drop context. */
 export type MobItemsMap = Map<number, MobDrop[]>;
@@ -76,8 +77,13 @@ interface RawVendorSource {
 }
 interface RawEggSource {
   AreaZone?: string;
+  EggID?: string;
   EggName?: string;
   EggComment?: string;
+  InstanceID?: number;
+  X?: number;
+  Y?: number;
+  Z?: number;
 }
 interface RawRacingSource {
   AreaZone?: string;
@@ -227,7 +233,7 @@ function buildContainingCrates(
 function normalizeSource(
   entry: RawSourceEntry,
   iconMap: IconMap,
-  grouping: NpcGrouping,
+  instanceNames: InstanceNameIndex,
 ): ItemSource | null {
   const s = entry.Source ?? {};
   switch (entry.SourceType) {
@@ -247,7 +253,7 @@ function normalizeSource(
       const m = s as RawMissionSource;
       const mission = missionRef(m.MissionID ?? 0, m.MissionName ?? '');
       if (!mission) return null;
-      const npc = npcRef(m.NPCTypeID ?? 0, m.NPCName ?? '', m.NPCIcon ?? '', iconMap, grouping);
+      const npc = npcRef(m.NPCTypeID ?? 0, m.NPCName ?? '', m.NPCIcon ?? '', iconMap);
       mission.icon = npc?.icon ?? '';
       return {
         kind: 'mission',
@@ -261,7 +267,7 @@ function normalizeSource(
       const m = s as RawMissionSource;
       const mission = missionRef(m.MissionID ?? 0, m.MissionName ?? '');
       if (!mission) return null;
-      const npc = npcRef(m.NPCTypeID ?? 0, m.NPCName ?? '', m.NPCIcon ?? '', iconMap, grouping);
+      const npc = npcRef(m.NPCTypeID ?? 0, m.NPCName ?? '', m.NPCIcon ?? '', iconMap);
       mission.icon = npc?.icon ?? '';
       return {
         kind: 'mission-crate',
@@ -274,7 +280,7 @@ function normalizeSource(
     }
     case 'Vendor': {
       const v = s as RawVendorSource;
-      const npc = npcRef(v.NPCTypeID ?? 0, v.NPCName ?? '', v.NPCIcon ?? '', iconMap, grouping);
+      const npc = npcRef(v.NPCTypeID ?? 0, v.NPCName ?? '', v.NPCIcon ?? '', iconMap);
       if (!npc) return null;
       return {
         kind: 'vendor',
@@ -287,9 +293,16 @@ function normalizeSource(
       const e = s as RawEggSource;
       return {
         kind: 'egg',
+        eggId: e.EggID ?? '',
         eggName: e.EggName ?? '',
         eggComment: e.EggComment ?? '',
         areaZone: e.AreaZone ?? '',
+        areaId: e.AreaZone ? slugify(e.AreaZone) : '',
+        instanceID: e.InstanceID ?? 0,
+        instanceName: instanceNames.get(e.InstanceID ?? 0) ?? '',
+        x: e.X ?? 0,
+        y: e.Y ?? 0,
+        z: e.Z ?? 0,
         ...chance(entry),
       };
     }
@@ -297,7 +310,7 @@ function normalizeSource(
       const r = s as RawRacingSource;
       return {
         kind: 'racing',
-        npc: npcRef(r.NPCTypeID ?? 0, r.NPCName ?? '', r.NPCIcon ?? '', iconMap, grouping),
+        npc: npcRef(r.NPCTypeID ?? 0, r.NPCName ?? '', r.NPCIcon ?? '', iconMap),
         instanceName: r.InstanceName ?? '',
         areaZone: r.AreaZone ?? '',
         requiredScore: r.RequiredScore ?? 0,
@@ -307,7 +320,8 @@ function normalizeSource(
     }
     case 'CodeItem': {
       const c = s as { Code?: string };
-      return { kind: 'code', code: c.Code ?? '' };
+      const code = c.Code ?? '';
+      return { kind: 'code', code, ref: { type: 'code', id: encodeURIComponent(code), name: code } };
     }
     case 'Event': {
       const e = s as RawEventSource;
@@ -330,7 +344,7 @@ function sourceDedupKey(s: ItemSource): string {
     case 'mission': return `mission:${s.mission.id}:${s.npc?.id ?? 0}`;
     case 'mission-crate': return `mission-crate:${s.mission.id}:${s.npc?.id ?? 0}:${s.boyOdds}:${s.girlOdds}`;
     case 'vendor': return `vendor:${s.npc.id}:${s.areaZone}`;
-    case 'egg': return `egg:${s.eggName}:${s.areaZone}:${s.boyOdds}:${s.girlOdds}`;
+    case 'egg': return `egg:${s.eggId}:${s.eggName}:${s.areaZone}:${s.boyOdds}:${s.girlOdds}`;
     case 'racing': return `racing:${s.npc?.id ?? 0}:${s.areaZone}:${s.requiredScore}`;
     case 'code': return `code:${s.code}`;
     case 'event': return `event:${s.eventId}:${s.boyOdds}:${s.girlOdds}`;
@@ -343,12 +357,12 @@ function normalizeItem(
   crateDrops: CrateDrop[],
   containingCrates: CrateDrop[],
   iconMap: IconMap,
-  grouping: NpcGrouping,
+  instanceNames: InstanceNameIndex,
 ): Item {
   const seen = new Set<string>();
   const sources: ItemSource[] = [];
   for (const entry of rawSources) {
-    const s = normalizeSource(entry, iconMap, grouping);
+    const s = normalizeSource(entry, iconMap, instanceNames);
     if (!s) continue;
     const key = sourceDedupKey(s);
     if (seen.has(key)) continue;
@@ -425,7 +439,7 @@ export async function normalizeItems(
   zipPath: string,
   slug: string,
   iconMap: IconMap,
-  grouping: NpcGrouping,
+  instanceNames: InstanceNameIndex,
 ): Promise<{ count: number; chunks: number; sourceCount: number; mobItems: MobItemsMap }> {
   const zip = new AdmZip(zipPath);
   const itemEntry = zip.getEntry('info/item_info.json');
@@ -464,7 +478,7 @@ export async function normalizeItems(
     const sources = sourcesByKey.get(key) ?? [];
     const crateDrops = crateDropsByKey.get(key) ?? [];
     const containingCrates = containingCratesByKey.get(key) ?? [];
-    return normalizeItem(raw, sources, crateDrops, containingCrates, iconMap, grouping);
+    return normalizeItem(raw, sources, crateDrops, containingCrates, iconMap, instanceNames);
   });
 
   // Sort: by typeId then itemId for deterministic output.

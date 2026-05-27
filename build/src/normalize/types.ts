@@ -1,6 +1,6 @@
 /** Reference to another wiki entity. */
 export interface Ref {
-  type: 'mission' | 'npc' | 'item' | 'monster' | 'nano' | 'instance';
+  type: 'mission' | 'npc' | 'item' | 'monster' | 'nano' | 'instance' | 'infected-zone' | 'code';
   /**
    * Stable URL id. Items use "typeId-itemId" because ItemID is reused by type.
    */
@@ -55,8 +55,16 @@ export interface MissionTask {
   nextTaskOnEnd: number;
   timeLimitSeconds: number;
   waypointNPC: Ref | null;
-  /** Spawn point for the waypoint NPC, used by the task minimap. */
-  waypointPoint: { x: number; y: number; areaZone: string } | null;
+  /** Spawn point for the waypoint NPC, used by the task map. */
+  waypointPoint: {
+    x: number;
+    y: number;
+    z: number;
+    areaZone: string;
+    areaId: string;
+    instanceID: number;
+    instanceName: string;
+  } | null;
   escortNPC: Ref | null;
   requiredInstance: Ref | null;
   monsterRequirements: Array<{ ref: Ref; killCount: number }>;
@@ -102,10 +110,12 @@ export interface MissionIndexEntry {
 /** Where an NPC is spawned in the world. */
 export interface NpcLocation {
   areaZone: string;
+  areaId: string;
   x: number;
   y: number;
   z: number;
   instanceID: number;
+  instanceName: string;
 }
 
 /** Vendor item entry on an NPC page. */
@@ -116,6 +126,22 @@ export interface NpcVendorItem {
   rarity: string;
   requiredLevel: number;
   itemKind: string;
+}
+
+export interface NpcTransportSpot {
+  areaZone: string;
+  areaId: string;
+  x: number;
+  y: number;
+  z: number;
+}
+
+export interface NpcTransportRoute {
+  routeId: number;
+  routeName: string;
+  moveType: string;
+  start: NpcTransportSpot | null;
+  landing: NpcTransportSpot | null;
 }
 
 export interface Npc {
@@ -132,6 +158,7 @@ export interface Npc {
   missionBarkers: Array<{ mission: Ref; text: string }>;
 
   vendorItems: NpcVendorItem[];
+  transportRoutes: NpcTransportRoute[];
 
   startedMissions: Ref[];
   journaledMissions: Ref[];
@@ -139,17 +166,50 @@ export interface Npc {
 
   locations: NpcLocation[];
 
-  /** Other NPC type-IDs that share this (category, name) and have been merged here. */
-  aliasIds: number[];
 }
 
-export interface NpcIndexEntry {
+export interface NpcAmbiguityMember {
   id: number;
   name: string;
   icon: string;
   category: string;
+  inGame: boolean;
+  transportRouteCount: number;
+  startedMissionCount: number;
+  spawnCount: number;
+  firstLocation: NpcLocation | null;
+}
+
+export interface NpcAmbiguity {
+  kind: 'npc-ambiguity';
+  id: string;
+  name: string;
+  icon: string;
+  category: string;
+  inGame: boolean;
+  status: 'in-game' | 'out-of-game' | 'mixed';
+  members: NpcAmbiguityMember[];
+}
+
+export interface NpcIndexMember {
+  id: number;
+  category: string;
+  inGame: boolean;
+}
+
+export interface NpcIndexEntry {
+  id: number | string;
+  name: string;
+  icon: string;
+  category: string;
+  categories: string[];
   instanceCount: number;
   inGame: boolean;
+  status: 'in-game' | 'out-of-game' | 'mixed';
+  idCount: number;
+  transportRouteCount: number;
+  startedMissionCount: number;
+  members: NpcIndexMember[];
 }
 
 // ---- Items ------------------------------------------------------------------
@@ -195,9 +255,16 @@ export type ItemSource =
     }
   | ({
       kind: 'egg';
+      eggId: string;
       eggName: string;
       eggComment: string;
       areaZone: string;
+      areaId: string;
+      instanceID: number;
+      instanceName: string;
+      x: number;
+      y: number;
+      z: number;
     } & DropChance)
   | ({
       kind: 'racing';
@@ -210,6 +277,7 @@ export type ItemSource =
   | {
       kind: 'code';
       code: string;
+      ref: Ref;
     }
   | ({
       kind: 'event';
@@ -267,6 +335,35 @@ export interface Item {
   containingCrates: CrateDrop[];
 }
 
+
+export interface CodeItemEntry {
+  ref: Ref;
+  typeId: number;
+  itemId: number;
+  type: string;
+  rarity: string;
+  gender: string;
+  contentLevel: number;
+  requiredLevel: number;
+  obtainable: boolean;
+}
+
+export interface Code {
+  id: string;
+  code: string;
+  name: string;
+  ref: Ref;
+  items: CodeItemEntry[];
+}
+
+export interface CodeIndexEntry {
+  id: string;
+  code: string;
+  name: string;
+  icon: string;
+  items: Ref[];
+}
+
 export interface ItemIndexEntry {
   id: string;
   typeId: number;
@@ -285,12 +382,27 @@ export interface ItemIndexEntry {
 
 export interface MobLocation {
   areaZone: string;
+  areaId: string;
   x: number;
   y: number;
   z: number;
   instanceID: number;
+  instanceName: string;
   hp: number;
   groupId: string;
+}
+
+export interface MobLocationGroup {
+  areaZone: string;
+  areaId: string;
+  x: number;
+  y: number;
+  z: number;
+  instanceID: number;
+  instanceName: string;
+  hp: number;
+  spawnCount: number;
+  points: Array<{ x: number; y: number }>;
 }
 
 export interface MobDrop extends DropChance {
@@ -313,6 +425,7 @@ export interface Mob {
 
   // Combat
   standardHP: number;
+  displayHP: number;
   attackPower: number;
   attackRange: number;
   combatRange: number;
@@ -340,6 +453,7 @@ export interface Mob {
 
   // Spawns
   locations: MobLocation[];
+  locationGroups: MobLocationGroup[];
 }
 
 export interface MobIndexEntry {
@@ -354,12 +468,132 @@ export interface MobIndexEntry {
   inGame: boolean;
 }
 
+
+// ---- Instances --------------------------------------------------------------
+
+export interface InstanceWarpLocation {
+  areaZone: string;
+  areaId: string;
+  x: number;
+  y: number;
+  z: number;
+  instanceID: number;
+  instanceName: string;
+}
+
+export interface InstanceWarpExitLocation {
+  areaZone: string;
+  areaId: string;
+  x: number;
+  y: number;
+  z: number;
+}
+
+export interface InstanceWarp {
+  id: number;
+  npc: Ref | null;
+  entryLocation: InstanceWarpLocation | null;
+  exitLocation: InstanceWarpExitLocation | null;
+  requiredItem: Ref | null;
+  requiredMission: Ref | null;
+  requiredTaskId: number;
+  requiredTaskObjective: string;
+  requiredMinLevel: number;
+  warpPrice: number;
+}
+
+export interface Instance {
+  id: number;
+  name: string;
+  areaZone: string;
+  areaId: string;
+  inGame: boolean;
+  infectedZoneId: number;
+  infectedZoneName: string;
+  infectedZone: Ref | null;
+  epMaxScore: number;
+  entryWarps: InstanceWarp[];
+  exitWarps: InstanceWarp[];
+}
+
+export interface InstanceIndexEntry {
+  id: number;
+  name: string;
+  inGame: boolean;
+  infectedZoneId: number;
+  infectedZoneName: string;
+  infectedZone: Ref | null;
+  entryWarpCount: number;
+  exitWarpCount: number;
+}
+
+
+// ---- Infected Zones ---------------------------------------------------------
+
+export interface InfectedZoneRankReward {
+  stars: number;
+  rank: number;
+  label: string;
+  requiredScore: number;
+  item: Ref | null;
+  crateDrops: CrateDrop[];
+}
+
+export interface InfectedZone {
+  id: number;
+  name: string;
+  icon: string;
+  areaZone: string;
+  areaId: string;
+  inGame: boolean;
+  podCount: number;
+  timeLimit: string;
+  timeLimitSeconds: number;
+  maxScore: number;
+  originalMaxScore: number;
+  podFactor: number;
+  timeFactor: number;
+  scaleFactor: number;
+  scoreFunction: string;
+  fmRewardFunction: string;
+  firstEntryLocation: InstanceWarpLocation | null;
+  entryWarps: InstanceWarp[];
+  exitWarps: InstanceWarp[];
+  rankRewards: InfectedZoneRankReward[];
+}
+
+export interface InfectedZoneIndexEntry {
+  id: number;
+  name: string;
+  icon: string;
+  areaZone: string;
+  areaId: string;
+  firstEntryX: number;
+  firstEntryY: number;
+  firstEntryZ: number;
+  inGame: boolean;
+  podCount: number;
+  timeLimit: string;
+  timeLimitSeconds: number;
+  maxScore: number;
+  entryWarpCount: number;
+  exitWarpCount: number;
+}
+
 // ---- Areas ------------------------------------------------------------------
 
 /** An NPC type appearing in an area, with how many instances of it live there. */
 export interface AreaNpcEntry {
   ref: Ref;
   instanceCount: number;
+  x: number;
+  y: number;
+  z: number;
+  areaId: string;
+  areaZone: string;
+  instanceID: number;
+  instanceName: string;
+  points: Array<{ x: number; y: number }>;
 }
 
 /** A mob type appearing in an area, with how many instances and (when uniform) level/HP. */
@@ -368,6 +602,27 @@ export interface AreaMobEntry {
   instanceCount: number;
   level: number;
   hp: number;
+  x: number;
+  y: number;
+  z: number;
+  areaId: string;
+  areaZone: string;
+  instanceID: number;
+  instanceName: string;
+  points: Array<{ x: number; y: number }>;
+}
+
+export interface AreaVendorEntry {
+  ref: Ref;
+  instanceCount: number;
+  x: number;
+  y: number;
+  z: number;
+  areaId: string;
+  areaZone: string;
+  instanceID: number;
+  instanceName: string;
+  points: Array<{ x: number; y: number }>;
 }
 
 /** A single egg/crate location in the area. */
@@ -381,7 +636,10 @@ export interface AreaEggEntry {
   x: number;
   y: number;
   z: number;
+  areaId: string;
+  areaZone: string;
   instanceID: number;
+  instanceName: string;
 }
 
 /** A transportation route that has at least one stop in this area. */
@@ -390,22 +648,39 @@ export interface AreaTransport {
   routeName: string;          // human label
   moveType: string;           // "Slider", "MonkeySkyway", "SCAMPER", …
   startNpc: Ref | null;
-  /** All stops on the route, in order — first stop in this area gets `hereIndex`. */
-  stops: Array<{ areaZone: string; x: number; y: number; z: number; isHere: boolean }>;
+  /** Visible route points in order; non-Slider routes are indexed only by their first point. */
+  stops: Array<{ areaZone: string; areaId: string; x: number; y: number; z: number; isHere: boolean; isStopPoint: boolean }>;
 }
 
 /** A warp door in the area leading to an instance. */
 export interface AreaInstanceWarp {
+  id: number;
+  instance: Ref;
   instanceID: number;
   instanceName: string;
   npc: Ref | null;
+  entryLocation: {
+    areaZone: string;
+    areaId: string;
+    x: number;
+    y: number;
+    z: number;
+    instanceID: number;
+    instanceName: string;
+  } | null;
   requiredItem: Ref | null;
+  requiredMission: Ref | null;
+  requiredTaskId: number;
+  requiredTaskObjective: string;
   requiredMinLevel: number;
 }
 
 /** When the area is part of an Infected Zone, a compact summary. */
 export interface AreaInfectedZoneSummary {
   iznId: number;
+  name: string;
+  icon: string;
+  ref: Ref;
   description: string;
   difficultyLabel: string;
   recommendedLevel: number;
@@ -430,7 +705,7 @@ export interface Area {
 
   npcs: AreaNpcEntry[];
   mobs: AreaMobEntry[];
-  vendors: Ref[];
+  vendors: AreaVendorEntry[];
   eggs: AreaEggEntry[];
   transportation: AreaTransport[];
   instanceWarps: AreaInstanceWarp[];

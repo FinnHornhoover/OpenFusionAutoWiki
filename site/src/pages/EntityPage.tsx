@@ -1,18 +1,22 @@
 import { Link, useParams } from 'react-router-dom';
 import EntityPageSkeleton from '../components/EntityPageSkeleton';
 import ErrorState from '../components/ErrorState';
-import type { Area, Item, Mission, Mob, Nano, Npc } from '../data/types';
+import type { Area, Code, InfectedZone, Instance, Item, Mission, Mob, Nano, Npc, NpcAmbiguity } from '../data/types';
 import { useBuildEntry } from '../data/useBuildEntry';
 import { useBuildMeta } from '../data/useBuildMeta';
 import { useDelayedFlag } from '../data/useDelayedFlag';
 import { useDocumentTitle } from '../data/useDocumentTitle';
 import { useEntity } from '../data/useEntity';
 import AreaTemplate from '../templates/Area.mdx';
+import CodeTemplate from '../templates/Code.mdx';
+import InfectedZoneTemplate from '../templates/InfectedZone.mdx';
+import InstanceTemplate from '../templates/Instance.mdx';
 import ItemTemplate from '../templates/Item.mdx';
 import MissionTemplate from '../templates/Mission.mdx';
 import MonsterTemplate from '../templates/Monster.mdx';
 import NanoTemplate from '../templates/Nano.mdx';
 import NPCTemplate from '../templates/NPC.mdx';
+import NPCAmbiguityTemplate from '../templates/NPCAmbiguity.mdx';
 
 export default function EntityPage() {
   const { build, type, id } = useParams();
@@ -20,7 +24,7 @@ export default function EntityPage() {
   const meta = useBuildMeta(build);
   const supported = meta?.builtTypes?.includes(type ?? '') ?? false;
 
-  const { entity, loading, notFound, error } = useEntity<Mission | Npc | Item | Mob | Area | Nano>(
+  const { entity, loading, notFound, error } = useEntity<Mission | Npc | NpcAmbiguity | Item | Mob | Area | Code | Instance | InfectedZone | Nano>(
     supported ? build : undefined,
     supported ? type : undefined,
     supported ? id : undefined,
@@ -91,7 +95,9 @@ export default function EntityPage() {
           {' · '}
           <Link to={`/${build}/npcs`}>NPCs</Link>
         </p>
-        <NPCTemplate data={entity as Npc} />
+        {'kind' in (entity as object) && (entity as NpcAmbiguity).kind === 'npc-ambiguity'
+          ? <NPCAmbiguityTemplate data={entity as NpcAmbiguity} build={build} />
+          : <NPCTemplate data={entity as Npc} />}
       </section>
     );
   }
@@ -105,6 +111,19 @@ export default function EntityPage() {
           <Link to={`/${build}/items`}>Items</Link>
         </p>
         <ItemTemplate data={entity as Item} />
+      </section>
+    );
+  }
+
+  if (type === 'codes') {
+    return (
+      <section className="entity-page code-page">
+        <p className="breadcrumb muted">
+          <Link to={`/${build}`}>{buildLabel}</Link>
+          {' · '}
+          <Link to={`/${build}/codes`}>Codes</Link>
+        </p>
+        <CodeTemplate data={entity as Code} />
       </section>
     );
   }
@@ -131,6 +150,32 @@ export default function EntityPage() {
           <Link to={`/${build}/areas`}>Areas</Link>
         </p>
         <AreaTemplate data={entity as Area} />
+      </section>
+    );
+  }
+
+  if (type === 'instances') {
+    return (
+      <section className="entity-page instance-page">
+        <p className="breadcrumb muted">
+          <Link to={`/${build}`}>{buildLabel}</Link>
+          {' · '}
+          <Link to={`/${build}/instances`}>Instances</Link>
+        </p>
+        <InstanceTemplate data={entity as Instance} />
+      </section>
+    );
+  }
+
+  if (type === 'infected-zones') {
+    return (
+      <section className="entity-page infected-zone-page">
+        <p className="breadcrumb muted">
+          <Link to={`/${build}`}>{buildLabel}</Link>
+          {' · '}
+          <Link to={`/${build}/infected-zones`}>Infected Zones</Link>
+        </p>
+        <InfectedZoneTemplate data={entity as InfectedZone} />
       </section>
     );
   }

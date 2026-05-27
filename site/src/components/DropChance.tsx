@@ -1,4 +1,5 @@
 import type { DropChance as DropChanceData } from '../data/types';
+import InlineMeta from './InlineMeta';
 
 function fmt(p: number): string {
   if (p <= 0) return '';
@@ -26,17 +27,17 @@ interface Props {
 export default function DropChance({ data, leadingSeparator = true }: Props) {
   const { boyProbability: b, girlProbability: g } = data;
   if (b <= 0 && g <= 0) return null;
-  const sep = leadingSeparator ? ' · ' : '';
-
   const same = Math.abs(b - g) < 1e-9;
+  let label: string;
   if (same) {
-    return <span className="muted">{sep}{fmt(b)}</span>;
+    label = fmt(b);
+  } else if (b > 0 && g <= 0) {
+    label = `${fmt(b)} (boys-only)`;
+  } else if (g > 0 && b <= 0) {
+    label = `${fmt(g)} (girls-only)`;
+  } else {
+    label = `${fmt(b)} boys / ${fmt(g)} girls`;
   }
-  if (b > 0 && g <= 0) {
-    return <span className="muted">{sep}{fmt(b)} (boys-only)</span>;
-  }
-  if (g > 0 && b <= 0) {
-    return <span className="muted">{sep}{fmt(g)} (girls-only)</span>;
-  }
-  return <span className="muted">{sep}{fmt(b)} boys / {fmt(g)} girls</span>;
+
+  return <InlineMeta leading={leadingSeparator}>{label}</InlineMeta>;
 }

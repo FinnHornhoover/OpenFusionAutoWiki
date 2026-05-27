@@ -1,5 +1,10 @@
 import { gameToPxExtent, MINIMAP_PX, worldToPx } from '../data/minimapCoords';
 
+interface MinimapPoint {
+  x: number;
+  y: number;
+}
+
 interface MinimapProps {
   /** Center of the viewport (world coords). */
   x: number;
@@ -11,6 +16,8 @@ interface MinimapProps {
   size?: number;
   /** Game-units half-extent to show around the center. Default ~half a game tile. */
   extent?: number;
+  /** Secondary world-coordinate points to draw inside this viewport. */
+  points?: MinimapPoint[];
   /** Optional tooltip. */
   title?: string;
 }
@@ -28,6 +35,7 @@ export default function Minimap({
   height,
   size = 96,
   extent = 25600,
+  points = [],
   title,
 }: MinimapProps) {
   const center = worldToPx(x, y);
@@ -42,6 +50,16 @@ export default function Minimap({
   const hasBox = width != null && height != null && width > 0 && height > 0;
   const boxW = hasBox ? width! * (MINIMAP_PX / (51200 * 16)) * scale : 0;
   const boxH = hasBox ? height! * (MINIMAP_PX / (51200 * 16)) * scale : 0;
+  const overlayPoints = hasBox
+    ? []
+    : points.map((point) => {
+        const px = worldToPx(point.x, point.y);
+        return {
+          left: size / 2 + (px.px - center.px) * scale,
+          top: size / 2 + (px.py - center.py) * scale,
+        };
+      });
+  const showMainPin = !hasBox && overlayPoints.length <= 1;
 
   return (
     <span
@@ -64,7 +82,17 @@ export default function Minimap({
           aria-hidden
         />
       ) : (
-        <span className="minimap-pin" aria-hidden />
+        <>
+          {overlayPoints.map((point, i) => (
+            <span
+              key={i}
+              className="minimap-dot"
+              style={{ left: point.left, top: point.top }}
+              aria-hidden
+            />
+          ))}
+          {showMainPin && <span className="minimap-pin" aria-hidden />}
+        </>
       )}
     </span>
   );

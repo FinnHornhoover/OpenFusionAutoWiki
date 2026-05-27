@@ -200,25 +200,37 @@ export default function ItemIndex({ build, rows, loading }: Props) {
       {!loading && filtered.length === 0 && <p className="muted">No matches.</p>}
       {!loading && filtered.length > 0 && (
         <>
-          <ul className="entity-index">
-            {pageRows.map((r) => (
-              <li key={r.id} className="entity-index-row">
-                {r.icon
-                  ? <Icon src={r.icon} alt={r.name} size={112} />
-                  : <span className="icon icon-empty" aria-hidden style={{ width: 112, height: 112 }} />}
-                <span className="entity-index-main">
-                  <Link to={`/${build}/items/${r.id}`}>{r.name}</Link>
-                  <span className="muted">
-                    {' · '}{r.type}
-                    {r.rarity && r.rarity !== 'Common' && r.rarity !== 'Any' && ` · ${r.rarity}`}
-                    {r.gender && r.gender !== 'Any' && ` · ${r.gender}`}
-                    {r.contentLevel > 0 && ` · Lv ${r.contentLevel}`}
-                    {!r.obtainable && ' · unobtainable'}
-                  </span>
-                </span>
-              </li>
-            ))}
-          </ul>
+          <table className="location-table source-table entity-index-table">
+            <thead>
+              <tr>
+                <th>Item</th>
+                <th>Type</th>
+                <th>Rarity</th>
+                <th>Gender</th>
+                <th>Level</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {pageRows.map((r) => (
+                <tr key={r.id}>
+                  <td>
+                    <div className="entity-index-name">
+                      {r.icon
+                        ? <Icon src={r.icon} alt={r.name} size={64} />
+                        : <span className="icon icon-empty" aria-hidden />}
+                      <Link className="entity-index-link" to={`/${build}/items/${r.id}`}>{r.name}</Link>
+                    </div>
+                  </td>
+                  <td>{r.type || <span className="muted">—</span>}</td>
+                  <td>{r.rarity && r.rarity !== 'Any' ? r.rarity : <span className="muted">—</span>}</td>
+                  <td>{r.gender && r.gender !== 'Any' ? r.gender : <span className="muted">—</span>}</td>
+                  <td>{r.contentLevel > 0 ? r.contentLevel : <span className="muted">—</span>}</td>
+                  <td>{r.obtainable ? 'Obtainable' : 'Unobtainable'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
           {totalPages > 1 && (
             <nav className="pager" aria-label="Pagination">
               <button onClick={() => setPage(Math.max(0, page - 1))} disabled={page === 0}>‹ Prev</button>

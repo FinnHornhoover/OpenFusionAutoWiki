@@ -1,0 +1,153 @@
+import DropChance from '../components/DropChance';
+import Dropdown from '../components/Dropdown';
+import EntityLink from '../components/EntityLink';
+import Icon from '../components/Icon';
+import InfectedZoneCalculator from '../components/InfectedZoneCalculator';
+import InlineMeta from '../components/InlineMeta';
+import MapSpot from '../components/MapSpot';
+
+# {props.data.name}
+
+<div className="entity-header">
+  {props.data.icon ? <div className="entity-header-icon infected-zone-header-icon"><Icon src={props.data.icon} alt={props.data.name} size={239} /></div> : null}
+  <div className="entity-meta muted">
+    <span className="badge badge-category">Infected zone ID {props.data.id}</span>
+    {props.data.inGame === false && <span className="badge badge-warn">Out of game</span>}
+    {props.data.areaZone && <span className="badge badge-category">{props.data.areaZone}</span>}
+  </div>
+</div>
+
+<dl className="stat-grid">
+  <dt>Pod count</dt>
+  <dd>{props.data.podCount.toLocaleString()}</dd>
+  <dt>Max time</dt>
+  <dd>{props.data.timeLimit || `${props.data.timeLimitSeconds}s`}</dd>
+  <dt>Max score</dt>
+  <dd>{props.data.maxScore > 0 ? props.data.maxScore.toLocaleString() : <span className="muted">-</span>}</dd>
+  <dt>Original score cap</dt>
+  <dd>{props.data.originalMaxScore > 0 ? props.data.originalMaxScore.toLocaleString() : <span className="muted">-</span>}</dd>
+  <dt>Pod factor</dt>
+  <dd>{props.data.podFactor}</dd>
+  <dt>Time factor</dt>
+  <dd>{props.data.timeFactor}</dd>
+</dl>
+
+<Dropdown summary="Score and FM calculator" open>
+  <InfectedZoneCalculator data={props.data} />
+</Dropdown>
+
+{props.data.firstEntryLocation && (
+  <Dropdown summary="First entry location" open>
+    <MapSpot
+      x={props.data.firstEntryLocation.x}
+      y={props.data.firstEntryLocation.y}
+      z={props.data.firstEntryLocation.z}
+      areaId={props.data.firstEntryLocation.areaId}
+      title={props.data.firstEntryLocation.areaZone}
+      instanceName={props.data.firstEntryLocation.instanceName}
+      instanceID={props.data.firstEntryLocation.instanceID}
+    />
+  </Dropdown>
+)}
+
+{props.data.entryWarps.length > 0 && (
+  <Dropdown summary={`Entry warps (${props.data.entryWarps.length})`}>
+    <table className="location-table source-table">
+      <thead>
+        <tr><th>Warp NPC</th><th>Entry location</th><th>Required mission</th><th>Level</th></tr>
+      </thead>
+      <tbody>
+        {props.data.entryWarps.map((warp) => (
+          <tr key={warp.id}>
+            <td>
+              {warp.npc ? <EntityLink entity={warp.npc} /> : <span className="muted">-</span>}
+              <InlineMeta leading>
+                {warp.requiredItem && <span><EntityLink entity={warp.requiredItem} /></span>}
+                {warp.warpPrice > 0 && <span>{warp.warpPrice.toLocaleString()} Taros</span>}
+              </InlineMeta>
+            </td>
+            <td>{warp.entryLocation ? (
+              <MapSpot
+                x={warp.entryLocation.x}
+                y={warp.entryLocation.y}
+                z={warp.entryLocation.z}
+                areaId={warp.entryLocation.areaId}
+                title={warp.entryLocation.areaZone}
+                instanceName={warp.entryLocation.instanceName}
+                instanceID={warp.entryLocation.instanceID}
+              />
+            ) : <span className="muted">-</span>}</td>
+            <td>
+              {warp.requiredMission ? <EntityLink entity={warp.requiredMission} /> : <span className="muted">-</span>}
+              {warp.requiredTaskObjective && <div><InlineMeta leading><span>{warp.requiredTaskObjective}</span></InlineMeta></div>}
+            </td>
+            <td>{warp.requiredMinLevel > 0 ? warp.requiredMinLevel : <span className="muted">-</span>}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </Dropdown>
+)}
+
+{props.data.exitWarps.length > 0 && (
+  <Dropdown summary={`Exit warps (${props.data.exitWarps.length})`}>
+    <table className="location-table source-table">
+      <thead><tr><th>Warp NPC</th><th>Destination</th></tr></thead>
+      <tbody>
+        {props.data.exitWarps.map((warp) => (
+          <tr key={warp.id}>
+            <td>{warp.npc ? <EntityLink entity={warp.npc} /> : <span className="muted">-</span>}</td>
+            <td>{warp.exitLocation ? (
+              <MapSpot
+                x={warp.exitLocation.x}
+                y={warp.exitLocation.y}
+                z={warp.exitLocation.z}
+                areaId={warp.exitLocation.areaId}
+                title={warp.exitLocation.areaZone}
+              />
+            ) : <span className="muted">-</span>}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </Dropdown>
+)}
+
+{props.data.rankRewards.length > 0 && (
+  <Dropdown summary={`Ranks (${props.data.rankRewards.length})`} open>
+    <table className="location-table source-table">
+      <thead><tr><th>Rank</th><th>Required score</th><th>Reward</th></tr></thead>
+      <tbody>
+        {props.data.rankRewards.map((reward) => (
+          <tr key={reward.stars}>
+            <td>{reward.label}</td>
+            <td>{reward.requiredScore.toLocaleString()}</td>
+            <td>{reward.item ? <EntityLink entity={reward.item} /> : <span className="muted">-</span>}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </Dropdown>
+)}
+
+{props.data.rankRewards.map((reward) => reward.item && (
+  <Dropdown key={`reward-${reward.stars}`} summary={`${reward.label} rewards`}>
+    {reward.crateDrops.length > 0 ? (
+      <table className="location-table source-table">
+        <thead><tr><th>Item</th><th>Chance</th></tr></thead>
+        <tbody>
+          {reward.crateDrops.map((drop, i) => (
+            <tr key={`${drop.ref.id}-${i}`}>
+              <td><EntityLink entity={drop.ref} /></td>
+              <td><DropChance data={drop} leadingSeparator={false} /></td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    ) : (
+      <ul className="reward-items">
+        <li><EntityLink entity={reward.item} /></li>
+      </ul>
+    )}
+  </Dropdown>
+))}

@@ -4,14 +4,18 @@ import { chunkOf, writeChunks, writeIndex } from '../chunk.js';
 import { iconFor, itemRef, parseCompoundKey } from './refs.js';
 import type {
   Npc,
+  NpcAmbiguity,
   NpcIndexEntry,
   NpcLocation,
+  NpcTransportRoute,
+  NpcTransportSpot,
   NpcVendorItem,
   Ref,
 } from './types.js';
 import type { IconMap } from '../icons.js';
 import type { NpcMissionsMap } from './missions.js';
-import type { NpcGrouping } from './npcGrouping.js';
+import type { InstanceNameIndex } from './instanceLookup.js';
+import { slugify } from './slug.js';
 
 interface RawNpcType {
   ID: number;
@@ -49,14 +53,103 @@ interface RawNpcInstance {
   TypeID?: number;
 }
 
-function normalizeLocation(raw: RawNpcInstance): NpcLocation {
+interface RawTransportPoint {
+  AreaZone?: string;
+  Name?: string;
+  X?: number;
+  Y?: number;
+  Z?: number;
+  IsStopPoint?: boolean;
+}
+
+interface RawTransportRoute {
+  InGame?: boolean;
+  MoveType?: string;
+  NPCID?: number;
+  NPCType?: { Category?: string } | null;
+  StartLocation?: RawTransportPoint;
+  Transportations?: Record<string, RawTransportPoint & {
+    Route?: RawTransportPoint[];
+  }>;
+}
+
+function hasConsistentTransportOperator(route: RawTransportRoute): boolean {
+  const category = route.NPCType?.Category ?? '';
+  const moveType = route.MoveType ?? '';
+  return !category || !moveType || category === moveType;
+}
+
+function normalizeLocation(raw: RawNpcInstance, instanceNames: InstanceNameIndex): NpcLocation {
+  const areaZone = raw.AreaZone ?? '';
+  const instanceID = raw.InstanceID ?? 0;
   return {
-    areaZone: raw.AreaZone ?? '',
+    areaZone,
+    areaId: areaZone && areaZone !== 'Unknown - Unknown' ? slugify(areaZone) : '',
     x: raw.X ?? 0,
     y: raw.Y ?? 0,
     z: raw.Z ?? 0,
-    instanceID: raw.InstanceID ?? 0,
+    instanceID,
+    instanceName: instanceNames.get(instanceID) ?? '',
   };
+}
+
+
+function normalizeTransportSpot(raw: RawTransportPoint | null | undefined): NpcTransportSpot | null {
+  if (!raw?.AreaZone) return null;
+  return {
+    areaZone: raw.AreaZone,
+    areaId: raw.AreaZone !== 'Unknown - Unknown' ? slugify(raw.AreaZone) : '',
+    x: raw.X ?? 0,
+    y: raw.Y ?? 0,
+    z: raw.Z ?? 0,
+  };
+}
+
+function buildNpcTransportRoutes(rawTransport: Record<string, RawTransportRoute>): Map<number, NpcTransportRoute[]> {
+  const out = new Map<number, NpcTransportRoute[]>();
+
+  for (const [rid, route] of Object.entries(rawTransport)) {
+    if (!route?.InGame || !hasConsistentTransportOperator(route) || !route.NPCID || route.NPCID <= 0) continue;
+    const routeId = parseInt(rid, 10);
+    const moveType = route.MoveType ?? '';
+
+    for (const sub of Object.values(route.Transportations ?? {})) {
+      const rawPoints = sub.Route ?? [];
+      let start: NpcTransportSpot | null = null;
+      let landing: NpcTransportSpot | null = null;
+
+      if (moveType === 'SCAMPER') {
+        start = normalizeTransportSpot(route.StartLocation);
+        landing = normalizeTransportSpot(sub);
+      } else {
+        const visiblePoints = moveType === 'Slider'
+          ? rawPoints.filter((point) => point.IsStopPoint)
+          : rawPoints.length > 1 ? [rawPoints[0], rawPoints[rawPoints.length - 1]] : rawPoints;
+        start = normalizeTransportSpot(visiblePoints[0]);
+        landing = normalizeTransportSpot(visiblePoints[visiblePoints.length - 1]);
+      }
+
+      const list = out.get(route.NPCID) ?? [];
+      list.push({
+        routeId,
+        routeName: sub.Name || moveType || `Route ${routeId}`,
+        moveType,
+        start,
+        landing,
+      });
+      out.set(route.NPCID, list);
+    }
+  }
+
+  for (const list of out.values()) {
+    list.sort((a, b) =>
+      a.moveType.localeCompare(b.moveType) ||
+      a.routeName.localeCompare(b.routeName) ||
+      a.routeId - b.routeId
+    );
+  }
+
+  return out;
 }
 
 function normalizeVendorItems(raw: RawNpcType, iconMap: IconMap): NpcVendorItem[] {
@@ -92,78 +185,15 @@ function normalizeComment(raw: RawNpcType): string {
   return (raw.Comment ?? '').trim();
 }
 
-/**
- * Merge raw members of a group into the canonical record. Unioned: idle barkers,
- * mission barkers (dedup by mission id), vendor items (dedup by item id), locations.
- * The canonical's icon/comment/category/name are retained.
- */
-function buildMergedNpc(
-  canonical: RawNpcType,
-  aliases: RawNpcType[],
-  rawInsts: Record<string, Record<string, RawNpcInstance>>,
-  iconMap: IconMap,
-  npcMissions: NpcMissionsMap,
-): Npc {
-  const allMembers = [canonical, ...aliases];
-
-  const idleBarkers = new Set<string>();
-  const missionBarkersBy = new Map<number, { mission: Ref; text: string }>();
-  // Item refs use compound string IDs (typeId-itemId).
-  const vendorBy = new Map<string, NpcVendorItem>();
-  const locations: NpcLocation[] = [];
-
-  for (const member of allMembers) {
-    for (const s of member.Barkers ?? []) {
-      const t = s.trim();
-      if (t) idleBarkers.add(t);
-    }
-    for (const mb of normalizeMissionBarkers(member)) {
-      const key = mb.mission.id as number;
-      if (!missionBarkersBy.has(key)) missionBarkersBy.set(key, mb);
-    }
-    for (const v of normalizeVendorItems(member, iconMap)) {
-      const key = String(v.ref.id);
-      if (!vendorBy.has(key)) vendorBy.set(key, v);
-    }
-    const insts = rawInsts[String(member.ID)] ?? {};
-    for (const inst of Object.values(insts)) locations.push(normalizeLocation(inst));
-  }
-
-  const aliasIds = aliases.map((a) => a.ID).sort((a, b) => a - b);
-  const missions = npcMissions.get(canonical.ID);
-
-  return {
-    id: canonical.ID,
-    name: canonical.Name,
-    icon: iconFor(canonical.Icon ?? '', iconMap),
-    category: canonical.Category ?? '',
-    comment: normalizeComment(canonical),
-    inGame: canonical.InGame ?? false,
-    height: canonical.Height ?? 0,
-    scale: canonical.Scale ?? 1,
-
-    idleBarkers: [...idleBarkers],
-    missionBarkers: [...missionBarkersBy.values()],
-
-    vendorItems: [...vendorBy.values()],
-
-    startedMissions: missions?.starts ?? [],
-    journaledMissions: missions?.journals ?? [],
-    endedMissions: missions?.ends ?? [],
-
-    locations,
-    aliasIds,
-  };
-}
-
-/** Out-of-game NPCs are kept as-is (no merging). */
-function buildSoloNpc(
+function buildNpc(
   raw: RawNpcType,
   rawInsts: Record<string, Record<string, RawNpcInstance>>,
   iconMap: IconMap,
   npcMissions: NpcMissionsMap,
+  instanceNames: InstanceNameIndex,
+  transportRoutesByNpc: Map<number, NpcTransportRoute[]>,
 ): Npc {
-  const locations = Object.values(rawInsts[String(raw.ID)] ?? {}).map(normalizeLocation);
+  const locations = Object.values(rawInsts[String(raw.ID)] ?? {}).map((inst) => normalizeLocation(inst, instanceNames));
   const missions = npcMissions.get(raw.ID);
   return {
     id: raw.ID,
@@ -174,91 +204,153 @@ function buildSoloNpc(
     inGame: raw.InGame ?? false,
     height: raw.Height ?? 0,
     scale: raw.Scale ?? 1,
-    idleBarkers: (raw.Barkers ?? []).map((s) => s.trim()).filter(Boolean),
+    idleBarkers: (raw.Barkers ?? []).map((text) => text.trim()).filter(Boolean),
     missionBarkers: normalizeMissionBarkers(raw),
     vendorItems: normalizeVendorItems(raw, iconMap),
+    transportRoutes: transportRoutesByNpc.get(raw.ID) ?? [],
     startedMissions: missions?.starts ?? [],
     journaledMissions: missions?.journals ?? [],
     endedMissions: missions?.ends ?? [],
     locations,
-    aliasIds: [],
   };
 }
 
-function indexEntry(n: Npc): NpcIndexEntry {
+function trimmedNpcName(n: Npc): string {
+  return n.name.trim() || `NPC #${n.id}`;
+}
+
+type NpcStatus = 'in-game' | 'out-of-game' | 'mixed';
+
+function aggregateStatus(npcs: Npc[]): NpcStatus {
+  const inGame = npcs.some((n) => n.inGame);
+  const outOfGame = npcs.some((n) => !n.inGame);
+  if (inGame && outOfGame) return 'mixed';
+  return inGame ? 'in-game' : 'out-of-game';
+}
+
+function aggregateCategories(npcs: Npc[]): string[] {
+  return Array.from(new Set(npcs.map((n) => n.category).filter(Boolean))).sort((a, b) => a.localeCompare(b));
+}
+
+function aggregateCategory(npcs: Npc[]): string {
+  const categories = aggregateCategories(npcs);
+  if (categories.length === 0) return '';
+  return categories.length === 1 ? categories[0] : 'Mixed';
+}
+
+function indexEntryForGroup(name: string, npcs: Npc[]): NpcIndexEntry {
+  const first = npcs[0];
+  const status = aggregateStatus(npcs);
   return {
-    id: n.id,
-    name: n.name,
-    icon: n.icon,
-    category: n.category,
-    instanceCount: n.locations.length,
-    inGame: n.inGame,
+    id: npcs.length === 1 ? first.id : slugify(name),
+    name,
+    icon: first.icon,
+    category: aggregateCategory(npcs),
+    categories: aggregateCategories(npcs),
+    instanceCount: npcs.reduce((sum, n) => sum + n.locations.length, 0),
+    inGame: status !== 'out-of-game',
+    status,
+    idCount: npcs.length,
+    transportRouteCount: npcs.reduce((sum, n) => sum + n.transportRoutes.length, 0),
+    startedMissionCount: npcs.reduce((sum, n) => sum + n.startedMissions.length, 0),
+    members: npcs.map((n) => ({ id: n.id, category: n.category, inGame: n.inGame })),
   };
+}
+
+function groupedNpcsByName(npcs: Npc[]): Map<string, Npc[]> {
+  const groups = new Map<string, Npc[]>();
+  for (const npc of npcs) {
+    const name = trimmedNpcName(npc);
+    const group = groups.get(name) ?? [];
+    group.push(npc);
+    groups.set(name, group);
+  }
+  for (const group of groups.values()) {
+    group.sort((a, b) => a.id - b.id);
+  }
+  return groups;
+}
+
+function buildNpcAmbiguities(groups: Map<string, Npc[]>): NpcAmbiguity[] {
+  const out: NpcAmbiguity[] = [];
+  for (const [name, group] of groups) {
+    if (group.length < 2) continue;
+    const first = group[0];
+    const status = aggregateStatus(group);
+    out.push({
+      kind: 'npc-ambiguity',
+      id: slugify(name),
+      name,
+      icon: first.icon,
+      category: aggregateCategory(group),
+      inGame: status !== 'out-of-game',
+      status,
+      members: group.map((n) => ({
+        id: n.id,
+        name: trimmedNpcName(n),
+        icon: n.icon,
+        category: n.category,
+        inGame: n.inGame,
+        transportRouteCount: n.transportRoutes.length,
+        startedMissionCount: n.startedMissions.length,
+        spawnCount: n.locations.length,
+        firstLocation: n.locations[0] ?? null,
+      })),
+    });
+  }
+  return out.sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id));
+}
+
+function buildNpcIndex(npcs: Npc[]): NpcIndexEntry[] {
+  return Array.from(groupedNpcsByName(npcs), ([name, group]) => indexEntryForGroup(name, group))
+    .sort((a, b) => a.name.localeCompare(b.name) || String(a.id).localeCompare(String(b.id)));
 }
 
 /**
- * Read npc_type_info.json + npc_info.json, group in-game NPCs by
- * (category, name) via the supplied grouping, and emit one merged
- * record per canonical ID. Out-of-game NPCs are passed through unchanged.
+ * Read npc_type_info.json + npc_info.json, normalize every NPC type with its
+ * world instances, and emit exact NPC pages plus duplicate-name ambiguity pages.
  */
 export async function normalizeNpcs(
   zipPath: string,
   slug: string,
   iconMap: IconMap,
-  grouping: NpcGrouping,
   npcMissions: NpcMissionsMap,
-): Promise<{ count: number; chunks: number; vendors: number; linked: number; merged: number }> {
+  instanceNames: InstanceNameIndex,
+): Promise<{ count: number; chunks: number; vendors: number; linked: number }> {
   const zip = new AdmZip(zipPath);
   const typeEntry = zip.getEntry('info/npc_type_info.json');
   const instEntry = zip.getEntry('info/npc_info.json');
+  const transportEntry = zip.getEntry('info/transportation_info.json');
   if (!typeEntry) {
-    return { count: 0, chunks: 0, vendors: 0, linked: 0, merged: 0 };
+    return { count: 0, chunks: 0, vendors: 0, linked: 0 };
   }
   const rawTypes = JSON.parse(typeEntry.getData().toString('utf8')) as Record<string, RawNpcType>;
   const rawInsts = instEntry
     ? (JSON.parse(instEntry.getData().toString('utf8')) as Record<string, Record<string, RawNpcInstance>>)
     : {};
+  const rawTransport = transportEntry
+    ? (JSON.parse(transportEntry.getData().toString('utf8')) as Record<string, RawTransportRoute>)
+    : {};
+  const transportRoutesByNpc = buildNpcTransportRoutes(rawTransport);
 
-  // Bucket aliases (non-canonical in-game members) under their canonical ID.
-  const aliasesByCanonical = new Map<number, RawNpcType[]>();
-  for (const t of Object.values(rawTypes)) {
-    if (!t.InGame) continue;
-    const canon = grouping.memberToCanonical.get(t.ID);
-    if (canon === undefined || canon === t.ID) continue;
-    let list = aliasesByCanonical.get(canon);
-    if (!list) {
-      list = [];
-      aliasesByCanonical.set(canon, list);
-    }
-    list.push(t);
-  }
-
-  let mergedCount = 0;
-  const npcs: Npc[] = [];
-  for (const t of Object.values(rawTypes)) {
-    if (t.InGame) {
-      const canon = grouping.memberToCanonical.get(t.ID) ?? t.ID;
-      if (canon !== t.ID) continue; // alias, will be folded into canonical
-      const aliases = aliasesByCanonical.get(t.ID) ?? [];
-      if (aliases.length > 0) mergedCount++;
-      npcs.push(buildMergedNpc(t, aliases, rawInsts, iconMap, npcMissions));
-    } else {
-      // Out-of-game: kept as solo, no grouping applied.
-      npcs.push(buildSoloNpc(t, rawInsts, iconMap, npcMissions));
-    }
-  }
-  npcs.sort((a, b) => a.id - b.id);
+  const npcs: Npc[] = Object.values(rawTypes)
+    .map((t) => buildNpc(t, rawInsts, iconMap, npcMissions, instanceNames, transportRoutesByNpc))
+    .sort((a, b) => a.id - b.id);
 
   const vendors = npcs.filter((n) => n.vendorItems.length > 0).length;
   const linked = npcs.filter(
     (n) => n.startedMissions.length || n.journaledMissions.length || n.endedMissions.length,
   ).length;
 
-  const { chunks } = await writeChunks(slug, 'npcs', npcs, (n) => ({
-    url: n.id,
-    chunk: chunkOf(n.id),
-  }));
-  await writeIndex(slug, 'npcs', npcs.map(indexEntry));
+  const groups = groupedNpcsByName(npcs);
+  const ambiguities = buildNpcAmbiguities(groups);
+  const npcRecords: Array<Npc | NpcAmbiguity> = [...npcs, ...ambiguities];
 
-  return { count: npcs.length, chunks, vendors, linked, merged: mergedCount };
+  const { chunks } = await writeChunks(slug, 'npcs', npcRecords, (n) => ({
+    url: n.id,
+    chunk: typeof n.id === 'number' ? chunkOf(n.id) : 0,
+  }));
+  await writeIndex(slug, 'npcs', buildNpcIndex(npcs));
+
+  return { count: npcs.length, chunks, vendors, linked };
 }
