@@ -3,7 +3,7 @@
  * Kept in sync with build/src/normalize/types.ts.
  */
 
-export type EntityType = 'mission' | 'npc' | 'item' | 'monster' | 'nano' | 'instance';
+export type EntityType = 'mission' | 'npc' | 'item' | 'monster' | 'nano' | 'instance' | 'infected-zone';
 
 export interface Ref {
   type: EntityType;
@@ -406,6 +406,7 @@ export interface Instance {
   inGame: boolean;
   infectedZoneId: number;
   infectedZoneName: string;
+  infectedZone: Ref | null;
   epMaxScore: number;
   entryWarps: InstanceWarp[];
   exitWarps: InstanceWarp[];
@@ -417,6 +418,7 @@ export interface InstanceIndexEntry {
   inGame: boolean;
   infectedZoneId: number;
   infectedZoneName: string;
+  infectedZone: Ref | null;
   entryWarpCount: number;
   exitWarpCount: number;
 }
@@ -565,6 +567,7 @@ export interface AreaInfectedZoneSummary {
   iznId: number;
   name: string;
   icon: string;
+  ref: Ref;
   description: string;
   difficultyLabel: string;
   recommendedLevel: number;

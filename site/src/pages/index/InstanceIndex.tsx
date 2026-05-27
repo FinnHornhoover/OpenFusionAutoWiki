@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 
 import EntityIndexSkeleton from '../../components/EntityIndexSkeleton';
+import EntityLink from '../../components/EntityLink';
 import type { InstanceIndexEntry } from '../../data/types';
 import { useDelayedFlag } from '../../data/useDelayedFlag';
 
@@ -75,7 +76,7 @@ export default function InstanceIndex({ build, rows, loading }: Props) {
                   <td><Link className="entity-index-link" to={`/${build}/instances/${r.id}`}>{r.name}</Link></td>
                   <td>{r.entryWarpCount.toLocaleString()}</td>
                   <td>{r.exitWarpCount.toLocaleString()}</td>
-                  <td>{r.infectedZoneId > 0 ? r.infectedZoneName || `Infected Zone #${r.infectedZoneId}` : <span className="muted">-</span>}</td>
+                  <td>{r.infectedZone ? <EntityLink entity={r.infectedZone} iconSize={64} /> : <span className="muted">-</span>}</td>
                   <td>{r.inGame ? 'In game' : 'Out of game'}</td>
                 </tr>
               ))}

@@ -537,10 +537,13 @@ function summarizeInfectedZone(
   const id = iz.ID ?? iz.EPID ?? 0;
   if (!id) return null;
   const info = infectedZones.get(id);
+  const name = info?.name ?? `Infected Zone #${id}`;
+  const icon = info?.icon ?? '';
   return {
     iznId: id,
-    name: info?.name ?? `Infected Zone #${id}`,
-    icon: info?.icon ?? '',
+    name,
+    icon,
+    ref: { type: 'infected-zone', id, name, icon },
     description: (iz.Description ?? '').trim(),
     difficultyLabel: iz.DifficultyLabel ?? '',
     recommendedLevel: iz.RecommendedLevel ?? 0,

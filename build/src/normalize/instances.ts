@@ -16,6 +16,11 @@ interface RawInstanceInfo {
   EntryWarps?: Record<string, RawInstanceWarp>;
 }
 
+interface RawInfectedZoneInfo {
+  ID?: number;
+  Name?: string;
+}
+
 interface RawInstanceWarpNpc {
   AreaZone?: string;
   InstanceID?: number;
@@ -123,6 +128,7 @@ function normalizeInstance(
   iconMap: IconMap,
   instanceNames: Map<number, string>,
   missionLevels: Map<number, number>,
+  infectedZoneNames: Map<number, string>,
 ): Instance {
   const id = raw.ID ?? 0;
   const entryWarps = Object.values(raw.EntryWarps ?? {})
@@ -130,6 +136,10 @@ function normalizeInstance(
     .sort((a, b) => a.id - b.id);
   const exitWarps = entryWarps.filter((w) => w.exitLocation);
   const epId = raw.EPID ?? 0;
+  const infectedZoneName = epId > 0 ? infectedZoneNames.get(epId) ?? `Infected Zone #${epId}` : '';
+  const infectedZone: Ref | null = epId > 0
+    ? { type: 'infected-zone', id: epId, name: infectedZoneName, icon: `/ui/ep/ep_big_${String(epId).padStart(2, '0')}.png` }
+    : null;
   return {
     id,
     name: raw.Name?.trim() || `Instance #${id}`,
@@ -137,7 +147,8 @@ function normalizeInstance(
     areaId: raw.AreaZone && raw.AreaZone !== 'Unknown - Unknown' ? slugify(raw.AreaZone) : '',
     inGame: raw.InGame ?? false,
     infectedZoneId: epId > 0 ? epId : 0,
-    infectedZoneName: epId > 0 ? `Infected Zone #${epId}` : '',
+    infectedZoneName,
+    infectedZone,
     epMaxScore: raw.EPMaxScore ?? 0,
     entryWarps,
     exitWarps,
@@ -151,6 +162,7 @@ function indexEntry(inst: Instance): InstanceIndexEntry {
     inGame: inst.inGame,
     infectedZoneId: inst.infectedZoneId,
     infectedZoneName: inst.infectedZoneName,
+    infectedZone: inst.infectedZone,
     entryWarpCount: inst.entryWarps.length,
     exitWarpCount: inst.exitWarps.length,
   };
@@ -168,6 +180,16 @@ export async function normalizeInstances(
 
   const raw = JSON.parse(entry.getData().toString('utf8')) as Record<string, RawInstanceInfo> | RawInstanceInfo[];
   const rawRows = Array.isArray(raw) ? raw : Object.values(raw);
+  const infectedZoneNames = new Map<number, string>();
+  const infectedZoneEntry = zip.getEntry('info/infected_zone_info.json');
+  if (infectedZoneEntry) {
+    const rawInfectedZones = JSON.parse(infectedZoneEntry.getData().toString('utf8')) as Record<string, RawInfectedZoneInfo> | RawInfectedZoneInfo[];
+    for (const row of Array.isArray(rawInfectedZones) ? rawInfectedZones : Object.values(rawInfectedZones)) {
+      const id = row?.ID ?? 0;
+      const name = row?.Name?.trim() ?? '';
+      if (id > 0 && name) infectedZoneNames.set(id, name);
+    }
+  }
   const instanceNames = new Map<number, string>();
   for (const row of rawRows) {
     const id = row?.ID ?? 0;
@@ -176,7 +198,7 @@ export async function normalizeInstances(
   }
   const rows = rawRows
     .filter((r) => r && typeof r === 'object')
-    .map((r) => normalizeInstance(r, iconMap, instanceNames, missionLevels))
+    .map((r) => normalizeInstance(r, iconMap, instanceNames, missionLevels, infectedZoneNames))
     .filter((r) => r.id > 0)
     .sort((a, b) => a.id - b.id);
 

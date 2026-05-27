@@ -13,15 +13,17 @@ import MapSpot from '../components/MapSpot';
   </div>
 </div>
 
-{props.data.infectedZoneId > 0 && (
-  <dl className="stat-grid">
-    <dt>Infected zone</dt>
-    <dd>{props.data.infectedZoneName || `Infected Zone #${props.data.infectedZoneId}`}</dd>
-    <dt>Infected zone ID</dt>
-    <dd>{props.data.infectedZoneId}</dd>
-    {props.data.epMaxScore > 0 && <dt>Max score</dt>}
-    {props.data.epMaxScore > 0 && <dd>{props.data.epMaxScore.toLocaleString()}</dd>}
-  </dl>
+{props.data.infectedZone && (
+  <Dropdown summary="Infected Zone" open>
+    <dl className="stat-grid">
+      <dt>Infected zone</dt>
+      <dd><EntityLink entity={props.data.infectedZone} /></dd>
+      <dt>Infected zone ID</dt>
+      <dd><code className="entity-index-id-code">{props.data.infectedZoneId}</code></dd>
+      {props.data.epMaxScore > 0 && <dt>Max score</dt>}
+      {props.data.epMaxScore > 0 && <dd>{props.data.epMaxScore.toLocaleString()}</dd>}
+    </dl>
+  </Dropdown>
 )}
 
 {props.data.entryWarps.length > 0 && (

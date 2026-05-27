@@ -1,6 +1,6 @@
 /** Reference to another wiki entity. */
 export interface Ref {
-  type: 'mission' | 'npc' | 'item' | 'monster' | 'nano' | 'instance';
+  type: 'mission' | 'npc' | 'item' | 'monster' | 'nano' | 'instance' | 'infected-zone';
   /**
    * Stable URL id. Items use "typeId-itemId" because ItemID is reused by type.
    */
@@ -480,6 +480,7 @@ export interface Instance {
   inGame: boolean;
   infectedZoneId: number;
   infectedZoneName: string;
+  infectedZone: Ref | null;
   epMaxScore: number;
   entryWarps: InstanceWarp[];
   exitWarps: InstanceWarp[];
@@ -491,6 +492,7 @@ export interface InstanceIndexEntry {
   inGame: boolean;
   infectedZoneId: number;
   infectedZoneName: string;
+  infectedZone: Ref | null;
   entryWarpCount: number;
   exitWarpCount: number;
 }
@@ -648,6 +650,7 @@ export interface AreaInfectedZoneSummary {
   iznId: number;
   name: string;
   icon: string;
+  ref: Ref;
   description: string;
   difficultyLabel: string;
   recommendedLevel: number;

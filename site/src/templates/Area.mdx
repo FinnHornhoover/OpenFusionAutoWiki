@@ -38,8 +38,7 @@ import { formatDurationSeconds } from '../data/formatTime';
   <Dropdown summary="Infected Zone" open>
     <div className="infected-zone-card">
       <div className="infected-zone-header">
-        {props.data.infectedZone.icon && <img src={props.data.infectedZone.icon} alt="" loading="lazy" className="icon infected-zone-icon" />}
-        <div className="infected-zone-title">{props.data.infectedZone.name}</div>
+        <EntityLink entity={props.data.infectedZone.ref} iconSize={96} />
       </div>
       <div className="infected-zone-details">
         {props.data.infectedZone.difficultyLabel && <div><strong>Difficulty:</strong> {props.data.infectedZone.difficultyLabel}</div>}

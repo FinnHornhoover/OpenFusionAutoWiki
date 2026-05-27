@@ -47,12 +47,16 @@ export default function MapSpot({
       {coordinates}
     </>
   );
-  const canLink = build && areaId;
+  const linkTarget = build
+    ? instanceID > 0
+      ? `/${build}/instances/${instanceID}`
+      : areaId ? `/${build}/areas/${areaId}` : ''
+    : '';
 
   return (
     <span className="map-spot">
-      {canLink ? (
-        <Link className="map-spot-link" to={`/${build}/areas/${areaId}`}>
+      {linkTarget ? (
+        <Link className="map-spot-link" to={linkTarget}>
           {content}
         </Link>
       ) : content}
