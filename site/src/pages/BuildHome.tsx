@@ -3,6 +3,7 @@ import { buildPageSubtitle, buildPageTitle, useBuildEntry } from '../data/useBui
 import { useDocumentTitle } from '../data/useDocumentTitle';
 
 const ENTITY_TYPES = [
+  { type: 'map', label: 'World Map' },
   { type: 'missions', label: 'Missions' },
   { type: 'npcs', label: 'NPCs' },
   { type: 'monsters', label: 'Monsters' },

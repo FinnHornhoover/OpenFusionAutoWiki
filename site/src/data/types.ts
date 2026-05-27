@@ -546,6 +546,18 @@ export interface AreaVendorEntry {
   points: Array<{ x: number; y: number }>;
 }
 
+export interface AreaMissionStartEntry {
+  mission: Ref;
+  npc: Ref;
+  x: number;
+  y: number;
+  z: number;
+  areaId: string;
+  areaZone: string;
+  instanceID: number;
+  instanceName: string;
+}
+
 export interface AreaEggEntry {
   typeName: string;
   typeComment: string;
@@ -568,6 +580,7 @@ export interface AreaTransport {
   moveType: string;
   startNpc: Ref | null;
   stops: Array<{ areaZone: string; areaId: string; x: number; y: number; z: number; isHere: boolean; isStopPoint: boolean }>;
+  routePoints?: Array<{ areaZone: string; areaId: string; x: number; y: number; z: number; isStopPoint: boolean }>;
 }
 
 export interface AreaInstanceWarp {
@@ -621,6 +634,7 @@ export interface Area {
   transportation: AreaTransport[];
   instanceWarps: AreaInstanceWarp[];
   infectedZone: AreaInfectedZoneSummary | null;
+  missionStarts: AreaMissionStartEntry[];
 
   missionsStarting: Ref[];
 }
