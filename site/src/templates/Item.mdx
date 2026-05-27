@@ -204,7 +204,7 @@ import SimilarItems from '../components/SimilarItems';
               );
             }
             if (s.kind === 'code') {
-              return <li key={i}><code>{s.code}</code></li>;
+              return <li key={i}><EntityLink entity={s.ref} withIcon={false} /></li>;
             }
             if (s.kind === 'event') {
               return (

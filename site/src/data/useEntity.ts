@@ -10,7 +10,7 @@ const CHUNK_SIZE = 250;
  * ambiguity pages use name slugs and also live in chunk 0.
  */
 function chunkFor(type: string, urlId: string): number {
-  if (type === 'areas' || type === 'instances' || type === 'infected-zones') return 0;
+  if (type === 'areas' || type === 'instances' || type === 'infected-zones' || type === 'codes') return 0;
   if (type === 'npcs' && !/^\d+$/.test(urlId)) return 0;
   if (type === 'items') {
     const m = /^(\d+)-(\d+)$/.exec(urlId);

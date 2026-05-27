@@ -7,6 +7,7 @@ import type {
   AreaIndexEntry,
   InfectedZoneIndexEntry,
   InstanceIndexEntry,
+  CodeIndexEntry,
   ItemIndexEntry,
   MissionIndexEntry,
   MobIndexEntry,
@@ -17,7 +18,7 @@ import type {
 /** Per-build search row — one entry per searchable entity, all 6 types unioned. */
 export interface SearchRow {
   /** URL segment for this entity type (matches the route segment + builtTypes). */
-  type: 'missions' | 'npcs' | 'items' | 'monsters' | 'areas' | 'instances' | 'infected-zones' | 'nanos';
+  type: 'missions' | 'npcs' | 'items' | 'codes' | 'monsters' | 'areas' | 'instances' | 'infected-zones' | 'nanos';
   /** URL identifier (numeric or compound string, same shape Ref.id uses). */
   id: number | string;
   name: string;
@@ -43,10 +44,11 @@ async function loadIndex<T>(slug: string, type: string): Promise<T[]> {
  * via the per-type indexes' "Hide out-of-game" toggles.
  */
 export async function writeSearchIndex(slug: string): Promise<{ count: number; bytes: number }> {
-  const [missions, npcs, items, monsters, areas, instances, infectedZones, nanos] = await Promise.all([
+  const [missions, npcs, items, codes, monsters, areas, instances, infectedZones, nanos] = await Promise.all([
     loadIndex<MissionIndexEntry>(slug, 'missions'),
     loadIndex<NpcIndexEntry>(slug, 'npcs'),
     loadIndex<ItemIndexEntry>(slug, 'items'),
+    loadIndex<CodeIndexEntry>(slug, 'codes'),
     loadIndex<MobIndexEntry>(slug, 'monsters'),
     loadIndex<AreaIndexEntry>(slug, 'areas'),
     loadIndex<InstanceIndexEntry>(slug, 'instances'),
@@ -64,6 +66,9 @@ export async function writeSearchIndex(slug: string): Promise<{ count: number; b
   }
   for (const it of items) {
     rows.push({ type: 'items', id: it.id, name: it.name, icon: it.icon });
+  }
+  for (const code of codes) {
+    rows.push({ type: 'codes', id: code.id, name: code.code, icon: code.icon });
   }
   for (const mb of monsters) {
     if (!mb.inGame) continue;

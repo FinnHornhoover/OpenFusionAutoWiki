@@ -12,6 +12,7 @@ const ROUTE_FOR: Record<Ref['type'], string> = {
   nano: 'nanos',
   instance: 'instances',
   'infected-zone': 'infected-zones',
+  code: 'codes',
 };
 
 interface EntityLinkProps {

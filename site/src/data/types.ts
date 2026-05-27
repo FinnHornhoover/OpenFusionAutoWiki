@@ -3,7 +3,7 @@
  * Kept in sync with build/src/normalize/types.ts.
  */
 
-export type EntityType = 'mission' | 'npc' | 'item' | 'monster' | 'nano' | 'instance' | 'infected-zone';
+export type EntityType = 'mission' | 'npc' | 'item' | 'monster' | 'nano' | 'instance' | 'infected-zone' | 'code';
 
 export interface Ref {
   type: EntityType;
@@ -216,7 +216,7 @@ export type ItemSource =
   | { kind: 'vendor'; npc: Ref; price: number; areaZone: string }
   | ({ kind: 'egg'; eggId: string; eggName: string; eggComment: string; areaZone: string; areaId: string; instanceID: number; instanceName: string; x: number; y: number; z: number } & DropChance)
   | ({ kind: 'racing'; npc: Ref | null; instanceName: string; areaZone: string; requiredScore: number; requiredStars: number } & DropChance)
-  | { kind: 'code'; code: string }
+  | { kind: 'code'; code: string; ref: Ref }
   | ({ kind: 'event'; eventId: number; eventName: string } & DropChance);
 
 export interface CrateDrop extends DropChance {
@@ -264,6 +264,35 @@ export interface Item {
   sources: ItemSource[];
   crateDrops: CrateDrop[];
   containingCrates: CrateDrop[];
+}
+
+
+export interface CodeItemEntry {
+  ref: Ref;
+  typeId: number;
+  itemId: number;
+  type: string;
+  rarity: string;
+  gender: string;
+  contentLevel: number;
+  requiredLevel: number;
+  obtainable: boolean;
+}
+
+export interface Code {
+  id: string;
+  code: string;
+  name: string;
+  ref: Ref;
+  items: CodeItemEntry[];
+}
+
+export interface CodeIndexEntry {
+  id: string;
+  code: string;
+  name: string;
+  icon: string;
+  items: Ref[];
 }
 
 export interface ItemIndexEntry {

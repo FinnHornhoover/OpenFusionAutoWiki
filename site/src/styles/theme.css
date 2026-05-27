@@ -938,6 +938,20 @@ details.dropdown > .dropdown-body {
   height: 127px;
 }
 
+
+.code-index-items {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-2) var(--space-3);
+  align-items: start;
+}
+.code-index-items .entity-link {
+  min-width: 0;
+}
+.code-index-items .entity-link-name {
+  overflow-wrap: anywhere;
+}
+
 /* Index controls (search + filters) */
 .index-controls {
   display: flex;

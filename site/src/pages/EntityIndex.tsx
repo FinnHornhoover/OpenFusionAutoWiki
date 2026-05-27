@@ -1,12 +1,13 @@
 import { Link, useParams } from 'react-router-dom';
 
 import ErrorState from '../components/ErrorState';
-import type { AreaIndexEntry, InfectedZoneIndexEntry, InstanceIndexEntry, ItemIndexEntry, MissionIndexEntry, MobIndexEntry, NanoIndexEntry, NpcIndexEntry } from '../data/types';
+import type { AreaIndexEntry, CodeIndexEntry, InfectedZoneIndexEntry, InstanceIndexEntry, ItemIndexEntry, MissionIndexEntry, MobIndexEntry, NanoIndexEntry, NpcIndexEntry } from '../data/types';
 import { useBuildEntry } from '../data/useBuildEntry';
 import { useBuildMeta } from '../data/useBuildMeta';
 import { useDocumentTitle } from '../data/useDocumentTitle';
 import { useIndex } from '../data/useIndex';
 import AreaIndex from './index/AreaIndex';
+import CodeIndex from './index/CodeIndex';
 import InfectedZoneIndex from './index/InfectedZoneIndex';
 import InstanceIndex from './index/InstanceIndex';
 import ItemIndex from './index/ItemIndex';
@@ -20,6 +21,7 @@ const TYPE_TITLES: Record<string, string> = {
   npcs: 'NPCs',
   monsters: 'Monsters',
   items: 'Items',
+  codes: 'Codes',
   areas: 'Areas',
   instances: 'Instances',
   'infected-zones': 'Infected Zones',
@@ -31,7 +33,7 @@ export default function EntityIndex() {
   const entry = useBuildEntry(build);
   const meta = useBuildMeta(build);
   const supported = meta?.builtTypes?.includes(type ?? '') ?? false;
-  const { rows, loading, error } = useIndex<MissionIndexEntry | NpcIndexEntry | ItemIndexEntry | MobIndexEntry | AreaIndexEntry | InstanceIndexEntry | InfectedZoneIndexEntry | NanoIndexEntry>(
+  const { rows, loading, error } = useIndex<MissionIndexEntry | NpcIndexEntry | ItemIndexEntry | CodeIndexEntry | MobIndexEntry | AreaIndexEntry | InstanceIndexEntry | InfectedZoneIndexEntry | NanoIndexEntry>(
     supported ? build : undefined,
     supported ? type : undefined,
   );
@@ -72,6 +74,9 @@ export default function EntityIndex() {
     }
     if (type === 'items') {
       return <ItemIndex build={build} rows={(rows ?? []) as ItemIndexEntry[]} loading={loading} />;
+    }
+    if (type === 'codes') {
+      return <CodeIndex build={build} rows={(rows ?? []) as CodeIndexEntry[]} loading={loading} />;
     }
     if (type === 'monsters') {
       return <MobIndex build={build} rows={(rows ?? []) as MobIndexEntry[]} loading={loading} />;

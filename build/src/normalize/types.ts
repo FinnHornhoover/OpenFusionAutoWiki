@@ -1,6 +1,6 @@
 /** Reference to another wiki entity. */
 export interface Ref {
-  type: 'mission' | 'npc' | 'item' | 'monster' | 'nano' | 'instance' | 'infected-zone';
+  type: 'mission' | 'npc' | 'item' | 'monster' | 'nano' | 'instance' | 'infected-zone' | 'code';
   /**
    * Stable URL id. Items use "typeId-itemId" because ItemID is reused by type.
    */
@@ -277,6 +277,7 @@ export type ItemSource =
   | {
       kind: 'code';
       code: string;
+      ref: Ref;
     }
   | ({
       kind: 'event';
@@ -332,6 +333,35 @@ export interface Item {
   sources: ItemSource[];
   crateDrops: CrateDrop[];
   containingCrates: CrateDrop[];
+}
+
+
+export interface CodeItemEntry {
+  ref: Ref;
+  typeId: number;
+  itemId: number;
+  type: string;
+  rarity: string;
+  gender: string;
+  contentLevel: number;
+  requiredLevel: number;
+  obtainable: boolean;
+}
+
+export interface Code {
+  id: string;
+  code: string;
+  name: string;
+  ref: Ref;
+  items: CodeItemEntry[];
+}
+
+export interface CodeIndexEntry {
+  id: string;
+  code: string;
+  name: string;
+  icon: string;
+  items: Ref[];
 }
 
 export interface ItemIndexEntry {

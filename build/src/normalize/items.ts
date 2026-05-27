@@ -320,7 +320,8 @@ function normalizeSource(
     }
     case 'CodeItem': {
       const c = s as { Code?: string };
-      return { kind: 'code', code: c.Code ?? '' };
+      const code = c.Code ?? '';
+      return { kind: 'code', code, ref: { type: 'code', id: encodeURIComponent(code), name: code } };
     }
     case 'Event': {
       const e = s as RawEventSource;
