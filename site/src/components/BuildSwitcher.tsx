@@ -20,7 +20,7 @@ export default function BuildSwitcher() {
 
   return (
     <select
-      className="build-select"
+      className="styled-select build-select"
       value={build ?? ''}
       onChange={(e) => {
         const slug = e.target.value;
