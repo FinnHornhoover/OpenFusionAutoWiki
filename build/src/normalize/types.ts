@@ -585,6 +585,9 @@ export interface InfectedZoneIndexEntry {
 /** An NPC type appearing in an area, with how many instances of it live there. */
 export interface AreaNpcEntry {
   ref: Ref;
+  category: string;
+  mapIcon: string;
+  showOnMap: boolean;
   instanceCount: number;
   x: number;
   y: number;
@@ -614,6 +617,9 @@ export interface AreaMobEntry {
 
 export interface AreaVendorEntry {
   ref: Ref;
+  category: string;
+  mapIcon: string;
+  showOnMap: boolean;
   instanceCount: number;
   x: number;
   y: number;

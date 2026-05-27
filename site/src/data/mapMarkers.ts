@@ -1,6 +1,6 @@
 import type { Area, AreaTransport, Ref } from './types';
 
-export type MapMarkerKind = 'mission' | 'npc' | 'vendor' | 'egg' | 'transport' | 'instance-warp';
+export type MapMarkerKind = 'npc' | 'vendor' | 'egg' | 'transport' | 'instance-warp';
 
 export interface MapMarker {
   id: string;
@@ -11,6 +11,7 @@ export interface MapMarker {
   icon: string;
   to: string;
   routeKey?: string;
+  routeKeys?: string[];
 }
 
 export interface MapRouteLine {
@@ -39,7 +40,7 @@ function transportIcon(moveType: string): string {
   const normalized = moveType.toLowerCase();
   if (normalized.includes('scamper')) return '/minimap/mapicons/scamper_npc.png';
   if (normalized.includes('monkey')) return '/minimap/mapicons/monkey_skyway_npc.png';
-  if (normalized.includes('slider')) return '/minimap/mapicons/location_npc.png';
+  if (normalized.includes('slider')) return '/minimap/mapicons/world_icon.png';
   if (normalized.includes('woosh')) return '/minimap/mapicons/warp_npc.png';
   return '/minimap/mapicons/location_npc.png';
 }
@@ -52,40 +53,35 @@ export function buildAreaMapMarkers(area: Area, build: string): MapMarker[] {
   const markers: MapMarker[] = [];
   const vendorIds = new Set(area.vendors.map((v) => String(v.ref.id)));
 
-  for (const m of area.missionStarts ?? []) {
-    markers.push({
-      id: `mission-${m.mission.id}-${m.npc.id}`,
-      kind: 'mission',
-      label: `${m.mission.name} from ${m.npc.name}`,
-      x: m.x,
-      y: m.y,
-      icon: '/minimap/mapicons/mission_start_npc.png',
-      to: refPath(build, m.mission),
-    });
-  }
-
   for (const n of area.npcs) {
-    if (vendorIds.has(String(n.ref.id))) continue;
-    markers.push({
-      id: `npc-${n.ref.id}`,
-      kind: 'npc',
-      label: n.ref.name,
-      x: n.x,
-      y: n.y,
-      icon: '/minimap/mapicons/generic_npc.png',
-      to: refPath(build, n.ref),
+    if (vendorIds.has(String(n.ref.id)) || !n.showOnMap) continue;
+    const points = n.points.length > 0 ? n.points : [{ x: n.x, y: n.y }];
+    points.forEach((point, pointIndex) => {
+      markers.push({
+        id: `npc-${n.ref.id}-${pointIndex}`,
+        kind: 'npc',
+        label: n.ref.name,
+        x: point.x,
+        y: point.y,
+        icon: n.mapIcon,
+        to: refPath(build, n.ref),
+      });
     });
   }
 
   for (const v of area.vendors) {
-    markers.push({
-      id: `vendor-${v.ref.id}`,
-      kind: 'vendor',
-      label: v.ref.name,
-      x: v.x,
-      y: v.y,
-      icon: '/minimap/mapicons/other_vendor_npc.png',
-      to: refPath(build, v.ref),
+    if (!v.showOnMap) continue;
+    const points = v.points.length > 0 ? v.points : [{ x: v.x, y: v.y }];
+    points.forEach((point, pointIndex) => {
+      markers.push({
+        id: `vendor-${v.ref.id}-${pointIndex}`,
+        kind: 'vendor',
+        label: v.ref.name,
+        x: point.x,
+        y: point.y,
+        icon: v.mapIcon,
+        to: refPath(build, v.ref),
+      });
     });
   }
 
@@ -119,13 +115,14 @@ export function buildAreaMapMarkers(area: Area, build: string): MapMarker[] {
 
   area.instanceWarps.forEach((w, i) => {
     if (!w.entryLocation) return;
+    const npcName = w.npc?.name ?? '';
     markers.push({
       id: `instance-warp-${w.id}-${i}`,
       kind: 'instance-warp',
-      label: w.instance.name,
+      label: npcName ? `${npcName}: ${w.instance.name}` : w.instance.name,
       x: w.entryLocation.x,
       y: w.entryLocation.y,
-      icon: '/minimap/mapicons/warp_npc.png',
+      icon: npcName.includes('Bank') ? '/minimap/mapicons/bank_npc.png' : '/minimap/mapicons/warp_npc.png',
       to: refPath(build, w.instance),
     });
   });
@@ -134,7 +131,30 @@ export function buildAreaMapMarkers(area: Area, build: string): MapMarker[] {
 }
 
 export function buildWorldMapMarkers(areas: Area[], build: string): MapMarker[] {
-  return areas.flatMap((area) => buildAreaMapMarkers(area, build).map((m) => ({ ...m, id: `${area.id}-${m.id}` })));
+  const markers = areas.flatMap((area) => buildAreaMapMarkers(area, build).map((m) => ({ ...m, id: `${area.id}-${m.id}` })));
+  const grouped = new Map<string, MapMarker>();
+  const out: MapMarker[] = [];
+
+  for (const marker of markers) {
+    if (marker.kind !== 'transport' || !marker.routeKey) {
+      out.push(marker);
+      continue;
+    }
+    const groupKey = [marker.kind, marker.icon, marker.to, marker.x, marker.y].join(':');
+    const existing = grouped.get(groupKey);
+    if (existing) {
+      existing.routeKeys = [...new Set([...(existing.routeKeys ?? []), marker.routeKey])];
+      const routeCount = existing.routeKeys.length;
+      const baseLabel = existing.label.replace(/ \([0-9]+ routes\)$/, '');
+      existing.label = routeCount > 1 ? `${baseLabel} (${routeCount} routes)` : baseLabel;
+    } else {
+      const groupedMarker = { ...marker, routeKeys: [marker.routeKey] };
+      grouped.set(groupKey, groupedMarker);
+      out.push(groupedMarker);
+    }
+  }
+
+  return out;
 }
 
 export function buildWorldTransportRoutes(areas: Area[]): MapRouteLine[] {

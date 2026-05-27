@@ -29,7 +29,7 @@ interface RawAreaInfo {
   NPCTypes?: Record<string, RawAreaNpcType>;
   Mobs?: Record<string, RawAreaMob>;
   MobTypes?: Record<string, RawAreaMobType>;
-  Vendors?: Record<string, RawAreaNpc>;
+  Vendors?: Record<string, RawAreaVendor>;
   Eggs?: Record<string, RawAreaEgg>;
   EggTypes?: Record<string, RawAreaEggType>;
   Transportation?: Record<string, unknown>;
@@ -47,12 +47,32 @@ interface RawAreaNpc {
   AreaZone?: string;
   InstanceID?: number;
 }
+interface RawVendorItem {
+  ItemID?: number;
+  ItemType?: string;
+  ItemTypeID?: number;
+  Item?: {
+    Name?: string;
+    Type?: string;
+    TypeID?: number;
+  };
+  ItemInfo?: {
+    Name?: string;
+    Type?: string;
+    TypeID?: number;
+  };
+}
 interface RawAreaNpcType {
   ID: number;
   Name?: string;
   Icon?: string;
   Category?: string;
-  VendorItems?: unknown[];
+  VendorItems?: RawVendorItem[];
+}
+interface RawAreaVendor {
+  NPCID?: number;
+  Items?: Record<string, RawVendorItem>;
+  NPCs?: Record<string, RawAreaNpc>;
 }
 interface RawAreaMob {
   TypeID: number;
@@ -244,6 +264,66 @@ function sharedInstanceLabel(instanceIds: number[], instanceIndex: Map<number, R
   return { instanceID: 0, instanceName: unique.length > 1 ? 'Multiple instances' : '' };
 }
 
+const OMITTED_NPC_CATEGORIES = new Set(['Location', 'NoReaction', 'Invisible', 'InvisibleWarp', 'InvisibleNoClick', 'NonCheck']);
+const MAP_ICON_BASE = '/minimap/mapicons/';
+
+function mapIcon(file: string): string {
+  return `${MAP_ICON_BASE}${file}`;
+}
+
+function vendorItems(raw: RawVendorItem[] | Record<string, RawVendorItem> | undefined): RawVendorItem[] {
+  return Array.isArray(raw) ? raw : Object.values(raw ?? {});
+}
+
+function itemTypeId(item: RawVendorItem): number {
+  return item.ItemTypeID ?? item.Item?.TypeID ?? item.ItemInfo?.TypeID ?? -1;
+}
+
+function itemTypeName(item: RawVendorItem): string {
+  return item.ItemType ?? item.Item?.Type ?? item.ItemInfo?.Type ?? '';
+}
+
+function itemName(item: RawVendorItem): string {
+  return item.Item?.Name ?? item.ItemInfo?.Name ?? '';
+}
+
+function allVendorItemsAre(items: RawVendorItem[], ids: number[], names: string[] = []): boolean {
+  if (items.length === 0) return false;
+  const nameSet = new Set(names);
+  return items.every((item) => ids.includes(itemTypeId(item)) || nameSet.has(itemTypeName(item)));
+}
+
+function vendorMapIcon(name: string, items: RawVendorItem[]): string {
+  const itemNames = new Set(items.map(itemName));
+  if (itemNames.has('Weapon Boost') && itemNames.has('Nano Potion')) return mapIcon('boost_potion_vendor_npc.png');
+  if (name.includes('E.G.G.E.R.')) return mapIcon('egger_npc.png');
+  if (allVendorItemsAre(items, [4, 5, 6], ['Hat', 'Glasses', 'Backpack', 'Face', 'Back'])) return mapIcon('accessories_vendor_npc.png');
+  if (allVendorItemsAre(items, [1], ['Body'])) return mapIcon('shirt_vendor_npc.png');
+  if (allVendorItemsAre(items, [2], ['Legs'])) return mapIcon('pants_vendor_npc.png');
+  if (allVendorItemsAre(items, [3], ['Shoes'])) return mapIcon('shoes_vendor_npc.png');
+  if (allVendorItemsAre(items, [0], ['Weapon'])) return mapIcon('weapon_vendor_npc.png');
+  if (allVendorItemsAre(items, [10], ['Vehicle'])) return mapIcon('vehicle_vendor_npc.png');
+  return mapIcon('other_vendor_npc.png');
+}
+
+function npcMapIcon(category: string, name: string, items: RawVendorItem[], canStartMission: boolean): string {
+  if (category === 'Vendor') return vendorMapIcon(name, items);
+  if (name === "Resurrect 'Em") return mapIcon('resurrect_em_npc.png');
+  if (category === 'Location') return mapIcon('location_npc.png');
+  if (category === 'Bank' || name.includes('Bank')) return mapIcon('bank_npc.png');
+  if (category === 'Combi') return mapIcon('combination_npc.png');
+  if (category === 'Defense') return mapIcon('defense_npc.png');
+  if (name === 'Guide Changer') return mapIcon('guide_changer_npc.png');
+  if (canStartMission) return mapIcon('mission_start_npc.png');
+  if (category === 'StartEcom') return mapIcon('race_start_sact_npc.png');
+  if (category === 'EndEcom') return mapIcon('race_end_sact_npc.png');
+  if (category === 'SCAMPER') return mapIcon('scamper_npc.png');
+  if (category === 'MonkeySkyway') return mapIcon('monkey_skyway_npc.png');
+  if (category === 'RXcom') return mapIcon('recall_point_npc.png');
+  if (category === 'Warp') return mapIcon('warp_npc.png');
+  if (category === 'NanoTuneMachine') return mapIcon('nano_station_npc.png');
+  return mapIcon('generic_npc.png');
+}
 /** Aggregate NPC instances by type ID. */
 function buildAreaNpcs(
   npcs: Record<string, RawAreaNpc> | undefined,
@@ -252,23 +332,31 @@ function buildAreaNpcs(
   areaId: string,
   fullName: string,
   instanceIndex: Map<number, RawInstance>,
+  npcMissions: NpcMissionsMap,
+  vendorIndex: Map<number, { items: RawVendorItem[] }>,
 ): AreaNpcEntry[] {
-  const counts = new Map<number, { name: string; icon: string; points: RawAreaNpc[] }>();
+  const counts = new Map<number, { name: string; icon: string; category: string; vendorItems: RawVendorItem[]; points: RawAreaNpc[] }>();
   for (const inst of Object.values(npcs ?? {})) {
     if (!inst || typeof inst !== 'object') continue;
     const tid = inst.TypeID;
     const meta = npcTypes?.[String(tid)];
     const name = meta?.Name ?? inst.TypeName ?? `NPC #${tid}`;
     const icon = iconFor(meta?.Icon ?? inst.TypeIcon ?? '', iconMap);
+    const category = meta?.Category ?? '';
+    const items = vendorIndex.get(tid)?.items ?? vendorItems(meta?.VendorItems);
     const cur = counts.get(tid);
     if (cur) cur.points.push(inst);
-    else counts.set(tid, { name, icon, points: [inst] });
+    else counts.set(tid, { name, icon, category, vendorItems: items, points: [inst] });
   }
   return [...counts.entries()]
-    .map(([id, { name, icon, points }]) => {
+    .map(([id, { name, icon, category, vendorItems: items, points }]) => {
       const instance = sharedInstanceLabel(points.map((p) => p.InstanceID ?? 0), instanceIndex);
+      const canStartMission = (npcMissions.get(id)?.starts.length ?? 0) > 0;
       return {
         ref: { type: 'npc' as const, id, name, icon },
+        category,
+        mapIcon: npcMapIcon(category, name, items, canStartMission),
+        showOnMap: !OMITTED_NPC_CATEGORIES.has(category),
         instanceCount: points.length,
         x: median(points.map((p) => p.X ?? 0)),
         y: median(points.map((p) => p.Y ?? 0)),
@@ -282,37 +370,52 @@ function buildAreaNpcs(
     .sort((a, b) => b.instanceCount - a.instanceCount || a.ref.name.localeCompare(b.ref.name));
 }
 
+function buildVendorIndex(vendors: Record<string, RawAreaVendor> | undefined, fullName = ''): Map<number, { items: RawVendorItem[]; points: RawAreaNpc[] }> {
+  const out = new Map<number, { items: RawVendorItem[]; points: RawAreaNpc[] }>();
+  for (const raw of Object.values(vendors ?? {})) {
+    if (!raw || typeof raw !== 'object') continue;
+    const npcId = raw.NPCID ?? Object.values(raw.NPCs ?? {})[0]?.TypeID ?? 0;
+    if (npcId <= 0) continue;
+    const cur = out.get(npcId);
+    const allPoints = Object.values(raw.NPCs ?? {}).filter((npc): npc is RawAreaNpc => Boolean(npc));
+    const points = fullName ? allPoints.filter((npc) => npc.AreaZone === fullName) : allPoints;
+    if (points.length === 0) continue;
+    if (cur) cur.points.push(...points);
+    else out.set(npcId, { items: vendorItems(raw.Items), points });
+  }
+  return out;
+}
+
 function buildAreaVendors(
-  npcs: Record<string, RawAreaNpc> | undefined,
+  vendors: Record<string, RawAreaVendor> | undefined,
   npcTypes: Record<string, RawAreaNpcType> | undefined,
   iconMap: IconMap,
   areaId: string,
   fullName: string,
   instanceIndex: Map<number, RawInstance>,
+  npcMissions: NpcMissionsMap,
 ): AreaVendorEntry[] {
-  const counts = new Map<number, { name: string; icon: string; points: RawAreaNpc[] }>();
-  for (const inst of Object.values(npcs ?? {})) {
-    if (!inst || typeof inst !== 'object') continue;
-    const tid = inst.TypeID;
-    const meta = npcTypes?.[String(tid)];
-    if (!meta || !Array.isArray(meta.VendorItems) || meta.VendorItems.length === 0) continue;
-    const name = meta.Name ?? inst.TypeName ?? `NPC #${tid}`;
-    const icon = iconFor(meta.Icon ?? inst.TypeIcon ?? '', iconMap);
-    const cur = counts.get(tid);
-    if (cur) cur.points.push(inst);
-    else counts.set(tid, { name, icon, points: [inst] });
-  }
-  return [...counts.entries()]
-    .map(([id, { name, icon, points }]) => {
+  const vendorIndex = buildVendorIndex(vendors, fullName);
+  return [...vendorIndex.entries()]
+    .map(([id, { items, points }]) => {
+      const meta = npcTypes?.[String(id)];
+      const first = points[0];
+      const name = meta?.Name ?? first?.TypeName ?? `NPC #${id}`;
+      const category = meta?.Category ?? 'Vendor';
+      const icon = iconFor(meta?.Icon ?? first?.TypeIcon ?? '', iconMap);
       const instance = sharedInstanceLabel(points.map((p) => p.InstanceID ?? 0), instanceIndex);
+      const canStartMission = (npcMissions.get(id)?.starts.length ?? 0) > 0;
       return {
         ref: { type: 'npc' as const, id, name, icon },
+        category,
+        mapIcon: npcMapIcon(category, name, items, canStartMission),
+        showOnMap: !OMITTED_NPC_CATEGORIES.has(category),
         instanceCount: points.length,
         x: median(points.map((p) => p.X ?? 0)),
         y: median(points.map((p) => p.Y ?? 0)),
         z: median(points.map((p) => p.Z ?? 0)),
         areaId,
-        areaZone: points[0]?.AreaZone ?? fullName,
+        areaZone: first?.AreaZone ?? fullName,
         ...instance,
         points: points.map((p) => ({ x: p.X ?? 0, y: p.Y ?? 0 })),
       };
@@ -621,9 +724,10 @@ export async function normalizeAreas(
     if (!raw) continue;
 
     const id = slugify(fullName);
-    const npcs = buildAreaNpcs(raw.NPCs, raw.NPCTypes, iconMap, id, fullName, instanceIndex);
+    const vendorIndex = buildVendorIndex(raw.Vendors, fullName);
+    const npcs = buildAreaNpcs(raw.NPCs, raw.NPCTypes, iconMap, id, fullName, instanceIndex, npcMissions, vendorIndex);
     const mobs = buildAreaMobs(raw.Mobs, raw.MobTypes, iconMap, id, fullName, instanceIndex);
-    const vendors = buildAreaVendors(raw.NPCs, raw.NPCTypes, iconMap, id, fullName, instanceIndex);
+    const vendors = buildAreaVendors(raw.Vendors, raw.NPCTypes, iconMap, id, fullName, instanceIndex, npcMissions);
     const eggs = buildAreaEggs(raw.Eggs, raw.EggTypes, iconMap, id, fullName, instanceIndex);
     const transportation = transportIndex.get(fullName) ?? [];
     const instanceWarps = buildAreaInstanceWarps(raw.InstanceWarps, instanceIndex, iconMap, missionLevels);
