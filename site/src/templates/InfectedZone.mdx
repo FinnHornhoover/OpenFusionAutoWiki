@@ -5,6 +5,7 @@ import Icon from '../components/Icon';
 import InfectedZoneCalculator from '../components/InfectedZoneCalculator';
 import InlineMeta from '../components/InlineMeta';
 import MapSpot from '../components/MapSpot';
+import { warpIcon } from '../data/mapMarkers';
 
 # {props.data.name}
 
@@ -46,6 +47,7 @@ import MapSpot from '../components/MapSpot';
       title={props.data.firstEntryLocation.areaZone}
       instanceName={props.data.firstEntryLocation.instanceName}
       instanceID={props.data.firstEntryLocation.instanceID}
+      icon="/minimap/mapicons/warp_npc.png"
     />
   </Dropdown>
 )}
@@ -75,6 +77,7 @@ import MapSpot from '../components/MapSpot';
                 title={warp.entryLocation.areaZone}
                 instanceName={warp.entryLocation.instanceName}
                 instanceID={warp.entryLocation.instanceID}
+                icon={warpIcon(warp.npc?.name)}
               />
             ) : <span className="muted">-</span>}</td>
             <td>
@@ -104,6 +107,7 @@ import MapSpot from '../components/MapSpot';
                 z={warp.exitLocation.z}
                 areaId={warp.exitLocation.areaId}
                 title={warp.exitLocation.areaZone}
+                icon="/minimap/mapicons/warp_npc.png"
               />
             ) : <span className="muted">-</span>}</td>
           </tr>

@@ -423,6 +423,12 @@ function buildAreaVendors(
     .sort((a, b) => a.ref.name.localeCompare(b.ref.name));
 }
 
+function monsterMapIcon(name: string): string {
+  return name.includes('Fusion') && !name.includes('Fusion Spawn')
+    ? mapIcon('lair_fusion_boss_monster.png')
+    : mapIcon('other_monster.png');
+}
+
 function buildAreaMobs(
   mobs: Record<string, RawAreaMob> | undefined,
   mobTypes: Record<string, RawAreaMobType> | undefined,
@@ -453,6 +459,7 @@ function buildAreaMobs(
       const instance = sharedInstanceLabel(points.map((p) => p.InstanceID ?? 0), instanceIndex);
       return {
         ref: { type: 'monster' as const, id, name, icon },
+        mapIcon: monsterMapIcon(name),
         instanceCount: points.length,
         level,
         hp,

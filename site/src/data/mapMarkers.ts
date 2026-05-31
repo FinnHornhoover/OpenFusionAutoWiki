@@ -36,13 +36,24 @@ function refPath(build: string, ref: Ref): string {
   return `/${build}/${ROUTE_FOR[ref.type]}/${ref.id}`;
 }
 
-function transportIcon(moveType: string): string {
+export function transportIcon(moveType: string): string {
   const normalized = moveType.toLowerCase();
   if (normalized.includes('scamper')) return '/minimap/mapicons/scamper_npc.png';
   if (normalized.includes('monkey')) return '/minimap/mapicons/monkey_skyway_npc.png';
   if (normalized.includes('slider')) return '/minimap/mapicons/world_icon.png';
   if (normalized.includes('woosh')) return '/minimap/mapicons/warp_npc.png';
   return '/minimap/mapicons/location_npc.png';
+}
+
+
+export function warpIcon(npcName = ''): string {
+  return npcName.includes('Bank') ? '/minimap/mapicons/bank_npc.png' : '/minimap/mapicons/warp_npc.png';
+}
+
+export function missionWaypointIcon(taskType: string, hasNpc: boolean): string {
+  if (taskType === 'EscortDefense') return '/minimap/mapicons/defense_npc.png';
+  if (taskType === 'GoToLocation') return '/minimap/mapicons/location_npc.png';
+  return hasNpc ? '/minimap/mapicons/mission_step_npc.png' : '/minimap/mapicons/location_npc.png';
 }
 
 function routeKey(route: AreaTransport): string {
@@ -122,7 +133,7 @@ export function buildAreaMapMarkers(area: Area, build: string): MapMarker[] {
       label: npcName ? `${npcName}: ${w.instance.name}` : w.instance.name,
       x: w.entryLocation.x,
       y: w.entryLocation.y,
-      icon: npcName.includes('Bank') ? '/minimap/mapicons/bank_npc.png' : '/minimap/mapicons/warp_npc.png',
+      icon: warpIcon(npcName),
       to: refPath(build, w.instance),
     });
   });

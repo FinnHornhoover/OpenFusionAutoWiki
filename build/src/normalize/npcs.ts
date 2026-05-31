@@ -181,6 +181,49 @@ function normalizeMissionBarkers(raw: RawNpcType): Array<{ mission: Ref; text: s
   return out;
 }
 
+const MAP_ICON_BASE = '/minimap/mapicons/';
+
+function mapIcon(file: string): string {
+  return `${MAP_ICON_BASE}${file}`;
+}
+
+function allVendorItemsAre(raw: RawNpcType, kinds: string[]): boolean {
+  const items = (raw.VendorItems ?? []).map((v) => v.ItemInfo).filter(Boolean);
+  return items.length > 0 && items.every((item) => kinds.includes(item?.Type ?? ''));
+}
+
+function npcMapIcon(raw: RawNpcType, canStartMission: boolean): string {
+  const category = raw.Category ?? '';
+  const name = raw.Name ?? '';
+  const itemNames = new Set((raw.VendorItems ?? []).map((v) => v.ItemInfo?.Name ?? ''));
+  if (category === 'Vendor') {
+    if (itemNames.has('Weapon Boost') && itemNames.has('Nano Potion')) return mapIcon('boost_potion_vendor_npc.png');
+    if (name.includes('E.G.G.E.R.')) return mapIcon('egger_npc.png');
+    if (allVendorItemsAre(raw, ['Hat', 'Glasses', 'Backpack', 'Face', 'Back'])) return mapIcon('accessories_vendor_npc.png');
+    if (allVendorItemsAre(raw, ['Body'])) return mapIcon('shirt_vendor_npc.png');
+    if (allVendorItemsAre(raw, ['Legs'])) return mapIcon('pants_vendor_npc.png');
+    if (allVendorItemsAre(raw, ['Shoes'])) return mapIcon('shoes_vendor_npc.png');
+    if (allVendorItemsAre(raw, ['Weapon'])) return mapIcon('weapon_vendor_npc.png');
+    if (allVendorItemsAre(raw, ['Vehicle'])) return mapIcon('vehicle_vendor_npc.png');
+    return mapIcon('other_vendor_npc.png');
+  }
+  if (name === "Resurrect 'Em") return mapIcon('resurrect_em_npc.png');
+  if (category === 'Location') return mapIcon('location_npc.png');
+  if (category === 'Bank' || name.includes('Bank')) return mapIcon('bank_npc.png');
+  if (category === 'Combi') return mapIcon('combination_npc.png');
+  if (category === 'Defense') return mapIcon('defense_npc.png');
+  if (name === 'Guide Changer') return mapIcon('guide_changer_npc.png');
+  if (canStartMission) return mapIcon('mission_start_npc.png');
+  if (category === 'StartEcom') return mapIcon('race_start_sact_npc.png');
+  if (category === 'EndEcom') return mapIcon('race_end_sact_npc.png');
+  if (category === 'SCAMPER') return mapIcon('scamper_npc.png');
+  if (category === 'MonkeySkyway') return mapIcon('monkey_skyway_npc.png');
+  if (category === 'RXcom') return mapIcon('recall_point_npc.png');
+  if (category === 'Warp') return mapIcon('warp_npc.png');
+  if (category === 'NanoTuneMachine') return mapIcon('nano_station_npc.png');
+  return mapIcon('generic_npc.png');
+}
+
 function normalizeComment(raw: RawNpcType): string {
   return (raw.Comment ?? '').trim();
 }
@@ -195,10 +238,12 @@ function buildNpc(
 ): Npc {
   const locations = Object.values(rawInsts[String(raw.ID)] ?? {}).map((inst) => normalizeLocation(inst, instanceNames));
   const missions = npcMissions.get(raw.ID);
+  const mapIcon = npcMapIcon(raw, (missions?.starts.length ?? 0) > 0);
   return {
     id: raw.ID,
     name: raw.Name,
     icon: iconFor(raw.Icon ?? '', iconMap),
+    mapIcon,
     category: raw.Category ?? '',
     comment: normalizeComment(raw),
     inGame: raw.InGame ?? false,
@@ -289,6 +334,7 @@ function buildNpcAmbiguities(groups: Map<string, Npc[]>): NpcAmbiguity[] {
         id: n.id,
         name: trimmedNpcName(n),
         icon: n.icon,
+        mapIcon: n.mapIcon,
         category: n.category,
         inGame: n.inGame,
         transportRouteCount: n.transportRoutes.length,

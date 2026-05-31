@@ -3,6 +3,7 @@ import EntityLink from '../components/EntityLink';
 import Icon from '../components/Icon';
 import InlineMeta from '../components/InlineMeta';
 import MapSpot from '../components/MapSpot';
+import { transportIcon } from '../data/mapMarkers';
 
 # {props.data.name}
 
@@ -72,10 +73,10 @@ import MapSpot from '../components/MapSpot';
               {route.moveType && <div><InlineMeta>{route.moveType && <span>{route.moveType}</span>}</InlineMeta></div>}
             </td>
             <td>{route.start ? (
-              <MapSpot x={route.start.x} y={route.start.y} z={route.start.z} areaId={route.start.areaId} title={route.start.areaZone} />
+              <MapSpot x={route.start.x} y={route.start.y} z={route.start.z} areaId={route.start.areaId} title={route.start.areaZone} icon={transportIcon(route.moveType)} />
             ) : <span className="muted">—</span>}</td>
             <td>{route.landing ? (
-              <MapSpot x={route.landing.x} y={route.landing.y} z={route.landing.z} areaId={route.landing.areaId} title={route.landing.areaZone} />
+              <MapSpot x={route.landing.x} y={route.landing.y} z={route.landing.z} areaId={route.landing.areaId} title={route.landing.areaZone} icon={transportIcon(route.moveType)} />
             ) : <span className="muted">—</span>}</td>
           </tr>
         ))}
@@ -138,6 +139,7 @@ import MapSpot from '../components/MapSpot';
             title={loc.areaZone}
             instanceName={loc.instanceName}
             instanceID={loc.instanceID}
+            icon={props.data.mapIcon}
           />
         </li>
       ))}

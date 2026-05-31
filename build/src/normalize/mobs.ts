@@ -160,6 +160,12 @@ function groupLocations(locations: MobLocation[]): MobLocationGroup[] {
     );
 }
 
+function monsterMapIcon(name: string): string {
+  return name.includes('Fusion') && !name.includes('Fusion Spawn')
+    ? '/minimap/mapicons/lair_fusion_boss_monster.png'
+    : '/minimap/mapicons/other_monster.png';
+}
+
 function normalizeMob(
   raw: RawMobType,
   iconMap: IconMap,
@@ -175,6 +181,7 @@ function normalizeMob(
     id: raw.ID,
     name: raw.Name,
     icon: iconFor(raw.Icon ?? '', iconMap),
+    mapIcon: monsterMapIcon(raw.Name),
     category: raw.Category ?? '',
     colorType: raw.ColorType ?? '',
     level: raw.Level ?? 0,

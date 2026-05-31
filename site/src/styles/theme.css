@@ -403,6 +403,17 @@ details.dropdown > .dropdown-body {
   box-shadow: 0 0 4px rgba(0, 0, 0, 0.6);
   pointer-events: none;
 }
+.minimap-marker-icon {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 16px;
+  height: 16px;
+  margin: -8px 0 0 -8px;
+  object-fit: contain;
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.45));
+  pointer-events: none;
+}
 .minimap-dot {
   position: absolute;
   width: 4px;

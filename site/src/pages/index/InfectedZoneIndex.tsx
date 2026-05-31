@@ -90,7 +90,7 @@ export default function InfectedZoneIndex({ build, rows, loading }: Props) {
                       <span className="entity-index-link">{r.name}</span>
                     </Link>
                   </td>
-                  <td>{r.areaId ? <MapSpot x={r.firstEntryX} y={r.firstEntryY} z={r.firstEntryZ} areaId={r.areaId} title={r.areaZone} /> : r.areaZone || <span className="muted">-</span>}</td>
+                  <td>{r.areaId ? <MapSpot x={r.firstEntryX} y={r.firstEntryY} z={r.firstEntryZ} areaId={r.areaId} title={r.areaZone} icon="/minimap/mapicons/warp_npc.png" /> : r.areaZone || <span className="muted">-</span>}</td>
                   <td>{r.podCount.toLocaleString()}</td>
                   <td>{formatTime(r.timeLimitSeconds, r.timeLimit) ?? <span className="muted">-</span>}</td>
                   <td>{r.maxScore > 0 ? r.maxScore.toLocaleString() : <span className="muted">-</span>}</td>

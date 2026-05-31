@@ -5,6 +5,7 @@ import InlineMeta from '../components/InlineMeta';
 import AreaMap from '../components/AreaMap';
 import MapSpot from '../components/MapSpot';
 import { formatDurationSeconds } from '../data/formatTime';
+import { transportIcon, warpIcon } from '../data/mapMarkers';
 
 # {props.data.name}
 
@@ -85,6 +86,7 @@ import { formatDurationSeconds } from '../data/formatTime';
                 instanceName={n.instanceName}
                 instanceID={n.instanceID}
                 points={n.points}
+                icon={n.mapIcon}
               />
             </td>
           </tr>
@@ -119,6 +121,7 @@ import { formatDurationSeconds } from '../data/formatTime';
                 instanceName={v.instanceName}
                 instanceID={v.instanceID}
                 points={v.points}
+                icon={v.mapIcon}
               />
             </td>
           </tr>
@@ -157,6 +160,7 @@ import { formatDurationSeconds } from '../data/formatTime';
                 instanceName={m.instanceName}
                 instanceID={m.instanceID}
                 points={m.points}
+                icon={m.mapIcon}
               />
             </td>
           </tr>
@@ -189,10 +193,10 @@ import { formatDurationSeconds } from '../data/formatTime';
               </td>
               <td>{t.startNpc ? <EntityLink entity={t.startNpc} /> : <span className="muted">—</span>}</td>
               <td>{start ? (
-                <MapSpot x={start.x} y={start.y} z={start.z} areaId={start.areaId} title={start.areaZone} />
+                <MapSpot x={start.x} y={start.y} z={start.z} areaId={start.areaId} title={start.areaZone} icon={transportIcon(t.moveType)} />
               ) : <span className="muted">—</span>}</td>
               <td>{landing ? (
-                <MapSpot x={landing.x} y={landing.y} z={landing.z} areaId={landing.areaId} title={landing.areaZone} />
+                <MapSpot x={landing.x} y={landing.y} z={landing.z} areaId={landing.areaId} title={landing.areaZone} icon={transportIcon(t.moveType)} />
               ) : <span className="muted">—</span>}</td>
             </tr>
           );
@@ -233,6 +237,7 @@ import { formatDurationSeconds } from '../data/formatTime';
                 title={w.entryLocation.areaZone}
                 instanceName={w.entryLocation.instanceName}
                 instanceID={w.entryLocation.instanceID}
+                icon={warpIcon(w.npc?.name)}
               />
             ) : <span className="muted">-</span>}</td>
             <td>
@@ -284,6 +289,7 @@ import { formatDurationSeconds } from '../data/formatTime';
                 title={e.areaZone}
                 instanceName={e.instanceName}
                 instanceID={e.instanceID}
+                icon="/minimap/mapicons/world_egg_shiny_npc.png"
               />
             </td>
           </tr>

@@ -3,6 +3,7 @@ import Dropdown from './Dropdown';
 import EntityLink from './EntityLink';
 import InlineMeta from './InlineMeta';
 import MapSpot from './MapSpot';
+import { missionWaypointIcon } from '../data/mapMarkers';
 
 function formatTimeLimit(seconds: number): string | null {
   if (!seconds || seconds <= 0) return null;
@@ -109,6 +110,7 @@ function TaskItem({ task, index }: { task: MissionTask; index: number }) {
               title={task.waypointPoint.areaZone}
               instanceName={task.waypointPoint.instanceName}
               instanceID={task.waypointPoint.instanceID}
+              icon={missionWaypointIcon(task.type, Boolean(task.waypointNPC))}
             />
           )}
         </div>

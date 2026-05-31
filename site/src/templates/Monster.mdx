@@ -102,6 +102,7 @@ import { formatDurationSeconds } from '../data/formatTime';
             instanceName={loc.instanceName}
             instanceID={loc.instanceID}
             points={loc.points}
+            icon={props.data.mapIcon}
           />
           <span className="muted location-list-meta">
             {loc.spawnCount.toLocaleString()} spawn{loc.spawnCount === 1 ? '' : 's'}

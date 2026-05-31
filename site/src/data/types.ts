@@ -138,6 +138,7 @@ export interface Npc {
   id: number;
   name: string;
   icon: string;
+  mapIcon: string;
   category: string;
   comment: string;
   inGame: boolean;
@@ -162,6 +163,7 @@ export interface NpcAmbiguityMember {
   id: number;
   name: string;
   icon: string;
+  mapIcon: string;
   category: string;
   inGame: boolean;
   transportRouteCount: number;
@@ -343,6 +345,7 @@ export interface Mob {
   id: number;
   name: string;
   icon: string;
+  mapIcon: string;
   category: string;
   colorType: string;
   level: number;
@@ -523,6 +526,7 @@ export interface AreaNpcEntry {
 
 export interface AreaMobEntry {
   ref: Ref;
+  mapIcon: string;
   instanceCount: number;
   level: number;
   hp: number;

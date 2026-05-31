@@ -3,6 +3,7 @@ import { gameToPxExtent, MINIMAP_PX, worldToPx } from '../data/minimapCoords';
 interface MinimapPoint {
   x: number;
   y: number;
+  icon?: string;
 }
 
 interface MinimapProps {
@@ -18,6 +19,8 @@ interface MinimapProps {
   extent?: number;
   /** Secondary world-coordinate points to draw inside this viewport. */
   points?: MinimapPoint[];
+  /** Optional marker icon. Falls back to the generic pin. */
+  icon?: string;
   /** Optional tooltip. */
   title?: string;
 }
@@ -36,6 +39,7 @@ export default function Minimap({
   size = 96,
   extent = 25600,
   points = [],
+  icon,
   title,
 }: MinimapProps) {
   const center = worldToPx(x, y);
@@ -57,9 +61,10 @@ export default function Minimap({
         return {
           left: size / 2 + (px.px - center.px) * scale,
           top: size / 2 + (px.py - center.py) * scale,
+          icon: point.icon ?? icon,
         };
       });
-  const showMainPin = !hasBox && overlayPoints.length <= 1;
+  const showMainPin = !hasBox && overlayPoints.length === 0;
 
   return (
     <span
@@ -83,7 +88,16 @@ export default function Minimap({
         />
       ) : (
         <>
-          {overlayPoints.map((point, i) => (
+          {overlayPoints.map((point, i) => point.icon ? (
+            <img
+              key={i}
+              className="minimap-marker-icon"
+              src={point.icon}
+              alt=""
+              style={{ left: point.left, top: point.top }}
+              aria-hidden
+            />
+          ) : (
             <span
               key={i}
               className="minimap-dot"
@@ -91,7 +105,7 @@ export default function Minimap({
               aria-hidden
             />
           ))}
-          {showMainPin && <span className="minimap-pin" aria-hidden />}
+          {showMainPin && (icon ? <img className="minimap-marker-icon" src={icon} alt="" aria-hidden /> : <span className="minimap-pin" aria-hidden />)}
         </>
       )}
     </span>
