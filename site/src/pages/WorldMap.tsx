@@ -1,7 +1,7 @@
 import { type CSSProperties, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import ErrorState from '../components/ErrorState';
-import { MINIMAP_PX, TILE_PX, worldToPx } from '../data/minimapCoords';
+import { MINIMAP_PX, worldToPx } from '../data/minimapCoords';
 import { buildWorldMapMarkers, buildWorldTransportRoutes } from '../data/mapMarkers';
 import type { Area } from '../data/types';
 import { buildPageTitle, useBuildEntry } from '../data/useBuildEntry';
@@ -62,7 +62,7 @@ export default function WorldMap() {
   const entry = useBuildEntry(build);
   const { areas, loading, error } = useAreas(build);
   const [offset, setOffset] = useState({ x: -520, y: -520 });
-  const [zoom, setZoom] = useState(7);
+  const [zoom, setZoom] = useState(MIN_WORLD_MAP_ZOOM);
   const [hoverRoutes, setHoverRoutes] = useState<string[]>([]);
   const viewportRef = useRef<HTMLDivElement | null>(null);
   const drag = useRef<{ pointerId: number; startX: number; startY: number; originX: number; originY: number } | null>(null);
@@ -78,7 +78,7 @@ export default function WorldMap() {
     if (!viewport) return;
     const applyZoom = () => {
       const rect = viewport.getBoundingClientRect();
-      const nextZoom = clampZoom(rect.width / TILE_PX);
+      const nextZoom = MIN_WORLD_MAP_ZOOM;
       setZoom(nextZoom);
       setOffset({
         x: rect.width / 2 - (MINIMAP_PX / 2) * nextZoom,

@@ -124,7 +124,7 @@ interface RawAreaInstanceWarp {
   NPCTypeID?: number;
   NPCName?: string;
   NPCIcon?: string;
-  NPCType?: { Name?: string; Icon?: string } | null;
+  NPCType?: { Name?: string; Icon?: string; Category?: string } | null;
   NPCs?: Record<string, { AreaZone?: string; InstanceID?: number; X?: number; Y?: number; Z?: number; TypeID?: number; TypeName?: string; TypeIcon?: string }>;
   RequiredItemID?: number;
   RequiredItemType?: number;
@@ -582,8 +582,11 @@ function buildAreaInstanceWarps(
   for (const w of Object.values(warps ?? {})) {
     if (!w || typeof w !== 'object') continue;
     const instId = w.EntryInstanceID ?? 0;
+    const entryNpcs = Object.values(w.NPCs ?? {});
+    const isOverworldToOverworld = instId === 0 && entryNpcs.some((npc) => (npc.InstanceID ?? 0) === 0);
+    if (isOverworldToOverworld && w.NPCType?.Category !== 'Warp') continue;
     const inst = instanceIndex.get(instId);
-    const entryNpc = Object.values(w.NPCs ?? {})[0];
+    const entryNpc = entryNpcs[0];
     const npcId = w.NPCID && w.NPCID > 0 ? w.NPCID : w.NPCTypeID && w.NPCTypeID > 0 ? w.NPCTypeID : entryNpc?.TypeID ?? 0;
     const npc: Ref | null = npcId > 0
       ? {

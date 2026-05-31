@@ -471,6 +471,11 @@ details.dropdown > .dropdown-body {
   border-radius: var(--radius-md);
   background: var(--color-bg-subtle);
   overflow: hidden;
+  touch-action: none;
+  cursor: grab;
+}
+.area-map-overlay:active {
+  cursor: grabbing;
 }
 .map-base-image,
 .world-map-image {
