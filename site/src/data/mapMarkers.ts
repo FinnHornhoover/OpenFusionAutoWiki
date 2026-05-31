@@ -52,7 +52,7 @@ export function warpIcon(npcName = ''): string {
 
 export function missionWaypointIcon(taskType: string, hasNpc: boolean): string {
   if (taskType === 'EscortDefense') return '/minimap/mapicons/defense_npc.png';
-  if (taskType === 'GoToLocation') return '/minimap/mapicons/location_npc.png';
+  if (taskType === 'GoToLocation' || taskType === 'Defeat') return '/minimap/mapicons/location_npc.png';
   return hasNpc ? '/minimap/mapicons/mission_step_npc.png' : '/minimap/mapicons/location_npc.png';
 }
 
