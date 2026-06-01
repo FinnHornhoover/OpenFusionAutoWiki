@@ -747,6 +747,69 @@ details.dropdown > .dropdown-body {
   margin: var(--space-1) 0 0;
   padding-left: var(--space-5);
 }
+.task-detail-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.task-detail-table th,
+.task-detail-table td {
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--color-border);
+  vertical-align: top;
+}
+.task-detail-table th {
+  width: 1%;
+  padding-left: 0;
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-align: left;
+  white-space: nowrap;
+}
+.task-detail-table td {
+  padding-right: 0;
+}
+.task-ref-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.task-ref-list > li + li {
+  margin-top: var(--space-1);
+}
+.task-defeat-target {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-3);
+}
+.task-defeat-target-main {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-2);
+}
+.task-quest-item {
+  font-size: 0.9rem;
+}
+.task-waypoint-cell {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-3);
+}
+.task-mapspot {
+  justify-self: end;
+}
+@media (max-width: 640px) {
+  .task-defeat-target,
+  .task-waypoint-cell {
+    grid-template-columns: 1fr;
+  }
+  .task-mapspot {
+    justify-self: start;
+  }
+}
 .task-message {
   margin: var(--space-3) 0;
   padding: var(--space-2) var(--space-3);
@@ -849,10 +912,28 @@ details.dropdown > .dropdown-body {
   flex: 0 0 auto;
 }
 .mission-givers {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-4);
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 240px));
+  gap: var(--space-3);
   margin: var(--space-3) 0 var(--space-5);
+}
+.mission-giver-box {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+  min-width: 0;
+  padding: var(--space-3);
+  background: var(--color-bg-subtle);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+.mission-giver-role {
+  color: var(--color-text-muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 .barker-list { padding-left: var(--space-5); }
 .barker-list li { margin: var(--space-2) 0; }

@@ -16,6 +16,7 @@ import { normalizeInstances } from './normalize/instances.js';
 import { normalizeItems } from './normalize/items.js';
 import { normalizeMissions } from './normalize/missions.js';
 import { normalizeMobs } from './normalize/mobs.js';
+import { buildMissionMobLocationMap } from './normalize/mobLocations.js';
 import { normalizeNanos } from './normalize/nanos.js';
 import { normalizeNpcs } from './normalize/npcs.js';
 import { buildNpcLocationMap } from './normalize/npcLocations.js';
@@ -91,8 +92,9 @@ async function main(): Promise<void> {
     const instanceNames = buildInstanceNameIndex(d.path);
     const npcNameIndex = buildNpcNameIndex(d.path, iconMap);
     const npcLocations = buildNpcLocationMap(d.path, instanceNames);
+    const missionMobLocations = buildMissionMobLocationMap(d.path, iconMap, instanceNames);
 
-    const m = await normalizeMissions(d.path, slug, iconMap, npcNameIndex, npcLocations);
+    const m = await normalizeMissions(d.path, slug, iconMap, npcNameIndex, npcLocations, missionMobLocations);
     totalMissions += m.count;
     totalMissionChunks += m.chunks;
 

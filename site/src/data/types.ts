@@ -62,7 +62,25 @@ export interface MissionTask {
   } | null;
   escortNPC: Ref | null;
   requiredInstance: Ref | null;
-  monsterRequirements: Array<{ ref: Ref; killCount: number }>;
+  monsterRequirements: Array<{
+    ref: Ref;
+    killCount: number;
+    questItem: string;
+    questItemId: number;
+    questItemNeededCount: number;
+    questItemDropPercent: number;
+    mapIcon: string;
+    location: {
+      areaZone: string;
+      areaId: string;
+      x: number;
+      y: number;
+      z: number;
+      instanceID: number;
+      instanceName: string;
+      points: Array<{ x: number; y: number }>;
+    } | null;
+  }>;
   messages: {
     start: TaskMessage | null;
     end: TaskMessage | null;

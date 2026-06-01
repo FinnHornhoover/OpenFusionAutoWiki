@@ -16,13 +16,22 @@ import TaskList from '../components/TaskList';
 
 <div className="mission-givers">
   {props.data.startNPC && (
-    <div><span className="muted">Start:</span> <EntityLink entity={props.data.startNPC} /></div>
+    <div className="mission-giver-box">
+      <span className="mission-giver-role">Start</span>
+      <EntityLink entity={props.data.startNPC} iconSize={64} />
+    </div>
   )}
   {props.data.journalNPC && props.data.journalNPC.id !== props.data.startNPC?.id && (
-    <div><span className="muted">Journal:</span> <EntityLink entity={props.data.journalNPC} /></div>
+    <div className="mission-giver-box">
+      <span className="mission-giver-role">Journal</span>
+      <EntityLink entity={props.data.journalNPC} iconSize={64} />
+    </div>
   )}
   {props.data.endNPC && props.data.endNPC.id !== props.data.startNPC?.id && (
-    <div><span className="muted">End:</span> <EntityLink entity={props.data.endNPC} /></div>
+    <div className="mission-giver-box">
+      <span className="mission-giver-role">End</span>
+      <EntityLink entity={props.data.endNPC} iconSize={64} />
+    </div>
   )}
 </div>
 

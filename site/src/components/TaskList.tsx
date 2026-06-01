@@ -78,53 +78,89 @@ function TaskItem({ task, index }: { task: MissionTask; index: number }) {
         </span>
       }
     >
-      {task.monsterRequirements.length > 0 && (
-        <div className="task-row">
-          <span className="task-label">Defeat:</span>
-          <ul>
-            {task.monsterRequirements.map((m) => (
-              <li key={m.ref.id}>
-                {m.killCount > 0 && <strong>{m.killCount}× </strong>}
-                <EntityLink entity={m.ref} />
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-      {task.escortNPC && (
-        <div className="task-row">
-          <span className="task-label">Escort:</span> <EntityLink entity={task.escortNPC} />
-        </div>
-      )}
-      {task.waypointNPC && (
-        <div className="task-row task-row-waypoint">
-          <span className="task-label">Go to:</span>
-          <EntityLink entity={task.waypointNPC} />
-          {task.waypointPoint && (
-            <MapSpot
-              x={task.waypointPoint.x}
-              y={task.waypointPoint.y}
-              z={task.waypointPoint.z}
-              size={256}
-              areaId={task.waypointPoint.areaId}
-              title={task.waypointPoint.areaZone}
-              instanceName={task.waypointPoint.instanceName}
-              instanceID={task.waypointPoint.instanceID}
-              icon={missionWaypointIcon(task.type, Boolean(task.waypointNPC))}
-            />
+      <table className="task-detail-table">
+        <tbody>
+          {task.monsterRequirements.length > 0 && (
+            <tr>
+              <th scope="row">Defeat</th>
+              <td>
+                <ul className="task-ref-list">
+                  {task.monsterRequirements.map((m) => (
+                    <li key={m.ref.id} className="task-defeat-target">
+                      <div className="task-defeat-target-main">
+                        {m.killCount > 0 && <strong>{m.killCount}x</strong>}
+                        <EntityLink entity={m.ref} />
+                        {m.questItem && m.questItemNeededCount > 0 && (
+                          <span className="task-quest-item muted">
+                            collect {m.questItemNeededCount}x {m.questItem}
+                            {m.questItemDropPercent > 0 && <> ({m.questItemDropPercent}% drop)</>}
+                          </span>
+                        )}
+                      </div>
+                      {m.location && (
+                        <span className="task-mapspot">
+                          <MapSpot
+                          x={m.location.x}
+                          y={m.location.y}
+                          z={m.location.z}
+                          areaId={m.location.areaId}
+                          title={m.location.areaZone}
+                          instanceName={m.location.instanceName}
+                          instanceID={m.location.instanceID}
+                          points={m.location.points}
+                            icon={m.mapIcon}
+                          />
+                        </span>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </td>
+            </tr>
           )}
-        </div>
-      )}
-      {task.requiredInstance && (
-        <div className="task-row">
-          <span className="task-label">Inside:</span> <EntityLink entity={task.requiredInstance} />
-        </div>
-      )}
-      {task.onEndObjective && (
-        <div className="task-row">
-          <span className="task-label">Then:</span> {task.onEndObjective}
-        </div>
-      )}
+          {task.escortNPC && (
+            <tr>
+              <th scope="row">Escort</th>
+              <td><EntityLink entity={task.escortNPC} /></td>
+            </tr>
+          )}
+          {task.waypointNPC && (
+            <tr>
+              <th scope="row">Go to</th>
+              <td className="task-waypoint-cell">
+                <EntityLink entity={task.waypointNPC} />
+                {task.waypointPoint && (
+                  <span className="task-mapspot">
+                    <MapSpot
+                    x={task.waypointPoint.x}
+                    y={task.waypointPoint.y}
+                    z={task.waypointPoint.z}
+                    size={256}
+                    areaId={task.waypointPoint.areaId}
+                    title={task.waypointPoint.areaZone}
+                    instanceName={task.waypointPoint.instanceName}
+                    instanceID={task.waypointPoint.instanceID}
+                      icon={missionWaypointIcon(task.type, Boolean(task.waypointNPC))}
+                    />
+                  </span>
+                )}
+              </td>
+            </tr>
+          )}
+          {task.requiredInstance && (
+            <tr>
+              <th scope="row">Inside</th>
+              <td><EntityLink entity={task.requiredInstance} /></td>
+            </tr>
+          )}
+          {task.onEndObjective && (
+            <tr>
+              <th scope="row">Then</th>
+              <td>{task.onEndObjective}</td>
+            </tr>
+          )}
+        </tbody>
+      </table>
       <MessageSection label="On start" msg={task.messages.start} />
       <MessageSection label="On complete" msg={task.messages.end} />
       <MessageSection label="On fail" msg={task.messages.fail} />

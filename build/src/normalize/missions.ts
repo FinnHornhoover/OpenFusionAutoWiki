@@ -3,6 +3,7 @@ import AdmZip from 'adm-zip';
 import { chunkOf, writeChunks, writeIndex } from '../chunk.js';
 import type { IconMap } from '../icons.js';
 import type { NpcLocationMap } from './npcLocations.js';
+import type { MissionMobLocationMap } from './mobLocations.js';
 import type { NpcNameIndex } from './npcNameIndex.js';
 import {
   instanceRef,
@@ -53,7 +54,13 @@ interface RawTask {
   MessageOnStart?: RawTaskMessage;
   OnEndNextTaskID?: number;
   OnEndTaskObjective?: string;
-  QuestItemMonsterRequirements?: Record<string, { KillCount?: number }>;
+  QuestItemMonsterRequirements?: Record<string, {
+    KillCount?: number;
+    QuestItem?: string;
+    QuestItemID?: number;
+    QuestItemNeededCount?: number;
+    QuestItemDropPercent?: number;
+  }>;
   RequiredInstance?: string;
   RequiredInstanceID?: number;
   TimeLimitSeconds?: number;
@@ -194,16 +201,8 @@ function normalizeTask(
   iconMap: IconMap,
   npcNameIndex: NpcNameIndex,
   npcLocations: NpcLocationMap,
+  missionMobLocations: MissionMobLocationMap,
 ): MissionTask {
-  const monsterRequirements = Object.entries(raw.QuestItemMonsterRequirements ?? {})
-    .map(([key, val]) => {
-      const { id, name } = parseCompoundKey(key);
-      const ref = monsterRef(id, name);
-      if (!ref) return null;
-      return { ref, killCount: val.KillCount ?? 0 };
-    })
-    .filter((x): x is { ref: Ref; killCount: number } => x !== null);
-
   const wpRef = npcRef(
     raw.WaypointNPCID ?? 0,
     raw.WaypointNPCName ?? '',
@@ -211,6 +210,31 @@ function normalizeTask(
     iconMap,
   );
   const wpPoint = wpRef ? npcLocations.get(wpRef.id as number) ?? null : null;
+  const monsterRequirements = Object.entries(raw.QuestItemMonsterRequirements ?? {})
+    .map(([key, val]) => {
+      const { id, name } = parseCompoundKey(key);
+      const ref = monsterRef(id, name);
+      if (!ref) return null;
+      const monster = missionMobLocations.get(id);
+      ref.icon = monster?.icon ?? '';
+      const location = (
+        wpPoint
+          ? monster?.locations.find((loc) => loc.areaZone === wpPoint.areaZone && loc.instanceID === wpPoint.instanceID)
+          : undefined
+      ) ?? monster?.locations.find((loc) => loc.instanceID === 0) ?? null;
+      return {
+        ref,
+        killCount: val.KillCount ?? 0,
+        questItem: val.QuestItem ?? '',
+        questItemId: val.QuestItemID ?? 0,
+        questItemNeededCount: val.QuestItemNeededCount ?? 0,
+        questItemDropPercent: val.QuestItemDropPercent ?? 0,
+        mapIcon: monster?.mapIcon ?? '/minimap/mapicons/other_monster.png',
+        location,
+      };
+    })
+    .filter((x): x is NonNullable<typeof x> => x !== null);
+
 
   return {
     id: raw.ID,
@@ -243,6 +267,7 @@ function normalizeMission(
   iconMap: IconMap,
   npcNameIndex: NpcNameIndex,
   npcLocations: NpcLocationMap,
+  missionMobLocations: MissionMobLocationMap,
   nanoRefs: Map<number, Ref>,
 ): Mission {
   const startNPC = npcRef(raw.MissionStartNPCID ?? 0, raw.MissionStartNPCName ?? '', raw.MissionStartNPCIcon ?? '', iconMap);
@@ -292,7 +317,7 @@ function normalizeMission(
     .filter((x): x is { npc: Ref; text: string } => x !== null);
 
   const tasks = Object.values(raw.Tasks ?? {})
-    .map((t) => normalizeTask(t, iconMap, npcNameIndex, npcLocations))
+    .map((t) => normalizeTask(t, iconMap, npcNameIndex, npcLocations, missionMobLocations))
     .sort((a, b) => a.id - b.id);
 
   return {
@@ -375,6 +400,7 @@ export async function normalizeMissions(
   iconMap: IconMap,
   npcNameIndex: NpcNameIndex,
   npcLocations: NpcLocationMap,
+  missionMobLocations: MissionMobLocationMap,
 ): Promise<{
   count: number;
   chunks: number;
@@ -396,7 +422,7 @@ export async function normalizeMissions(
   const nanoRefs = buildNanoRefIndex(zip, iconMap);
 
   const missions: Mission[] = Object.values(raw)
-    .map((m) => normalizeMission(m, iconMap, npcNameIndex, npcLocations, nanoRefs))
+    .map((m) => normalizeMission(m, iconMap, npcNameIndex, npcLocations, missionMobLocations, nanoRefs))
     .sort((a, b) => a.id - b.id);
 
   // Build the inverted indexes:
