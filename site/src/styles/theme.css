@@ -298,8 +298,10 @@ pre {
   border-radius: 999px;
   background: var(--color-bg-subtle);
   color: var(--color-text);
+  font: inherit;
   font-size: 0.875rem;
   line-height: 1;
+  cursor: pointer;
   text-decoration: none;
   transition: background 0.1s, border-color 0.1s, color 0.1s;
 }

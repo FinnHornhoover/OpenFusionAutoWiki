@@ -1,11 +1,12 @@
-import { useMatch, useNavigate } from 'react-router-dom';
+import { useMatch } from 'react-router-dom';
 import { useManifest } from '../data/useManifest';
+import { useBuildSwitch } from '../data/useBuildSwitch';
 
 export default function BuildSwitcher() {
   // This lives outside the route tree, so read the build from the current URL.
   const match = useMatch('/:build/*');
   const build = match?.params.build;
-  const navigate = useNavigate();
+  const switchBuild = useBuildSwitch();
   const { manifest, loading, error } = useManifest();
 
   if (error) {
@@ -24,7 +25,7 @@ export default function BuildSwitcher() {
       value={build ?? ''}
       onChange={(e) => {
         const slug = e.target.value;
-        if (slug) navigate(`/${slug}`);
+        switchBuild(slug);
       }}
       aria-label="Game build"
     >

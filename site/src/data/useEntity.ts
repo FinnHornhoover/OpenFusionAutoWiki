@@ -9,7 +9,7 @@ const CHUNK_SIZE = 250;
  * build pipeline puts them all in chunk 0 (there are only ~70 per build). NPC
  * ambiguity pages use name slugs and also live in chunk 0.
  */
-function chunkFor(type: string, urlId: string): number {
+export function chunkFor(type: string, urlId: string): number {
   if (type === 'areas' || type === 'instances' || type === 'infected-zones' || type === 'codes') return 0;
   if (type === 'npcs' && !/^\d+$/.test(urlId)) return 0;
   if (type === 'items') {

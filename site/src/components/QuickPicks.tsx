@@ -1,5 +1,6 @@
-import { NavLink } from 'react-router-dom';
+import { useMatch } from 'react-router-dom';
 import { useManifest } from '../data/useManifest';
+import { useBuildSwitch } from '../data/useBuildSwitch';
 
 const PICKS: Array<{ label: string; slug: string }> = [
   { label: 'Retrobution', slug: 'retrobution' },
@@ -8,6 +9,9 @@ const PICKS: Array<{ label: string; slug: string }> = [
 ];
 
 export default function QuickPicks() {
+  const match = useMatch('/:build/*');
+  const build = match?.params.build;
+  const switchBuild = useBuildSwitch();
   const { manifest, loading } = useManifest();
   if (loading || !manifest) return null;
 
@@ -18,13 +22,14 @@ export default function QuickPicks() {
   return (
     <nav className="quick-picks" aria-label="Featured builds">
       {visible.map((p) => (
-        <NavLink
+        <button
           key={p.slug}
-          to={`/${p.slug}`}
-          className={({ isActive }) => 'quick-pick' + (isActive ? ' active' : '')}
+          type="button"
+          className={'quick-pick' + (build === p.slug ? ' active' : '')}
+          onClick={() => switchBuild(p.slug)}
         >
           {p.label}
-        </NavLink>
+        </button>
       ))}
     </nav>
   );
