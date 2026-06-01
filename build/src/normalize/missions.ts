@@ -221,7 +221,7 @@ function normalizeTask(
         wpPoint
           ? monster?.locations.find((loc) => loc.areaZone === wpPoint.areaZone && loc.instanceID === wpPoint.instanceID)
           : undefined
-      ) ?? monster?.locations.find((loc) => loc.instanceID === 0) ?? null;
+      ) ?? monster?.locations.find((loc) => loc.instanceID === 0) ?? monster?.locations[0] ?? null;
       return {
         ref,
         killCount: val.KillCount ?? 0,
