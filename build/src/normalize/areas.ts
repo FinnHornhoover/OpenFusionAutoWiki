@@ -307,7 +307,7 @@ function vendorMapIcon(name: string, items: RawVendorItem[]): string {
 }
 
 function npcMapIcon(category: string, name: string, items: RawVendorItem[], canStartMission: boolean): string {
-  if (category === 'Vendor') return vendorMapIcon(name, items);
+  if (items.length > 0 || category === 'Vendor') return vendorMapIcon(name, items);
   if (name === "Resurrect 'Em") return mapIcon('resurrect_em_npc.png');
   if (category === 'Location') return mapIcon('location_npc.png');
   if (category === 'Bank' || name.includes('Bank')) return mapIcon('bank_npc.png');
@@ -590,8 +590,6 @@ function buildAreaInstanceWarps(
     if (!w || typeof w !== 'object') continue;
     const instId = w.EntryInstanceID ?? 0;
     const entryNpcs = Object.values(w.NPCs ?? {});
-    const isOverworldToOverworld = instId === 0 && entryNpcs.some((npc) => (npc.InstanceID ?? 0) === 0);
-    if (isOverworldToOverworld && w.NPCType?.Category !== 'Warp') continue;
     const inst = instanceIndex.get(instId);
     const entryNpc = entryNpcs[0];
     const npcId = w.NPCID && w.NPCID > 0 ? w.NPCID : w.NPCTypeID && w.NPCTypeID > 0 ? w.NPCTypeID : entryNpc?.TypeID ?? 0;

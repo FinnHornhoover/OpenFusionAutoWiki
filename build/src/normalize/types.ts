@@ -47,12 +47,17 @@ export interface Mission {
   barkers: Array<{ npc: Ref; text: string }>;
 }
 
+export type MissionTaskState = 'SuccessTask' | 'FailRepeatTask' | 'UnreachableTask' | string;
+
 export interface MissionTask {
   id: number;
   type: string;
+  state: MissionTaskState;
   objective: string;
   onEndObjective: string;
+  onFailObjective: string;
   nextTaskOnEnd: number;
+  nextTaskOnFail: number;
   timeLimitSeconds: number;
   waypointNPC: Ref | null;
   /** Spawn point for the waypoint NPC, used by the task map. */
@@ -430,6 +435,19 @@ export interface MobDrop extends DropChance {
   areaZone: string;
 }
 
+export interface MobMiscReward {
+  amount: number;
+  probability: number;
+  odds: string;
+}
+
+export interface MobMiscRewards {
+  taros: MobMiscReward;
+  fm: MobMiscReward;
+  potions: MobMiscReward;
+  boosts: MobMiscReward;
+}
+
 export interface Mob {
   id: number;
   name: string;
@@ -471,6 +489,7 @@ export interface Mob {
   // Cross-refs computed at build time
   missionsRequiring: Ref[];
   drops: MobDrop[];
+  miscRewards: MobMiscRewards;
 
   // Spawns
   locations: MobLocation[];
@@ -812,4 +831,20 @@ export interface NanoIndexEntry {
   icon: string;
   nanoType: string;
   awardLevel: number;
+}
+
+// ---- Player stats -----------------------------------------------------------
+
+export interface PlayerStatsRow {
+  level: number;
+  hp: number;
+  defense: number;
+  dodge: number;
+  punchDamage: number;
+  fmLimit: number;
+  nextLevelFMCost: number;
+  nextNano: Ref | null;
+  nanoMission: Ref | null;
+  nanoMissionTaskId: number;
+  nanoMissionTask: string;
 }

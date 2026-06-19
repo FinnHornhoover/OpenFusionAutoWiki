@@ -54,6 +54,8 @@ interface RawTask {
   MessageOnStart?: RawTaskMessage;
   OnEndNextTaskID?: number;
   OnEndTaskObjective?: string;
+  OnFailNextTaskID?: number;
+  OnFailTaskObjective?: string;
   QuestItemMonsterRequirements?: Record<string, {
     KillCount?: number;
     QuestItem?: string;
@@ -63,6 +65,7 @@ interface RawTask {
   }>;
   RequiredInstance?: string;
   RequiredInstanceID?: number;
+  State?: string;
   TimeLimitSeconds?: number;
   WaypointNPCID?: number;
   WaypointNPCIcon?: string;
@@ -140,6 +143,7 @@ interface RawMission {
   RequiredNanoID?: number;
   RequiredMissionIDs?: number[];
   RequiredMissions?: Record<string, { Name?: string }>;
+  TaskOrder?: number[];
   Rewards?: {
     FM?: number;
     Taros?: number;
@@ -239,9 +243,12 @@ function normalizeTask(
   return {
     id: raw.ID,
     type: raw.Type,
+    state: raw.State ?? 'SuccessTask',
     objective: raw.CurrentObjective ?? '',
     onEndObjective: raw.OnEndTaskObjective ?? '',
+    onFailObjective: raw.OnFailTaskObjective ?? '',
     nextTaskOnEnd: raw.OnEndNextTaskID ?? 0,
+    nextTaskOnFail: raw.OnFailNextTaskID ?? 0,
     timeLimitSeconds: raw.TimeLimitSeconds ?? 0,
     waypointNPC: wpRef,
     waypointPoint: wpPoint,
@@ -316,9 +323,19 @@ function normalizeMission(
     })
     .filter((x): x is { npc: Ref; text: string } => x !== null);
 
-  const tasks = Object.values(raw.Tasks ?? {})
-    .map((t) => normalizeTask(t, iconMap, npcNameIndex, npcLocations, missionMobLocations))
-    .sort((a, b) => a.id - b.id);
+  const normalizedTasksById = new Map<number, MissionTask>();
+  for (const task of Object.values(raw.Tasks ?? {})) {
+    const normalized = normalizeTask(task, iconMap, npcNameIndex, npcLocations, missionMobLocations);
+    normalizedTasksById.set(normalized.id, normalized);
+  }
+  const orderedIds = (raw.TaskOrder ?? []).filter((id) => normalizedTasksById.has(id));
+  const orderedIdSet = new Set(orderedIds);
+  const tasks = [
+    ...orderedIds.map((id) => normalizedTasksById.get(id)!),
+    ...Array.from(normalizedTasksById.values())
+      .filter((task) => !orderedIdSet.has(task.id))
+      .sort((a, b) => a.id - b.id),
+  ];
 
   return {
     id: raw.ID,

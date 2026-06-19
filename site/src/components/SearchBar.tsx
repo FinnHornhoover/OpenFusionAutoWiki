@@ -16,6 +16,7 @@ const TYPE_LABEL: Record<SearchRow['type'], string> = {
   instances: 'Instance',
   'infected-zones': 'Infected Zone',
   nanos: 'Nano',
+  'player-stats': 'Reference',
 };
 
 /** Rank a row for a given lowercase query. Lower = better. */
@@ -77,7 +78,7 @@ function SearchOverlay({ build, onClose }: OverlayProps) {
   function go(row: SearchRow) {
     if (!build) return;
     onClose();
-    navigate(`/${build}/${row.type}/${row.id}`);
+    navigate(row.id === '' ? `/${build}/${row.type}` : `/${build}/${row.type}/${row.id}`);
   }
 
   function onKey(e: React.KeyboardEvent<HTMLInputElement>) {
@@ -120,7 +121,7 @@ function SearchOverlay({ build, onClose }: OverlayProps) {
           )}
           {!q.trim() && (
             <div className="search-empty muted">
-              Type to search across missions, NPCs, items, codes, monsters, areas, instances, infected zones, and nanos.
+              Type to search across missions, NPCs, items, codes, monsters, areas, instances, infected zones, nanos, and build references.
             </div>
           )}
           {results.map((r, i) => (

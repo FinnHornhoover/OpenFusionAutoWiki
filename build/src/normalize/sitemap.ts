@@ -34,6 +34,7 @@ function escapeXml(s: string): string {
 }
 
 const ENTITY_TYPES = ['missions', 'npcs', 'items', 'codes', 'monsters', 'areas', 'instances', 'infected-zones', 'nanos'] as const;
+const BUILD_REFERENCE_TYPES = ['player-stats'] as const;
 
 /** Per-build sitemap: landing page, type indexes, and entity pages. */
 async function writeBuildSitemap(slug: string, base: string): Promise<number> {
@@ -45,6 +46,9 @@ async function writeBuildSitemap(slug: string, base: string): Promise<number> {
     for (const r of rows) {
       urls.push(`${base}/${slug}/${type}/${r.id}`);
     }
+  }
+  for (const type of BUILD_REFERENCE_TYPES) {
+    urls.push(`${base}/${slug}/${type}`);
   }
 
   const body =
