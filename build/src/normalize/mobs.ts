@@ -48,6 +48,19 @@ interface RawMobType {
   PassiveBuffIcon?: string;
   SupportSkill?: string;
   SupportSkillIcon?: string;
+
+  Taros?: number;
+  TaroDropOdds?: string;
+  TaroDropProbability?: number;
+  FM?: number;
+  FMDropOdds?: string;
+  FMDropProbability?: number;
+  Potions?: number;
+  PotionDropOdds?: string;
+  PotionDropProbability?: number;
+  Boosts?: number;
+  BoostDropOdds?: string;
+  BoostDropProbability?: number;
 }
 
 interface RawMobInstance {
@@ -221,6 +234,12 @@ function normalizeMob(
         const mb = Math.max(b.boyProbability, b.girlProbability);
         return (mb - ma) || a.item.name.localeCompare(b.item.name);
       }),
+    miscRewards: {
+      taros: { amount: raw.Taros ?? 0, probability: raw.TaroDropProbability ?? 0, odds: raw.TaroDropOdds ?? '' },
+      fm: { amount: raw.FM ?? 0, probability: raw.FMDropProbability ?? 0, odds: raw.FMDropOdds ?? '' },
+      potions: { amount: raw.Potions ?? 0, probability: raw.PotionDropProbability ?? 0, odds: raw.PotionDropOdds ?? '' },
+      boosts: { amount: raw.Boosts ?? 0, probability: raw.BoostDropProbability ?? 0, odds: raw.BoostDropOdds ?? '' },
+    },
 
     locations,
     locationGroups,

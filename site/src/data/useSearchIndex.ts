@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 
 export interface SearchRow {
-  type: 'missions' | 'npcs' | 'items' | 'codes' | 'monsters' | 'areas' | 'instances' | 'infected-zones' | 'nanos';
+  type: 'missions' | 'npcs' | 'items' | 'codes' | 'monsters' | 'areas' | 'instances' | 'infected-zones' | 'nanos' | 'player-stats';
   id: number | string;
   name: string;
   icon: string;

@@ -19,6 +19,7 @@ import { normalizeMobs } from './normalize/mobs.js';
 import { buildMissionMobLocationMap } from './normalize/mobLocations.js';
 import { normalizeNanos } from './normalize/nanos.js';
 import { normalizeNpcs } from './normalize/npcs.js';
+import { normalizePlayerStats } from './normalize/playerStats.js';
 import { buildNpcLocationMap } from './normalize/npcLocations.js';
 import { buildNpcNameIndex } from './normalize/npcNameIndex.js';
 import { writeSearchIndex } from './normalize/search.js';
@@ -83,6 +84,7 @@ async function main(): Promise<void> {
   let totalNanos = 0;
   let totalNanoChunks = 0;
   let totalLinkedNanos = 0;
+  let totalPlayerStats = 0;
   let totalSearchRows = 0;
   let totalSearchBytes = 0;
   for (const d of downloaded) {
@@ -140,12 +142,15 @@ async function main(): Promise<void> {
     totalNanoChunks += na.chunks;
     totalLinkedNanos += na.linked;
 
+    const ps = await normalizePlayerStats(d.path, slug, iconMap);
+    totalPlayerStats += ps.count;
+
     const search = await writeSearchIndex(slug);
     totalSearchRows += search.count;
     totalSearchBytes += search.bytes;
 
-    await writeBuildMeta(slug, ['missions', 'npcs', 'items', 'codes', 'monsters', 'areas', 'instances', 'infected-zones', 'nanos']);
-    log.info(`${slug.padEnd(46)} missions=${m.count} npcs=${n.count} items=${it.count} codes=${co.count} mobs=${mb.count} areas=${ar.count} instances=${ins.count} infectedZones=${iz.count} nanos=${na.count} search=${search.count}`);
+    await writeBuildMeta(slug, ['missions', 'npcs', 'items', 'codes', 'monsters', 'areas', 'instances', 'infected-zones', 'nanos', 'player-stats']);
+    log.info(`${slug.padEnd(46)} missions=${m.count} npcs=${n.count} items=${it.count} codes=${co.count} mobs=${mb.count} areas=${ar.count} instances=${ins.count} infectedZones=${iz.count} nanos=${na.count} playerStats=${ps.count} search=${search.count}`);
   }
   log.done(`missions: ${totalMissions} → ${totalMissionChunks} chunks`);
   log.done(`npcs: ${totalNpcs} → ${totalNpcChunks} chunks; ${totalLinkedNpcs} link to missions; ${totalVendors} vendors`);
@@ -156,6 +161,7 @@ async function main(): Promise<void> {
   log.done(`instances: ${totalInstances} → ${totalInstanceChunks} chunks; ${totalInfectedInstances} infected instances`);
   log.done(`infected zones: ${totalInfectedZones} → ${totalInfectedZoneChunks} chunks`);
   log.done(`nanos: ${totalNanos} → ${totalNanoChunks} chunks; ${totalLinkedNanos} link to missions`);
+  log.done(`player stats: ${totalPlayerStats} rows across ${downloaded.length} builds`);
   log.done(`search: ${totalSearchRows} rows across ${downloaded.length} builds (${(totalSearchBytes / (1024 * 1024)).toFixed(1)} MB total raw)`);
 
   log.step('checking world minimap asset');

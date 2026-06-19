@@ -25,6 +25,10 @@ import { formatDurationSeconds } from '../data/formatTime';
 )}
 
 <dl className="stat-grid">
+  {props.data.miscRewards?.taros && (props.data.miscRewards.taros.amount > 0 || props.data.miscRewards.taros.probability > 0 || props.data.miscRewards.taros.odds) && <><dt>Taros</dt><dd>{props.data.miscRewards.taros.amount.toLocaleString()}{props.data.miscRewards.taros.amount > 0 && props.data.miscRewards.taros.odds && props.data.miscRewards.taros.odds !== '1' ? <> ({props.data.miscRewards.taros.odds} chance)</> : props.data.miscRewards.taros.amount > 0 && !props.data.miscRewards.taros.odds && props.data.miscRewards.taros.probability > 0 && props.data.miscRewards.taros.probability < 1 ? <> ({(props.data.miscRewards.taros.probability * 100).toFixed(2)}% chance)</> : null}</dd></>}
+  {props.data.miscRewards?.fm && (props.data.miscRewards.fm.amount > 0 || props.data.miscRewards.fm.probability > 0 || props.data.miscRewards.fm.odds) && <><dt>Fusion Matter</dt><dd>{props.data.miscRewards.fm.amount.toLocaleString()}{props.data.miscRewards.fm.amount > 0 && props.data.miscRewards.fm.odds && props.data.miscRewards.fm.odds !== '1' ? <> ({props.data.miscRewards.fm.odds} chance)</> : props.data.miscRewards.fm.amount > 0 && !props.data.miscRewards.fm.odds && props.data.miscRewards.fm.probability > 0 && props.data.miscRewards.fm.probability < 1 ? <> ({(props.data.miscRewards.fm.probability * 100).toFixed(2)}% chance)</> : null}</dd></>}
+  {props.data.miscRewards?.potions && (props.data.miscRewards.potions.amount > 0 || props.data.miscRewards.potions.probability > 0 || props.data.miscRewards.potions.odds) && <><dt>Potions</dt><dd>{props.data.miscRewards.potions.amount.toLocaleString()}{props.data.miscRewards.potions.amount > 0 && props.data.miscRewards.potions.odds && props.data.miscRewards.potions.odds !== '1' ? <> ({props.data.miscRewards.potions.odds} chance)</> : props.data.miscRewards.potions.amount > 0 && !props.data.miscRewards.potions.odds && props.data.miscRewards.potions.probability > 0 && props.data.miscRewards.potions.probability < 1 ? <> ({(props.data.miscRewards.potions.probability * 100).toFixed(2)}% chance)</> : null}</dd></>}
+  {props.data.miscRewards?.boosts && (props.data.miscRewards.boosts.amount > 0 || props.data.miscRewards.boosts.probability > 0 || props.data.miscRewards.boosts.odds) && <><dt>Boosts</dt><dd>{props.data.miscRewards.boosts.amount.toLocaleString()}{props.data.miscRewards.boosts.amount > 0 && props.data.miscRewards.boosts.odds && props.data.miscRewards.boosts.odds !== '1' ? <> ({props.data.miscRewards.boosts.odds} chance)</> : props.data.miscRewards.boosts.amount > 0 && !props.data.miscRewards.boosts.odds && props.data.miscRewards.boosts.probability > 0 && props.data.miscRewards.boosts.probability < 1 ? <> ({(props.data.miscRewards.boosts.probability * 100).toFixed(2)}% chance)</> : null}</dd></>}
   {props.data.displayHP > 0 && <><dt>HP</dt><dd>{props.data.displayHP.toLocaleString()}</dd></>}
   {props.data.attackPower > 0 && <><dt>Attack power</dt><dd>{props.data.attackPower.toLocaleString()}</dd></>}
   {props.data.power !== 0 && <><dt>Power</dt><dd>{props.data.power.toLocaleString()}</dd></>}
@@ -61,6 +65,7 @@ import { formatDurationSeconds } from '../data/formatTime';
     )}
   </Dropdown>
 )}
+
 
 {props.data.drops.length > 0 && (
   <Dropdown summary={`Drops ${props.data.drops.length} item entr${props.data.drops.length === 1 ? 'y' : 'ies'}`} open={props.data.drops.length <= 20}>

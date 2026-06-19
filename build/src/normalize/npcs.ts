@@ -196,7 +196,7 @@ function npcMapIcon(raw: RawNpcType, canStartMission: boolean): string {
   const category = raw.Category ?? '';
   const name = raw.Name ?? '';
   const itemNames = new Set((raw.VendorItems ?? []).map((v) => v.ItemInfo?.Name ?? ''));
-  if (category === 'Vendor') {
+  if ((raw.VendorItems ?? []).length > 0 || category === 'Vendor') {
     if (itemNames.has('Weapon Boost') && itemNames.has('Nano Potion')) return mapIcon('boost_potion_vendor_npc.png');
     if (name.includes('E.G.G.E.R.')) return mapIcon('egger_npc.png');
     if (allVendorItemsAre(raw, ['Hat', 'Glasses', 'Backpack', 'Face', 'Back'])) return mapIcon('accessories_vendor_npc.png');

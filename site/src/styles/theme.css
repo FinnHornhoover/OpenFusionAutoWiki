@@ -1314,3 +1314,151 @@ details.dropdown > .dropdown-body {
 .error-detail code {
   font-size: 0.85rem;
 }
+
+
+/* Mission task graph + state filters */
+.mission-task-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  margin: var(--space-3) 0 var(--space-4);
+}
+.mission-task-graph-scroll {
+  max-width: 100%;
+  overflow-x: auto;
+  margin: var(--space-3) 0 var(--space-4);
+  padding-bottom: var(--space-2);
+}
+.mission-task-graph {
+  box-sizing: content-box;
+  position: relative;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-elevated);
+}
+.mission-task-graph-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+.mission-task-node {
+  position: absolute;
+  z-index: 1;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--space-2);
+  width: 230px;
+  height: 96px;
+  padding: var(--space-2);
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-subtle);
+  box-shadow: var(--shadow-sm);
+}
+.mission-task-node-id {
+  align-self: flex-start;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  color: var(--color-accent);
+}
+.mission-task-node-label {
+  align-self: stretch;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  line-height: 1.25;
+}
+.mission-task-self-repeat {
+  align-self: flex-end;
+  padding: 1px 6px;
+  border: 1px solid #d88b3d;
+  border-radius: var(--radius-sm);
+  color: #f0b36f;
+  background: rgba(216, 139, 61, 0.12);
+  font-size: 0.75rem;
+  line-height: 1.4;
+}
+.mission-task-node-FailRepeatTask,
+.task-state-FailRepeatTask > summary {
+  border-color: #d88b3d;
+  background: rgba(216, 139, 61, 0.14);
+}
+.mission-task-node-UnreachableTask,
+.task-state-UnreachableTask > summary {
+  border-color: #8d98aa;
+  background: rgba(141, 152, 170, 0.14);
+}
+.mission-task-boundary-start,
+.task-boundary-start > summary {
+  border-color: var(--color-success);
+  box-shadow: 0 0 0 2px rgba(106, 210, 138, 0.24), var(--shadow-sm);
+}
+.mission-task-boundary-end,
+.task-boundary-end > summary {
+  border-color: var(--color-link);
+  box-shadow: 0 0 0 2px rgba(142, 202, 230, 0.26), var(--shadow-sm);
+}
+.mission-task-boundary-start.mission-task-boundary-end,
+.task-boundary-start.task-boundary-end > summary {
+  border-color: var(--color-success);
+  box-shadow: 0 0 0 2px rgba(106, 210, 138, 0.24), 0 0 0 4px rgba(142, 202, 230, 0.2), var(--shadow-sm);
+}
+.mission-task-arrow {
+  fill: none;
+  stroke-width: 2.5;
+  vector-effect: non-scaling-stroke;
+}
+.mission-task-arrow-end {
+  stroke: #f5f7fb;
+}
+.mission-task-arrow-fail {
+  stroke: var(--color-danger);
+}
+.mission-task-arrow-head-end {
+  fill: #f5f7fb;
+}
+.mission-task-arrow-head-fail {
+  fill: var(--color-danger);
+}
+.mission-task-graph-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  margin-top: var(--space-2);
+  font-size: 0.85rem;
+}
+.mission-task-graph-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.mission-task-legend-line {
+  display: inline-block;
+  width: 28px;
+  height: 2px;
+  border-radius: 1px;
+}
+.mission-task-legend-end {
+  background: #f5f7fb;
+}
+.mission-task-legend-fail {
+  background: var(--color-danger);
+}
+.table-scroll {
+  overflow-x: auto;
+}
+.player-stats-table th,
+.player-stats-table td,
+.misc-reward-table th,
+.misc-reward-table td {
+  white-space: nowrap;
+}
+.player-stats-task {
+  margin-top: var(--space-1);
+  white-space: normal;
+}

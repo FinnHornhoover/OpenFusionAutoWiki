@@ -18,7 +18,7 @@ import type {
 /** Per-build search row — one entry per searchable entity, all 6 types unioned. */
 export interface SearchRow {
   /** URL segment for this entity type (matches the route segment + builtTypes). */
-  type: 'missions' | 'npcs' | 'items' | 'codes' | 'monsters' | 'areas' | 'instances' | 'infected-zones' | 'nanos';
+  type: 'missions' | 'npcs' | 'items' | 'codes' | 'monsters' | 'areas' | 'instances' | 'infected-zones' | 'nanos' | 'player-stats';
   /** URL identifier (numeric or compound string, same shape Ref.id uses). */
   id: number | string;
   name: string;
@@ -88,6 +88,7 @@ export async function writeSearchIndex(slug: string): Promise<{ count: number; b
   for (const na of nanos) {
     rows.push({ type: 'nanos', id: na.id, name: na.name, icon: na.icon });
   }
+  rows.push({ type: 'player-stats', id: '', name: 'Player Stats', icon: '' });
 
   const dir = join(DATA_OUT, slug);
   await mkdir(dir, { recursive: true });
