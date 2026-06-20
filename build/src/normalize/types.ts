@@ -843,6 +843,7 @@ export interface PlayerStatsRow {
   punchDamage: number;
   fmLimit: number;
   nextLevelFMCost: number;
+  nanoPowerChangeFMCost: number;
   nextNano: Ref | null;
   nanoMission: Ref | null;
   nanoMissionTaskId: number;

@@ -1391,6 +1391,7 @@ details.dropdown > .dropdown-body {
 .mission-task-node-UnreachableTask,
 .task-state-UnreachableTask > summary {
   border-color: #8d98aa;
+  border-style: dashed;
   background: rgba(141, 152, 170, 0.14);
 }
 .mission-task-boundary-start,
@@ -1448,6 +1449,32 @@ details.dropdown > .dropdown-body {
 }
 .mission-task-legend-fail {
   background: var(--color-danger);
+}
+.mission-task-legend-node {
+  box-sizing: border-box;
+  display: inline-block;
+  width: 20px;
+  height: 14px;
+  border: 2px solid var(--color-border);
+  border-radius: 3px;
+  background: var(--color-bg-subtle);
+}
+.mission-task-legend-start {
+  border-color: var(--color-success);
+  box-shadow: 0 0 0 2px rgba(106, 210, 138, 0.18);
+}
+.mission-task-legend-finish {
+  border-color: var(--color-link);
+  box-shadow: 0 0 0 2px rgba(142, 202, 230, 0.18);
+}
+.mission-task-legend-unused {
+  border-color: #8d98aa;
+  border-style: dashed;
+  background: rgba(141, 152, 170, 0.14);
+}
+.mission-task-legend-repeat {
+  border-color: #d88b3d;
+  background: rgba(216, 139, 61, 0.14);
 }
 .table-scroll {
   overflow-x: auto;

@@ -30,12 +30,13 @@ interface RawPlayerStats {
   FMLimit?: number;
   HP?: number;
   Level?: number;
-  NanoMission?: RawMissionInfo;
+  NanoMission?: RawMissionInfo | null;
   NanoMissionID?: number;
-  NanoMissionTask?: string | RawTaskInfo;
+  NanoMissionTask?: RawTaskInfo | null;
   NanoMissionTaskID?: number;
   NextLevelFMCost?: number;
-  NextNano?: string | RawNanoInfo;
+  NanoPowerChangeFMCost?: number;
+  NextNano?: RawNanoInfo | null;
   NextNanoID?: number;
   PunchDamage?: number;
 }
@@ -45,31 +46,14 @@ function missionIcon(raw: RawPlayerStats, iconMap: IconMap): string {
   return iconFor(mission?.MissionJournalNPCIcon ?? mission?.MissionStartNPCIcon ?? mission?.MissionEndNPCIcon ?? '', iconMap);
 }
 
-function nextNanoName(raw: RawPlayerStats, id: number): string {
-  if (typeof raw.NextNano === 'string' && raw.NextNano) return raw.NextNano;
-  if (raw.NextNano && typeof raw.NextNano === 'object' && raw.NextNano.Name) return raw.NextNano.Name;
-  return `Nano #${id}`;
-}
-
-function nextNanoIcon(raw: RawPlayerStats, iconMap: IconMap): string {
-  if (!raw.NextNano || typeof raw.NextNano !== 'object') return '';
-  return iconFor(raw.NextNano.NanoIcon ?? '', iconMap);
-}
-
-function nanoMissionTaskText(raw: RawPlayerStats): string {
-  if (typeof raw.NanoMissionTask === 'string') return raw.NanoMissionTask;
-  if (raw.NanoMissionTask && typeof raw.NanoMissionTask === 'object') return raw.NanoMissionTask.CurrentObjective ?? '';
-  return '';
-}
-
 function normalizeRow(raw: RawPlayerStats, iconMap: IconMap): PlayerStatsRow {
-  const nextNanoId = raw.NextNanoID ?? (typeof raw.NextNano === 'object' ? raw.NextNano?.ID ?? 0 : 0);
+  const nextNanoId = raw.NextNanoID ?? raw.NextNano?.ID ?? 0;
   const nanoMissionId = raw.NanoMissionID ?? raw.NanoMission?.ID ?? 0;
   const nextNano: Ref | null = nextNanoId > 0 ? {
     type: 'nano',
     id: nextNanoId,
-    name: nextNanoName(raw, nextNanoId),
-    icon: nextNanoIcon(raw, iconMap),
+    name: raw.NextNano?.Name || 'Nano #' + nextNanoId,
+    icon: iconFor(raw.NextNano?.NanoIcon ?? '', iconMap),
   } : null;
   const nanoMission: Ref | null = nanoMissionId > 0 ? {
     type: 'mission',
@@ -85,10 +69,11 @@ function normalizeRow(raw: RawPlayerStats, iconMap: IconMap): PlayerStatsRow {
     punchDamage: raw.PunchDamage ?? 0,
     fmLimit: raw.FMLimit ?? 0,
     nextLevelFMCost: raw.NextLevelFMCost ?? 0,
+    nanoPowerChangeFMCost: raw.NanoPowerChangeFMCost ?? 0,
     nextNano,
     nanoMission,
-    nanoMissionTaskId: raw.NanoMissionTaskID ?? (typeof raw.NanoMissionTask === 'object' ? raw.NanoMissionTask?.ID ?? 0 : 0),
-    nanoMissionTask: nanoMissionTaskText(raw),
+    nanoMissionTaskId: raw.NanoMissionTaskID ?? raw.NanoMissionTask?.ID ?? 0,
+    nanoMissionTask: raw.NanoMissionTask?.CurrentObjective ?? '',
   };
 }
 
