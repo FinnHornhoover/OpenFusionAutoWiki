@@ -371,10 +371,10 @@ export default function TaskList({ tasks }: TaskListProps) {
   });
   const failRepeatCount = tasks.filter((task) => task.state === 'FailRepeatTask').length;
   const unreachableCount = tasks.filter((task) => task.state === 'UnreachableTask').length;
-  const { startTaskId, endTaskId } = successBoundaryIds(tasks);
+  const { startTaskId, endTaskId } = successBoundaryIds(visibleTasks);
   return (
     <div className="task-list">
-      <TaskGraph tasks={tasks} startTaskId={startTaskId} endTaskId={endTaskId} />
+      <TaskGraph tasks={visibleTasks} startTaskId={startTaskId} endTaskId={endTaskId} />
       {(failRepeatCount > 0 || unreachableCount > 0) && (
         <div className="mission-task-controls">
           {failRepeatCount > 0 && (
