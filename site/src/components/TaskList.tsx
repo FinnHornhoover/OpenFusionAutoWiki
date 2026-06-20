@@ -244,8 +244,12 @@ function TaskGraph({ tasks, startTaskId, endTaskId }: { tasks: MissionTask[]; st
         ))}
       </div>
       <div className="mission-task-graph-legend muted">
-        <span><span className="mission-task-legend-line mission-task-legend-end" /> EndTask</span>
-        <span><span className="mission-task-legend-line mission-task-legend-fail" /> FailTask</span>
+        <span><span className="mission-task-legend-line mission-task-legend-end" /> Success</span>
+        <span><span className="mission-task-legend-line mission-task-legend-fail" /> Fail</span>
+        <span><span className="mission-task-legend-node mission-task-legend-start" /> Start task</span>
+        <span><span className="mission-task-legend-node mission-task-legend-finish" /> End task</span>
+        <span><span className="mission-task-legend-node mission-task-legend-unused" /> Unused task</span>
+        <span><span className="mission-task-legend-node mission-task-legend-repeat" /> Fail-repeat task</span>
       </div>
     </div>
   );

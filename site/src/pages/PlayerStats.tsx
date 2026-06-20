@@ -2,28 +2,11 @@ import { Link, useParams } from 'react-router-dom';
 
 import EntityLink from '../components/EntityLink';
 import ErrorState from '../components/ErrorState';
-import type { PlayerStatsRow, Ref } from '../data/types';
+import type { PlayerStatsRow } from '../data/types';
 import { useBuildEntry } from '../data/useBuildEntry';
 import { useBuildMeta } from '../data/useBuildMeta';
 import { useDocumentTitle } from '../data/useDocumentTitle';
 import { useIndex } from '../data/useIndex';
-
-function textValue(value: unknown): string {
-  if (typeof value === 'string') return value;
-  if (value && typeof value === 'object') {
-    const obj = value as { Name?: unknown; CurrentObjective?: unknown; name?: unknown };
-    if (typeof obj.name === 'string') return obj.name;
-    if (typeof obj.Name === 'string') return obj.Name;
-    if (typeof obj.CurrentObjective === 'string') return obj.CurrentObjective;
-  }
-  return '';
-}
-
-function cleanRef(ref: Ref | null): Ref | null {
-  if (!ref) return null;
-  const name = textValue(ref.name) || String(ref.id);
-  return { ...ref, name };
-}
 
 function isAcademyLikeBuild(entry: { date: string } | null): boolean {
   return Boolean(entry?.date && entry.date >= '2011-02-13');
@@ -54,40 +37,37 @@ export default function PlayerStats() {
                 <th>Level</th>
                 <th>HP</th>
                 <th>Defense</th>
-                <th>Punch damage</th>
+                <th>Damage</th>
                 <th>FM limit</th>
-                <th>Next level FM</th>
+                <th>Level<br />up FM</th>
+                <th>Power<br />change FM</th>
                 {showNanoColumns && <th>Nano unlock</th>}
                 {showNanoColumns && <th>Nano mission</th>}
               </tr>
             </thead>
             <tbody>
-              {rows.filter((row) => row.level <= 36).map((row) => {
-                const nextNano = cleanRef(row.nextNano);
-                const nanoMission = cleanRef(row.nanoMission);
-                const nanoMissionTask = textValue(row.nanoMissionTask);
-                return (
-                  <tr key={row.level}>
+              {rows.map((row) => (
+                <tr key={row.level}>
                     <td><code>{row.level}</code></td>
                     <td>{row.hp.toLocaleString()}</td>
                     <td>{row.defense.toLocaleString()}</td>
                     <td>{row.punchDamage.toLocaleString()}</td>
                     <td>{row.fmLimit.toLocaleString()}</td>
                     <td>{row.nextLevelFMCost.toLocaleString()}</td>
+                    <td>{row.nanoPowerChangeFMCost.toLocaleString()}</td>
                     {showNanoColumns && (
                       <td>
-                        {nextNano ? (nextNano.id === 37 ? <span>{nextNano.name}</span> : <EntityLink entity={nextNano} />) : <span className="muted">-</span>}
+                        {row.nextNano ? <EntityLink entity={row.nextNano} /> : <span className="muted">-</span>}
                       </td>
                     )}
                     {showNanoColumns && (
                       <td>
-                        {nanoMission ? <EntityLink entity={nanoMission} /> : <span className="muted">-</span>}
-                        {nanoMissionTask && <div className="muted player-stats-task">{nanoMissionTask}</div>}
+                        {row.nanoMission ? <EntityLink entity={row.nanoMission} /> : <span className="muted">-</span>}
+                        {row.nanoMissionTask && <div className="muted player-stats-task">{row.nanoMissionTask}</div>}
                       </td>
                     )}
-                  </tr>
-                );
-              })}
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
