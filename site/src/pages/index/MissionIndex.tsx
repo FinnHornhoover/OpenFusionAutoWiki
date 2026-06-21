@@ -19,6 +19,15 @@ function missionTypeRank(t: string): number {
   return MISSION_TYPE_RANK.get(t) ?? MISSION_TYPE_TABS.length;
 }
 
+function parseCsvParam(value: string | null): Set<string> {
+  return new Set((value ?? '').split(',').map((v) => v.trim()).filter(Boolean));
+}
+
+function serializeCsvParam(values: Iterable<string>): string | null {
+  const sorted = [...values].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+  return sorted.length > 0 ? sorted.join(',') : null;
+}
+
 function tabFromParam(p: string | null): MissionTab {
   if (!p) return 'All';
   const lc = p.toLowerCase();
@@ -37,46 +46,104 @@ interface Props {
 export default function MissionIndex({ build, rows, loading }: Props) {
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = tabFromParam(searchParams.get('type'));
+  const activeLevels = useMemo(() => parseCsvParam(searchParams.get('levels')), [searchParams]);
+  const activeDifficulties = useMemo(() => parseCsvParam(searchParams.get('difficulty')), [searchParams]);
   const [q, setQ] = useState('');
   const [page, setPage] = useState(0);
   const showSkeleton = useDelayedFlag(loading);
 
+  const levelOptions = useMemo(() => {
+    return [...new Set(rows.map((r) => r.level).filter((level) => level > 0))].sort((a, b) => a - b);
+  }, [rows]);
+
+  const difficultyOptions = useMemo(() => {
+    return [...new Set(rows.map((r) => r.difficulty).filter(Boolean))].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+  }, [rows]);
+
   const counts = useMemo(() => {
     const acc: Record<MissionTab, number> = { All: 0, Normal: 0, Guide: 0, Nano: 0 };
     for (const r of rows) {
+      if (activeLevels.size > 0 && !activeLevels.has(String(r.level))) continue;
+      if (activeDifficulties.size > 0 && !activeDifficulties.has(r.difficulty)) continue;
       acc.All++;
       if ((MISSION_TYPE_TABS as readonly string[]).includes(r.type)) {
         acc[r.type as MissionTab]++;
       }
     }
     return acc;
-  }, [rows]);
+  }, [rows, activeDifficulties, activeLevels]);
+
+  const levelCounts = useMemo(() => {
+    const acc = new Map<number, number>();
+    for (const level of levelOptions) acc.set(level, 0);
+    for (const r of rows) {
+      if (activeTab !== 'All' && r.type !== activeTab) continue;
+      if (activeDifficulties.size > 0 && !activeDifficulties.has(r.difficulty)) continue;
+      if (r.level > 0) acc.set(r.level, (acc.get(r.level) ?? 0) + 1);
+    }
+    return acc;
+  }, [activeDifficulties, activeTab, levelOptions, rows]);
+
+  const difficultyCounts = useMemo(() => {
+    const acc = new Map<string, number>();
+    for (const difficulty of difficultyOptions) acc.set(difficulty, 0);
+    let all = 0;
+    for (const r of rows) {
+      if (activeTab !== 'All' && r.type !== activeTab) continue;
+      if (activeLevels.size > 0 && !activeLevels.has(String(r.level))) continue;
+      all++;
+      if (r.difficulty) acc.set(r.difficulty, (acc.get(r.difficulty) ?? 0) + 1);
+    }
+    return { all, byDifficulty: acc };
+  }, [activeLevels, activeTab, difficultyOptions, rows]);
 
   const filtered = useMemo(() => {
     const needle = q.trim().toLowerCase();
-    const byType = activeTab === 'All' ? rows : rows.filter((r) => r.type === activeTab);
-    const matched = needle ? byType.filter((r) => r.name.toLowerCase().includes(needle)) : byType;
-    return matched.slice().sort((a, b) => {
+    let pool = rows;
+    if (activeTab !== 'All') pool = pool.filter((r) => r.type === activeTab);
+    if (activeLevels.size > 0) pool = pool.filter((r) => activeLevels.has(String(r.level)));
+    if (activeDifficulties.size > 0) pool = pool.filter((r) => activeDifficulties.has(r.difficulty));
+    if (needle) pool = pool.filter((r) => r.name.toLowerCase().includes(needle));
+    return pool.slice().sort((a, b) => {
       if (a.level !== b.level) return a.level - b.level;
       const ra = missionTypeRank(a.type);
       const rb = missionTypeRank(b.type);
       if (ra !== rb) return ra - rb;
       return a.name.localeCompare(b.name);
     });
-  }, [rows, q, activeTab]);
+  }, [rows, q, activeTab, activeDifficulties, activeLevels]);
 
   const start = page * PAGE_SIZE;
   const pageRows = filtered.slice(start, start + PAGE_SIZE);
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
 
-  function selectTab(t: MissionTab) {
+  function updateParam(name: string, value: string | null) {
     setPage(0);
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev);
-      if (t === 'All') next.delete('type');
-      else next.set('type', t.toLowerCase());
+      if (value === null) next.delete(name);
+      else next.set(name, value);
       return next;
     });
+  }
+
+  function selectTab(t: MissionTab) {
+    updateParam('type', t === 'All' ? null : t.toLowerCase());
+  }
+
+  function toggleLevel(level: number) {
+    const next = new Set(activeLevels);
+    const value = String(level);
+    if (next.has(value)) next.delete(value);
+    else next.add(value);
+    updateParam('levels', serializeCsvParam(next));
+  }
+
+  function toggleDifficulty(difficulty: string) {
+    const next = new Set(activeDifficulties);
+    if (next.has(difficulty)) next.delete(difficulty);
+    else next.add(difficulty);
+    updateParam('difficulty', serializeCsvParam(next));
   }
 
   return (
@@ -97,6 +164,27 @@ export default function MissionIndex({ build, rows, loading }: Props) {
         ))}
       </nav>
 
+      <nav className="type-tabs" aria-label="Filter by mission difficulty">
+        <button
+          type="button"
+          className={'type-tab' + (activeDifficulties.size === 0 ? ' active' : '')}
+          onClick={() => updateParam('difficulty', null)}
+        >
+          All <span className="type-tab-count">({difficultyCounts.all.toLocaleString()})</span>
+        </button>
+        {difficultyOptions.map((difficulty) => (
+          <button
+            key={difficulty}
+            type="button"
+            className={'type-tab' + (activeDifficulties.has(difficulty) ? ' active' : '')}
+            onClick={() => toggleDifficulty(difficulty)}
+            disabled={(difficultyCounts.byDifficulty.get(difficulty) ?? 0) === 0}
+          >
+            {difficulty} <span className="type-tab-count">({(difficultyCounts.byDifficulty.get(difficulty) ?? 0).toLocaleString()})</span>
+          </button>
+        ))}
+      </nav>
+
       <div className="index-controls">
         <input
           type="search"
@@ -106,6 +194,27 @@ export default function MissionIndex({ build, rows, loading }: Props) {
           style={{ width: '100%', maxWidth: 360 }}
           aria-label="Filter missions"
         />
+        <details className="index-filter-dropdown">
+          <summary>
+            Level {activeLevels.size > 0 && <span className="type-tab-count">({activeLevels.size})</span>}
+          </summary>
+          <div className="index-filter-menu">
+            <button type="button" className="link-button" onClick={() => updateParam('levels', null)} disabled={activeLevels.size === 0}>Clear levels</button>
+            <div className="index-filter-options">
+              {levelOptions.map((level) => (
+                <label key={level} className="checkbox index-filter-option">
+                  <input
+                    type="checkbox"
+                    checked={activeLevels.has(String(level))}
+                    onChange={() => toggleLevel(level)}
+                    disabled={(levelCounts.get(level) ?? 0) === 0}
+                  />
+                  <span>Level {level} <span className="type-tab-count">({(levelCounts.get(level) ?? 0).toLocaleString()})</span></span>
+                </label>
+              ))}
+            </div>
+          </div>
+        </details>
       </div>
       {loading && showSkeleton && <EntityIndexSkeleton />}
       {!loading && filtered.length === 0 && <p className="muted">No matches.</p>}
