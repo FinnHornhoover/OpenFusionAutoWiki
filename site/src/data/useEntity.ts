@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { LruCache } from './lruCache';
 
 const CHUNK_SIZE = 250;
 
@@ -21,7 +22,7 @@ export function chunkFor(type: string, urlId: string): number {
   return Number.isFinite(n) ? Math.floor(n / CHUNK_SIZE) : -1;
 }
 
-const cache = new Map<string, Record<string, unknown>>();
+const cache = new LruCache<string, Record<string, unknown>>(96);
 const inflight = new Map<string, Promise<Record<string, unknown>>>();
 
 function chunkKey(slug: string, type: string, chunk: number): string {

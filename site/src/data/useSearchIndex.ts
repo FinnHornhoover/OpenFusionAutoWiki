@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { LruCache } from './lruCache';
 
 export interface SearchRow {
   type: 'missions' | 'npcs' | 'items' | 'codes' | 'monsters' | 'areas' | 'instances' | 'infected-zones' | 'nanos' | 'player-stats';
@@ -7,7 +8,7 @@ export interface SearchRow {
   icon: string;
 }
 
-const cache = new Map<string, SearchRow[]>();
+const cache = new LruCache<string, SearchRow[]>(6);
 const inflight = new Map<string, Promise<SearchRow[]>>();
 
 async function load(slug: string): Promise<SearchRow[]> {

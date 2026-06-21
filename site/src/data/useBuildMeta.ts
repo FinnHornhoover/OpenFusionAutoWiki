@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
+import { LruCache } from './lruCache';
 import type { BuildMeta } from './types';
 
-const cache = new Map<string, BuildMeta>();
+const cache = new LruCache<string, BuildMeta>(24);
 const inflight = new Map<string, Promise<BuildMeta>>();
 
 async function load(slug: string): Promise<BuildMeta> {

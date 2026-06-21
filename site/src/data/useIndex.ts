@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
+import { LruCache } from './lruCache';
 
-const cache = new Map<string, unknown[]>();
+const cache = new LruCache<string, unknown[]>(24);
 const inflight = new Map<string, Promise<unknown[]>>();
 
 function key(slug: string, type: string): string {
