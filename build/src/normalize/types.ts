@@ -844,7 +844,9 @@ export interface PlayerStatsRow {
   fmLimit: number;
   nextLevelFMCost: number;
   nanoPowerChangeFMCost: number;
-  nextNano: Ref | null;
+  nanosUnlocked?: Ref[];
+  /** Compatibility with stale generated player-stats indexes before build:data is rerun. */
+  nextNano?: Ref | null;
   nanoMission: Ref | null;
   nanoMissionTaskId: number;
   nanoMissionTask: string;

@@ -2,7 +2,7 @@ import { Link, useParams } from 'react-router-dom';
 
 import EntityLink from '../components/EntityLink';
 import ErrorState from '../components/ErrorState';
-import type { PlayerStatsRow } from '../data/types';
+import type { PlayerStatsRow, Ref } from '../data/types';
 import { useBuildEntry } from '../data/useBuildEntry';
 import { useBuildMeta } from '../data/useBuildMeta';
 import { useDocumentTitle } from '../data/useDocumentTitle';
@@ -12,6 +12,10 @@ function isAcademyLikeBuild(entry: { date: string } | null): boolean {
   return Boolean(entry?.date && entry.date >= '2011-02-13');
 }
 
+function unlockedNanos(row: PlayerStatsRow): Ref[] {
+  return row.nanosUnlocked ?? (row.nextNano ? [row.nextNano] : []);
+}
+
 export default function PlayerStats() {
   const { build } = useParams();
   const entry = useBuildEntry(build);
@@ -19,7 +23,7 @@ export default function PlayerStats() {
   const supported = meta?.builtTypes?.includes('player-stats') ?? false;
   const { rows, loading, error } = useIndex<PlayerStatsRow>(supported ? build : undefined, supported ? 'player-stats' : undefined);
   const buildLabel = entry ? entry.displayName : build;
-  const showNanoColumns = !isAcademyLikeBuild(entry);
+  const showAssignedMissionColumn = !isAcademyLikeBuild(entry);
   useDocumentTitle(('Player Stats · ' + (buildLabel ?? '')).trim());
 
   return (
@@ -41,33 +45,42 @@ export default function PlayerStats() {
                 <th>FM limit</th>
                 <th>Level<br />up FM</th>
                 <th>Power<br />change FM</th>
-                {showNanoColumns && <th>Nano unlock</th>}
-                {showNanoColumns && <th>Nano mission</th>}
+                <th>Nanos unlocked</th>
+                {showAssignedMissionColumn && <th>Assigned mission</th>}
               </tr>
             </thead>
             <tbody>
-              {rows.map((row) => (
+              {rows.map((row) => {
+                const nanosUnlocked = unlockedNanos(row);
+                return (
                 <tr key={row.level}>
-                    <td><code>{row.level}</code></td>
-                    <td>{row.hp.toLocaleString()}</td>
-                    <td>{row.defense.toLocaleString()}</td>
-                    <td>{row.punchDamage.toLocaleString()}</td>
-                    <td>{row.fmLimit.toLocaleString()}</td>
-                    <td>{row.nextLevelFMCost.toLocaleString()}</td>
-                    <td>{row.nanoPowerChangeFMCost.toLocaleString()}</td>
-                    {showNanoColumns && (
-                      <td>
-                        {row.nextNano ? <EntityLink entity={row.nextNano} /> : <span className="muted">-</span>}
-                      </td>
-                    )}
-                    {showNanoColumns && (
+                  <td><code>{row.level}</code></td>
+                  <td>{row.hp.toLocaleString()}</td>
+                  <td>{row.defense.toLocaleString()}</td>
+                  <td>{row.punchDamage.toLocaleString()}</td>
+                  <td>{row.fmLimit.toLocaleString()}</td>
+                  <td>{row.nextLevelFMCost.toLocaleString()}</td>
+                  <td>{row.nanoPowerChangeFMCost.toLocaleString()}</td>
+                  <td>
+                      {nanosUnlocked.length > 0 ? (
+                        <ul className="player-stats-nano-list">
+                          {nanosUnlocked.map((nano) => (
+                            <li key={nano.id}>
+                              <EntityLink entity={nano} />
+                            </li>
+                          ))}
+                        </ul>
+                      ) : <span className="muted">-</span>}
+                    </td>
+                  {showAssignedMissionColumn && (
                       <td>
                         {row.nanoMission ? <EntityLink entity={row.nanoMission} /> : <span className="muted">-</span>}
                         {row.nanoMissionTask && <div className="muted player-stats-task">{row.nanoMissionTask}</div>}
                       </td>
                     )}
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </div>
