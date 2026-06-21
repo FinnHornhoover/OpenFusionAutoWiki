@@ -122,13 +122,11 @@ export default function MobIndex({ build, rows, loading }: Props) {
                 <th>Level</th>
                 <th>HP</th>
                 <th>Type</th>
-                <th>Spawns</th>
-                <th>Status</th>
               </tr>
             </thead>
             <tbody>
               {pageRows.map((r) => (
-                <tr key={r.id}>
+                <tr key={r.id} className={r.inGame ? undefined : 'entity-index-row-muted'}>
                   <td>
                     <div className="entity-index-name">
                       {r.icon
@@ -140,8 +138,6 @@ export default function MobIndex({ build, rows, loading }: Props) {
                   <td>{r.level > 0 ? r.level : <span className="muted">—</span>}</td>
                   <td>{r.standardHP > 0 ? r.standardHP.toLocaleString() : <span className="muted">—</span>}</td>
                   <td>{r.colorType || <span className="muted">—</span>}</td>
-                  <td>{r.instanceCount > 0 ? r.instanceCount.toLocaleString() : <span className="muted">—</span>}</td>
-                  <td>{r.inGame ? 'In game' : 'Cut'}</td>
                 </tr>
               ))}
             </tbody>

@@ -63,21 +63,15 @@ export default function InstanceIndex({ build, rows, loading }: Props) {
               <tr>
                 <th>ID</th>
                 <th>Instance</th>
-                <th>Entry warps</th>
-                <th>Exit warps</th>
                 <th>Infected zone</th>
-                <th>Status</th>
               </tr>
             </thead>
             <tbody>
               {pageRows.map((r) => (
-                <tr key={r.id}>
+                <tr key={r.id} className={r.inGame ? undefined : 'entity-index-row-muted'}>
                   <td><code className="entity-index-id-code">{r.id}</code></td>
                   <td><Link className="entity-index-link" to={`/${build}/instances/${r.id}`}>{r.name}</Link></td>
-                  <td>{r.entryWarpCount.toLocaleString()}</td>
-                  <td>{r.exitWarpCount.toLocaleString()}</td>
                   <td>{r.infectedZone ? <EntityLink entity={r.infectedZone} iconSize={64} /> : <span className="muted">-</span>}</td>
-                  <td>{r.inGame ? 'In game' : 'Out of game'}</td>
                 </tr>
               ))}
             </tbody>
