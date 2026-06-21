@@ -40,11 +40,10 @@ export default function PlayerStats() {
               <tr>
                 <th>Level</th>
                 <th>HP</th>
-                <th>Defense</th>
-                <th>Damage</th>
-                <th>FM limit</th>
+                <th>ATK<br />DEF</th>
+                <th>FM<br />limit</th>
                 <th>Level<br />up FM</th>
-                <th>Power<br />change FM</th>
+                <th>Power<br />change<br />FM</th>
                 <th>Nanos unlocked</th>
                 {showAssignedMissionColumn && <th>Assigned mission</th>}
               </tr>
@@ -57,7 +56,6 @@ export default function PlayerStats() {
                   <td><code>{row.level}</code></td>
                   <td>{row.hp.toLocaleString()}</td>
                   <td>{row.defense.toLocaleString()}</td>
-                  <td>{row.punchDamage.toLocaleString()}</td>
                   <td>{row.fmLimit.toLocaleString()}</td>
                   <td>{row.nextLevelFMCost.toLocaleString()}</td>
                   <td>{row.nanoPowerChangeFMCost.toLocaleString()}</td>
