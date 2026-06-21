@@ -357,6 +357,8 @@ input:focus {
 
 /* Dropdowns (details/summary) */
 details.dropdown {
+  min-width: 100%;
+  width: max-content;
   background: var(--color-bg-elevated);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
@@ -377,7 +379,14 @@ details.dropdown > summary::before {
 }
 details.dropdown[open] > summary::before { transform: rotate(90deg); }
 details.dropdown > .dropdown-body {
+  min-width: 100%;
+  width: max-content;
   padding: 0 var(--space-4) var(--space-4);
+}
+.dropdown-body > .location-table,
+.dropdown-body > table {
+  width: max-content;
+  min-width: 100%;
 }
 
 /* Minimap viewport */
@@ -1212,6 +1221,13 @@ details.dropdown > .dropdown-body {
   cursor: pointer;
 }
 .checkbox input { cursor: pointer; }
+
+.type-tabs + .type-tabs,
+.type-tabs + .index-controls,
+.index-controls + .type-tabs {
+  border-top: 1px solid var(--color-border);
+  padding-top: var(--space-3);
+}
 
 /* Type tabs (entity index) */
 .type-tabs {
