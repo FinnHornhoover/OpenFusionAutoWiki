@@ -86,14 +86,16 @@ export default function NanoIndex({ build, rows, loading }: Props) {
         ))}
       </nav>
 
-      <input
-        type="search"
-        placeholder="Filter by name…"
-        value={q}
-        onChange={(e) => { setQ(e.target.value); setPage(0); }}
-        style={{ width: '100%', maxWidth: 360, marginBottom: 'var(--space-4)' }}
-        aria-label="Filter nanos"
-      />
+      <div className="index-controls">
+        <input
+          type="search"
+          placeholder="Filter by name…"
+          value={q}
+          onChange={(e) => { setQ(e.target.value); setPage(0); }}
+          style={{ width: '100%', maxWidth: 360 }}
+          aria-label="Filter nanos"
+        />
+      </div>
 
       {loading && showSkeleton && <EntityIndexSkeleton />}
       {!loading && filtered.length === 0 && <p className="muted">No matches.</p>}
