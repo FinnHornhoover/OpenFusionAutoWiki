@@ -2,18 +2,20 @@ import { type CSSProperties, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom';
 import ErrorState from '../components/ErrorState';
 import { MINIMAP_PX, worldToPx } from '../data/minimapCoords';
-import { buildWorldMapMarkers, buildWorldTransportRoutes, MAP_MARKER_KIND_LABELS, MAP_MARKER_KINDS, type MapMarkerKind } from '../data/mapMarkers';
+import { buildWorldMapMarkers, buildWorldTransportRoutes, MAP_MARKER_KIND_LABELS, MAP_MARKER_KINDS, type MapMarker, type MapMarkerKind } from '../data/mapMarkers';
 import type { Area } from '../data/types';
 import { buildPageTitle, useBuildEntry } from '../data/useBuildEntry';
 import { useDocumentTitle } from '../data/useDocumentTitle';
 
 const WORLD_MARKER_SCREEN_SIZE = 32;
+const WORLD_MARKER_CULL_BUFFER = WORLD_MARKER_SCREEN_SIZE * 2;
 const WORLD_ROUTE_SCREEN_WIDTH = 2;
 const WORLD_ROUTE_ACTIVE_SCREEN_WIDTH = 4;
 const MIN_WORLD_MAP_ZOOM = 1.5;
 const MAX_WORLD_MAP_ZOOM = 24;
 
 type VisibleMarkerKinds = Record<MapMarkerKind, boolean>;
+type RenderedWorldMarker = MapMarker & { px: number; py: number };
 
 function defaultVisibleMarkerKinds(): VisibleMarkerKinds {
   return Object.fromEntries(MAP_MARKER_KINDS.map((kind) => [kind, kind !== 'monster'])) as VisibleMarkerKinds;
@@ -69,6 +71,7 @@ export default function WorldMap() {
   const { areas, loading, error } = useAreas(build);
   const [offset, setOffset] = useState({ x: -520, y: -520 });
   const [zoom, setZoom] = useState(MIN_WORLD_MAP_ZOOM);
+  const [viewportSize, setViewportSize] = useState({ width: 0, height: 0 });
   const [hoverRoutes, setHoverRoutes] = useState<string[]>([]);
   const [visibleKinds, setVisibleKinds] = useState<VisibleMarkerKinds>(() => defaultVisibleMarkerKinds());
   const viewportRef = useRef<HTMLDivElement | null>(null);
@@ -77,7 +80,25 @@ export default function WorldMap() {
   useDocumentTitle(entry ? `World Map · ${buildPageTitle(entry)}` : build ? `World Map · ${build}` : null);
 
   const markers = useMemo(() => build && areas.length > 0 ? buildWorldMapMarkers(areas, build) : [], [areas, build]);
-  const visibleMarkers = useMemo(() => markers.filter((marker) => visibleKinds[marker.kind]), [markers, visibleKinds]);
+  const visibleMarkers = useMemo<RenderedWorldMarker[]>(() => {
+    if (viewportSize.width <= 0 || viewportSize.height <= 0) return [];
+
+    const buffer = WORLD_MARKER_CULL_BUFFER / zoom;
+    const left = -offset.x / zoom - buffer;
+    const top = -offset.y / zoom - buffer;
+    const right = (viewportSize.width - offset.x) / zoom + buffer;
+    const bottom = (viewportSize.height - offset.y) / zoom + buffer;
+    const rendered: RenderedWorldMarker[] = [];
+
+    for (const marker of markers) {
+      if (!visibleKinds[marker.kind]) continue;
+      const pos = worldToPx(marker.x, marker.y);
+      if (pos.px < left || pos.px > right || pos.py < top || pos.py > bottom) continue;
+      rendered.push({ ...marker, px: pos.px, py: pos.py });
+    }
+
+    return rendered;
+  }, [markers, offset.x, offset.y, viewportSize.height, viewportSize.width, visibleKinds, zoom]);
   const routes = useMemo(() => visibleKinds.transport ? buildWorldTransportRoutes(areas) : [], [areas, visibleKinds.transport]);
   const markerScale = 1 / zoom;
 
@@ -87,6 +108,7 @@ export default function WorldMap() {
     const applyZoom = () => {
       const rect = viewport.getBoundingClientRect();
       const nextZoom = MIN_WORLD_MAP_ZOOM;
+      setViewportSize({ width: rect.width, height: rect.height });
       setZoom(nextZoom);
       setOffset({
         x: rect.width / 2 - (MINIMAP_PX / 2) * nextZoom,
@@ -184,13 +206,12 @@ export default function WorldMap() {
               ))}
             </svg>
             {visibleMarkers.map((marker) => {
-              const pos = worldToPx(marker.x, marker.y);
               return (
                 <a
                   key={marker.id}
                   href={marker.to}
                   className={`world-map-marker world-map-marker-${marker.kind}`}
-                  style={{ left: pos.px, top: pos.py, width: WORLD_MARKER_SCREEN_SIZE, height: WORLD_MARKER_SCREEN_SIZE, '--world-marker-scale': markerScale } as CSSProperties}
+                  style={{ left: marker.px, top: marker.py, width: WORLD_MARKER_SCREEN_SIZE, height: WORLD_MARKER_SCREEN_SIZE, '--world-marker-scale': markerScale } as CSSProperties}
                   aria-label={marker.label}
                   onMouseEnter={() => setHoverRoutes(marker.routeKeys ?? (marker.routeKey ? [marker.routeKey] : []))}
                   onMouseLeave={() => setHoverRoutes([])}
