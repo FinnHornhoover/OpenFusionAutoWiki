@@ -16,7 +16,7 @@ const MAX_WORLD_MAP_ZOOM = 24;
 type VisibleMarkerKinds = Record<MapMarkerKind, boolean>;
 
 function defaultVisibleMarkerKinds(): VisibleMarkerKinds {
-  return Object.fromEntries(MAP_MARKER_KINDS.map((kind) => [kind, true])) as VisibleMarkerKinds;
+  return Object.fromEntries(MAP_MARKER_KINDS.map((kind) => [kind, kind !== 'monster'])) as VisibleMarkerKinds;
 }
 
 const ROUTE_CLASS: Record<string, string> = {

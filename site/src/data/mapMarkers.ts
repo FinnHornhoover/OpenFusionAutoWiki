@@ -1,10 +1,11 @@
 import type { Area, AreaTransport, Ref } from './types';
 
-export type MapMarkerKind = 'npc' | 'vendor' | 'egg' | 'transport' | 'instance-warp';
+export type MapMarkerKind = 'npc' | 'vendor' | 'monster' | 'egg' | 'transport' | 'instance-warp';
 
 export const MAP_MARKER_KIND_LABELS: Record<MapMarkerKind, string> = {
   npc: 'NPCs',
   vendor: 'Vendors',
+  monster: 'Monsters',
   egg: 'Eggs',
   transport: 'Transport',
   'instance-warp': 'Instance warps',
@@ -96,6 +97,21 @@ export function buildAreaMapMarkers(area: Area, build: string): MapMarker[] {
         y: point.y,
         icon: n.mapIcon,
         to: refPath(build, n.ref),
+      });
+    });
+  }
+
+  for (const mob of area.mobs) {
+    const points = mob.points.length > 0 ? mob.points : [{ x: mob.x, y: mob.y }];
+    points.forEach((point, pointIndex) => {
+      markers.push({
+        id: `monster-${mob.ref.id}-${pointIndex}`,
+        kind: 'monster',
+        label: mob.ref.name,
+        x: point.x,
+        y: point.y,
+        icon: mob.mapIcon,
+        to: refPath(build, mob.ref),
       });
     });
   }
