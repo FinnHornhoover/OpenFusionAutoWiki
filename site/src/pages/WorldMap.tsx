@@ -2,7 +2,7 @@ import { type CSSProperties, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom';
 import ErrorState from '../components/ErrorState';
 import { MINIMAP_PX, worldToPx } from '../data/minimapCoords';
-import { buildWorldMapMarkers, buildWorldTransportRoutes } from '../data/mapMarkers';
+import { buildWorldMapMarkers, buildWorldTransportRoutes, MAP_MARKER_KIND_LABELS, MAP_MARKER_KINDS, type MapMarkerKind } from '../data/mapMarkers';
 import type { Area } from '../data/types';
 import { buildPageTitle, useBuildEntry } from '../data/useBuildEntry';
 import { useDocumentTitle } from '../data/useDocumentTitle';
@@ -12,6 +12,12 @@ const WORLD_ROUTE_SCREEN_WIDTH = 2;
 const WORLD_ROUTE_ACTIVE_SCREEN_WIDTH = 4;
 const MIN_WORLD_MAP_ZOOM = 1.5;
 const MAX_WORLD_MAP_ZOOM = 24;
+
+type VisibleMarkerKinds = Record<MapMarkerKind, boolean>;
+
+function defaultVisibleMarkerKinds(): VisibleMarkerKinds {
+  return Object.fromEntries(MAP_MARKER_KINDS.map((kind) => [kind, true])) as VisibleMarkerKinds;
+}
 
 const ROUTE_CLASS: Record<string, string> = {
   monkeyskyway: 'monkey-skyway',
@@ -64,13 +70,15 @@ export default function WorldMap() {
   const [offset, setOffset] = useState({ x: -520, y: -520 });
   const [zoom, setZoom] = useState(MIN_WORLD_MAP_ZOOM);
   const [hoverRoutes, setHoverRoutes] = useState<string[]>([]);
+  const [visibleKinds, setVisibleKinds] = useState<VisibleMarkerKinds>(() => defaultVisibleMarkerKinds());
   const viewportRef = useRef<HTMLDivElement | null>(null);
   const drag = useRef<{ pointerId: number; startX: number; startY: number; originX: number; originY: number } | null>(null);
 
   useDocumentTitle(entry ? `World Map · ${buildPageTitle(entry)}` : build ? `World Map · ${build}` : null);
 
   const markers = useMemo(() => build && areas.length > 0 ? buildWorldMapMarkers(areas, build) : [], [areas, build]);
-  const routes = useMemo(() => buildWorldTransportRoutes(areas), [areas]);
+  const visibleMarkers = useMemo(() => markers.filter((marker) => visibleKinds[marker.kind]), [markers, visibleKinds]);
+  const routes = useMemo(() => visibleKinds.transport ? buildWorldTransportRoutes(areas) : [], [areas, visibleKinds.transport]);
   const markerScale = 1 / zoom;
 
   useEffect(() => {
@@ -91,6 +99,11 @@ export default function WorldMap() {
     return () => observer.disconnect();
   }, []);
 
+  function toggleMarkerKind(kind: MapMarkerKind) {
+    setVisibleKinds((prev) => ({ ...prev, [kind]: !prev[kind] }));
+    if (kind === 'transport' && visibleKinds.transport) setHoverRoutes([]);
+  }
+
   if (!build) return null;
 
   return (
@@ -100,6 +113,21 @@ export default function WorldMap() {
       </p>
       <h1>World Map</h1>
       {error && <ErrorState title="Couldn't load the map" message="Area data failed to load." detail={error} />}
+      {!error && (
+        <div className="map-marker-toggles" aria-label="Map marker filters">
+          {MAP_MARKER_KINDS.map((kind) => (
+            <button
+              key={kind}
+              type="button"
+              className={'type-tab' + (visibleKinds[kind] ? ' active' : '')}
+              aria-pressed={visibleKinds[kind]}
+              onClick={() => toggleMarkerKind(kind)}
+            >
+              {MAP_MARKER_KIND_LABELS[kind]}
+            </button>
+          ))}
+        </div>
+      )}
       {loading && <p className="muted">Loading map...</p>}
       {!error && (
         <div
@@ -155,7 +183,7 @@ export default function WorldMap() {
                 />
               ))}
             </svg>
-            {markers.map((marker) => {
+            {visibleMarkers.map((marker) => {
               const pos = worldToPx(marker.x, marker.y);
               return (
                 <a
