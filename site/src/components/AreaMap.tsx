@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { gameToPxExtent, MINIMAP_PX, worldToPx } from '../data/minimapCoords';
 import type { Area } from '../data/types';
-import { buildAreaMapMarkers } from '../data/mapMarkers';
+import { buildAreaMapMarkers, MAP_MARKER_KIND_LABELS, MAP_MARKER_KINDS, type MapMarkerKind } from '../data/mapMarkers';
 
 interface AreaMapProps {
   area: Area;
@@ -11,6 +11,12 @@ interface AreaMapProps {
 
 const MIN_AREA_MAP_ZOOM = 1;
 const MAX_AREA_MAP_ZOOM = 12;
+
+type VisibleMarkerKinds = Record<MapMarkerKind, boolean>;
+
+function defaultVisibleMarkerKinds(): VisibleMarkerKinds {
+  return Object.fromEntries(MAP_MARKER_KINDS.map((kind) => [kind, true])) as VisibleMarkerKinds;
+}
 
 function clampZoom(value: number): number {
   return Math.min(MAX_AREA_MAP_ZOOM, Math.max(MIN_AREA_MAP_ZOOM, value));
@@ -22,6 +28,8 @@ export default function AreaMap({ area, build, size = 960 }: AreaMapProps) {
   const extentPx = gameToPxExtent(extent);
   const [zoom, setZoom] = useState(MIN_AREA_MAP_ZOOM);
   const [viewBox, setViewBox] = useState({ x: 0, y: 0, width: size, height: size });
+  const [visibleKinds, setVisibleKinds] = useState<VisibleMarkerKinds>(() => defaultVisibleMarkerKinds());
+  const [renderedWidth, setRenderedWidth] = useState(size);
   const mapRef = useRef<SVGSVGElement | null>(null);
   const drag = useRef<{ pointerId: number; startX: number; startY: number; originX: number; originY: number; width: number; height: number } | null>(null);
 
@@ -58,17 +66,54 @@ export default function AreaMap({ area, build, size = 960 }: AreaMapProps) {
     return () => map.removeEventListener('wheel', handleWheel);
   }, [handleWheel]);
 
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const updateSize = () => {
+      const width = map.getBoundingClientRect().width;
+      setRenderedWidth(width > 0 ? width : size);
+    };
+    updateSize();
+    const observer = new ResizeObserver(updateSize);
+    observer.observe(map);
+    return () => observer.disconnect();
+  }, [size]);
+
+  const markers = useMemo(() => buildAreaMapMarkers(area, build), [area, build]);
+  const visibleMarkers = useMemo(() => markers.filter((marker) => visibleKinds[marker.kind]), [markers, visibleKinds]);
+
   if (extentPx <= 0) return null;
 
   const scale = size / (2 * extentPx);
   const imageSize = MINIMAP_PX * scale;
   const imageX = -(center.px * scale - size / 2);
   const imageY = -(center.py * scale - size / 2);
-  const markers = buildAreaMapMarkers(area, build);
-  const markerSize = 30 / zoom;
+  const screenUnit = viewBox.width / Math.max(1, renderedWidth);
+  const markerSize = 30 * screenUnit;
+  const tooltipOffset = 8 * screenUnit;
+  const tooltipFontSize = 15 * screenUnit;
+  const tooltipStrokeWidth = 5 * screenUnit;
+
+  function toggleMarkerKind(kind: MapMarkerKind) {
+    setVisibleKinds((prev) => ({ ...prev, [kind]: !prev[kind] }));
+  }
 
   return (
-    <svg
+    <div className="map-panel">
+      <div className="map-marker-toggles" aria-label="Map marker filters">
+        {MAP_MARKER_KINDS.map((kind) => (
+          <button
+            key={kind}
+            type="button"
+            className={'type-tab' + (visibleKinds[kind] ? ' active' : '')}
+            aria-pressed={visibleKinds[kind]}
+            onClick={() => toggleMarkerKind(kind)}
+          >
+            {MAP_MARKER_KIND_LABELS[kind]}
+          </button>
+        ))}
+      </div>
+      <svg
       ref={mapRef}
       className="area-map-overlay"
       viewBox={`${viewBox.x} ${viewBox.y} ${viewBox.width} ${viewBox.height}`}
@@ -104,7 +149,7 @@ export default function AreaMap({ area, build, size = 960 }: AreaMapProps) {
       onPointerCancel={() => { drag.current = null; }}
     >
       <image href="/minimap/all.png" x={imageX} y={imageY} width={imageSize} height={imageSize} className="map-base-image" />
-      {markers.map((marker) => {
+      {visibleMarkers.map((marker) => {
         const pos = worldToPx(marker.x, marker.y);
         const left = size / 2 + (pos.px - center.px) * scale;
         const top = size / 2 + (pos.py - center.py) * scale;
@@ -121,15 +166,16 @@ export default function AreaMap({ area, build, size = 960 }: AreaMapProps) {
             <text
               className="area-map-marker-tooltip"
               x={left}
-              y={top - markerSize / 2 - 8 / zoom}
+              y={top - markerSize / 2 - tooltipOffset}
               textAnchor="middle"
-              style={{ fontSize: `${15 / zoom}px`, strokeWidth: `${5 / zoom}px` }}
+              style={{ fontSize: tooltipFontSize, strokeWidth: tooltipStrokeWidth }}
             >
               {marker.label}
             </text>
           </a>
         );
       })}
-    </svg>
+      </svg>
+    </div>
   );
 }

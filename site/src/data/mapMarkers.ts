@@ -2,6 +2,16 @@ import type { Area, AreaTransport, Ref } from './types';
 
 export type MapMarkerKind = 'npc' | 'vendor' | 'egg' | 'transport' | 'instance-warp';
 
+export const MAP_MARKER_KIND_LABELS: Record<MapMarkerKind, string> = {
+  npc: 'NPCs',
+  vendor: 'Vendors',
+  egg: 'Eggs',
+  transport: 'Transport',
+  'instance-warp': 'Instance warps',
+};
+
+export const MAP_MARKER_KINDS = Object.keys(MAP_MARKER_KIND_LABELS) as MapMarkerKind[];
+
 export interface MapMarker {
   id: string;
   kind: MapMarkerKind;
@@ -48,6 +58,16 @@ export function transportIcon(moveType: string): string {
 
 export function warpIcon(npcName = ''): string {
   return npcName.includes('Bank') ? '/minimap/mapicons/bank_npc.png' : '/minimap/mapicons/warp_npc.png';
+}
+
+function warpLabel(npcName: string, instanceName: string): string {
+  const npc = npcName.trim();
+  const instance = instanceName.trim();
+  if (!npc) return instance;
+  const normalizedNpc = npc.toLowerCase();
+  const normalizedInstance = instance.toLowerCase();
+  if (!instance || normalizedInstance === normalizedNpc || normalizedInstance === 'unknown warp (please fill in)') return npc;
+  return npc + ': ' + instance;
 }
 
 export function missionWaypointIcon(taskType: string, hasNpc: boolean): string {
@@ -130,7 +150,7 @@ export function buildAreaMapMarkers(area: Area, build: string): MapMarker[] {
     markers.push({
       id: `instance-warp-${w.id}-${i}`,
       kind: 'instance-warp',
-      label: npcName ? `${npcName}: ${w.instance.name}` : w.instance.name,
+      label: warpLabel(npcName, w.instance.name),
       x: w.entryLocation.x,
       y: w.entryLocation.y,
       icon: warpIcon(npcName),
