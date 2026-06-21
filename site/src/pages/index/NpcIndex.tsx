@@ -109,11 +109,6 @@ function npcRouteId(r: NpcIndexEntry, hideOutOfGame: boolean): string | number {
   return members.length === 1 ? members[0].id : r.id;
 }
 
-function npcStatusLabel(r: NpcIndexEntry, hideOutOfGame: boolean): string {
-  const status = npcStatus(r, hideOutOfGame);
-  return status === 'mixed' ? 'Mixed' : status === 'in-game' ? 'In game' : 'Out of game';
-}
-
 function tabFromParam(p: string | null): NpcTab {
   if (!p) return 'All';
   const lc = p.toLowerCase();
@@ -233,12 +228,11 @@ export default function NpcIndex({ build, rows, loading }: Props) {
                 <th>ID</th>
                 <th>NPC</th>
                 <th>Category</th>
-                <th>Status</th>
               </tr>
             </thead>
             <tbody>
               {pageRows.map((r) => (
-                <tr key={r.id}>
+                <tr key={r.id} className={npcStatus(r, hideOutOfGame) === 'in-game' ? undefined : 'entity-index-row-muted'}>
                   <td>{npcVisibleIdCount(r, hideOutOfGame) === 1 ? <code className="entity-index-id-code">{npcRouteId(r, hideOutOfGame)}</code> : <em>{npcVisibleIdCount(r, hideOutOfGame).toLocaleString()} IDs</em>}</td>
                   <td>
                     <div className="entity-index-name">
@@ -249,7 +243,6 @@ export default function NpcIndex({ build, rows, loading }: Props) {
                     </div>
                   </td>
                   <td>{npcCategory(r, hideOutOfGame) || <span className="muted">—</span>}</td>
-                  <td>{npcStatusLabel(r, hideOutOfGame)}</td>
                 </tr>
               ))}
             </tbody>

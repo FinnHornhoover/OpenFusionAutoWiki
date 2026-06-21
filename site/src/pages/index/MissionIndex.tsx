@@ -118,7 +118,6 @@ export default function MissionIndex({ build, rows, loading }: Props) {
                 <th>Level</th>
                 <th>Difficulty</th>
                 <th>Type</th>
-                <th>Giver</th>
               </tr>
             </thead>
             <tbody>
@@ -135,7 +134,6 @@ export default function MissionIndex({ build, rows, loading }: Props) {
                   <td>{r.level > 0 ? r.level : <span className="muted">—</span>}</td>
                   <td>{r.difficulty || <span className="muted">—</span>}</td>
                   <td>{r.type || <span className="muted">—</span>}</td>
-                  <td>{r.displayNPC?.name || <span className="muted">—</span>}</td>
                 </tr>
               ))}
             </tbody>

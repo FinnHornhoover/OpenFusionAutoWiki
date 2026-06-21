@@ -99,10 +99,6 @@ export default function AreaIndex({ build, rows, loading }: Props) {
             <thead>
               <tr>
                 <th>Area</th>
-                <th>Zone</th>
-                <th>NPCs</th>
-                <th>Monsters</th>
-                <th>Missions</th>
               </tr>
             </thead>
             <tbody>
@@ -123,13 +119,9 @@ export default function AreaIndex({ build, rows, loading }: Props) {
                           />
                         </Link>
                       )}
-                      <Link className="area-index-link" to={`/${build}/areas/${r.id}`}>{r.name}</Link>
+                      <Link className="area-index-link" to={`/${build}/areas/${r.id}`}>{r.zoneName ? r.name + " - " + r.zoneName : r.name}</Link>
                     </div>
                   </td>
-                  <td>{r.zoneName || <span className="muted">—</span>}</td>
-                  <td>{r.npcCount.toLocaleString()}</td>
-                  <td>{r.mobCount.toLocaleString()}</td>
-                  <td>{r.missionCount.toLocaleString()}</td>
                 </tr>
               ))}
             </tbody>

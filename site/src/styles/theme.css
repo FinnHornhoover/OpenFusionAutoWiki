@@ -1274,6 +1274,15 @@ details.dropdown > .dropdown-body {
   border-bottom: 1px solid var(--color-border);
 }
 .entity-index-row:hover { background: var(--color-bg-elevated); }
+.entity-index-row-muted,
+.location-table tr.entity-index-row-muted {
+  color: var(--color-text-muted);
+  background: var(--color-bg-subtle);
+}
+.entity-index-row-muted .entity-index-link,
+.location-table tr.entity-index-row-muted .entity-index-link {
+  color: var(--color-text-muted);
+}
 .entity-index-main { flex: 1; }
 
 .pager {
