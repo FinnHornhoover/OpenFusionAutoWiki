@@ -15,7 +15,7 @@ const MAX_AREA_MAP_ZOOM = 12;
 type VisibleMarkerKinds = Record<MapMarkerKind, boolean>;
 
 function defaultVisibleMarkerKinds(): VisibleMarkerKinds {
-  return Object.fromEntries(MAP_MARKER_KINDS.map((kind) => [kind, true])) as VisibleMarkerKinds;
+  return Object.fromEntries(MAP_MARKER_KINDS.map((kind) => [kind, kind !== 'monster'])) as VisibleMarkerKinds;
 }
 
 function clampZoom(value: number): number {
