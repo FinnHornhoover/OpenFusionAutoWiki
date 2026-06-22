@@ -422,6 +422,8 @@ function indexEntry(item: Item): ItemIndexEntry {
     name: item.name,
     icon: item.icon,
     type: item.type,
+    displayType: item.displayType,
+    weaponType: item.weaponType,
     rarity: item.rarity,
     gender: item.gender,
     contentLevel: item.contentLevel,
