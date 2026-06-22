@@ -1182,6 +1182,10 @@ details.dropdown > .dropdown-body {
   display: block;
   margin: 0 0 var(--space-1);
 }
+.monster-drop-meta {
+  display: flex;
+  margin-top: var(--space-1);
+}
 .location-list > li {
   display: flex;
   flex-direction: column;

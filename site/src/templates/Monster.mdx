@@ -99,15 +99,40 @@ import { formatDurationSeconds } from '../data/formatTime';
 {props.data.drops.length > 0 && (
   <Dropdown summary={`Drops ${props.data.drops.length} item entr${props.data.drops.length === 1 ? 'y' : 'ies'}`} open={props.data.drops.length <= 20}>
     <ul className="ref-list">
-      {props.data.drops.map((d, i) => (
-        <li key={`${d.item.id}-${i}`}>
-          <EntityLink entity={d.item} />
-          <InlineMeta leading>
-            {d.areaZone && <span>{d.areaZone}</span>}
-            <DropChance data={d} leadingSeparator={false} />
-          </InlineMeta>
-        </li>
-      ))}
+      {(() => {
+        const dropsByItem = new Map();
+        for (const d of props.data.drops) {
+          const list = dropsByItem.get(d.item.id);
+          if (list) list.push(d);
+          else dropsByItem.set(d.item.id, [d]);
+        }
+        const areaSpecificOdds = new Set();
+        for (const [itemId, list] of dropsByItem) {
+          const areas = new Set(list.map((d) => d.areaZone || ''));
+          const odds = new Set(list.map((d) => [d.boyOdds, d.girlOdds, d.boyProbability, d.girlProbability].join('|')));
+          if (areas.size > 1 && odds.size > 1) areaSpecificOdds.add(itemId);
+        }
+        const visibleDrops = [];
+        const seenVisibleDrop = new Set();
+        for (const d of props.data.drops) {
+          const showArea = areaSpecificOdds.has(d.item.id);
+          const visibleKey = showArea
+            ? [d.item.id, d.areaZone, d.boyOdds, d.girlOdds, d.boyProbability, d.girlProbability].join('|')
+            : [d.item.id, d.boyOdds, d.girlOdds, d.boyProbability, d.girlProbability].join('|');
+          if (seenVisibleDrop.has(visibleKey)) continue;
+          seenVisibleDrop.add(visibleKey);
+          visibleDrops.push(d);
+        }
+        return visibleDrops.map((d, i) => (
+          <li key={`${d.item.id}-${i}`}>
+            <EntityLink entity={d.item} />
+            <InlineMeta className="muted monster-drop-meta">
+              {areaSpecificOdds.has(d.item.id) && d.areaZone && <span>{d.areaZone}</span>}
+              <DropChance data={d} leadingSeparator={false} />
+            </InlineMeta>
+          </li>
+        ));
+      })()}
     </ul>
   </Dropdown>
 )}
@@ -116,7 +141,7 @@ import { formatDurationSeconds } from '../data/formatTime';
   <Dropdown summary={`Required for ${props.data.missionsRequiring.length} mission${props.data.missionsRequiring.length === 1 ? '' : 's'}`}>
     <ul className="ref-list">
       {props.data.missionsRequiring.map((m) => (
-        <li key={m.id}><EntityLink entity={m} withIcon={false} /></li>
+        <li key={m.id}><EntityLink entity={m} /></li>
       ))}
     </ul>
   </Dropdown>
