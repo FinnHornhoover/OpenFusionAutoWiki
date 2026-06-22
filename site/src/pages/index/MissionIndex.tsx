@@ -3,6 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 
 import EntityIndexSkeleton from '../../components/EntityIndexSkeleton';
 import Icon from '../../components/Icon';
+import IndexFilterDropdown from '../../components/IndexFilterDropdown';
 import type { MissionIndexEntry } from '../../data/types';
 import { useDelayedFlag } from '../../data/useDelayedFlag';
 
@@ -194,11 +195,7 @@ export default function MissionIndex({ build, rows, loading }: Props) {
           style={{ width: '100%', maxWidth: 360 }}
           aria-label="Filter missions"
         />
-        <details className="index-filter-dropdown">
-          <summary>
-            Level {activeLevels.size > 0 && <span className="type-tab-count">({activeLevels.size})</span>}
-          </summary>
-          <div className="index-filter-menu">
+        <IndexFilterDropdown summary={<>Level {activeLevels.size > 0 && <span className="type-tab-count">({activeLevels.size})</span>}</>}>
             <button type="button" className="link-button" onClick={() => updateParam('levels', null)} disabled={activeLevels.size === 0}>Clear levels</button>
             <div className="index-filter-options">
               {levelOptions.map((level) => (
@@ -213,8 +210,7 @@ export default function MissionIndex({ build, rows, loading }: Props) {
                 </label>
               ))}
             </div>
-          </div>
-        </details>
+        </IndexFilterDropdown>
       </div>
       {loading && showSkeleton && <EntityIndexSkeleton />}
       {!loading && filtered.length === 0 && <p className="muted">No matches.</p>}

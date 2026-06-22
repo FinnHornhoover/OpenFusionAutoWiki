@@ -6,6 +6,7 @@ import type { NpcLocationMap } from './npcLocations.js';
 import type { MissionMobLocationMap } from './mobLocations.js';
 import type { NpcNameIndex } from './npcNameIndex.js';
 import {
+  iconFor,
   instanceRef,
   itemRef,
   missionRef,
@@ -88,6 +89,12 @@ interface RawNanoInfo {
   NanoIcon?: string;
 }
 
+interface RawNpcTypeInfo {
+  ID: number;
+  Name?: string;
+  Icon?: string;
+}
+
 const GUIDE_NPC_IDS = new Map<string, number>([
   ['computress', 730],
   ['ben', 732],
@@ -96,12 +103,35 @@ const GUIDE_NPC_IDS = new Map<string, number>([
   ['edd', 707],
 ]);
 
-function normalizeGuideNpc(requiredGuide: string, npcNameIndex: NpcNameIndex): Ref | null {
-  const name = requiredGuide.trim();
-  const id = GUIDE_NPC_IDS.get(name.toLowerCase());
+function buildGuideNpcRefs(zip: AdmZip, iconMap: IconMap): Map<string, Ref> {
+  const out = new Map<string, Ref>();
+  const entry = zip.getEntry('info/npc_type_info.json');
+  if (!entry) return out;
+  const raw = JSON.parse(entry.getData().toString('utf8')) as Record<string, RawNpcTypeInfo>;
+  const byId = new Map(Object.values(raw).map((npc) => [npc.ID, npc]));
+  for (const [key, id] of GUIDE_NPC_IDS) {
+    const npc = byId.get(id);
+    out.set(key, {
+      type: 'npc',
+      id,
+      name: (npc?.Name ?? '').trim() || key,
+      icon: iconFor(npc?.Icon ?? '', iconMap),
+    });
+  }
+  return out;
+}
+
+function guideNpcRef(name: string, npcNameIndex: NpcNameIndex, guideNpcRefs: Map<string, Ref>): Ref | null {
+  const trimmed = name.trim();
+  if (!trimmed) return null;
+  const key = trimmed.toLowerCase();
+  const id = GUIDE_NPC_IDS.get(key);
   if (!id) return null;
-  const indexed = npcNameIndex.get(name.toLowerCase());
-  return { type: 'npc', id, name: indexed?.name ?? name, icon: indexed?.icon ?? '' };
+  return guideNpcRefs.get(key) ?? { type: 'npc', id, name: npcNameIndex.get(key)?.name ?? trimmed, icon: npcNameIndex.get(key)?.icon ?? '' };
+}
+
+function normalizeGuideNpc(requiredGuide: string, npcNameIndex: NpcNameIndex, guideNpcRefs: Map<string, Ref>): Ref | null {
+  return guideNpcRef(requiredGuide, npcNameIndex, guideNpcRefs);
 }
 
 function buildNanoRefIndex(zip: AdmZip, iconMap: IconMap): Map<number, Ref> {
@@ -186,14 +216,15 @@ function normalizeMessage(raw: RawTaskMessage | undefined, iconMap: IconMap): Ta
   return { sender, text, bubble, journal };
 }
 
-function normalizeGuideEmails(raw: RawTask, npcNameIndex: NpcNameIndex): GuideEmail[] {
+function normalizeGuideEmails(raw: RawTask, npcNameIndex: NpcNameIndex, guideNpcRefs: Map<string, Ref>): GuideEmail[] {
   const out: GuideEmail[] = [];
   for (const [sender, body] of Object.entries(raw.GuideEmails ?? {})) {
     const trimmed = (body ?? '').trim();
     if (!sender && !trimmed) continue;
+    const senderName = sender.trim();
     out.push({
       sender,
-      senderRef: npcNameIndex.get(sender.toLowerCase()) ?? null,
+      senderRef: guideNpcRef(senderName, npcNameIndex, guideNpcRefs) ?? npcNameIndex.get(senderName.toLowerCase()) ?? null,
       body: trimmed,
     });
   }
@@ -206,6 +237,7 @@ function normalizeTask(
   npcNameIndex: NpcNameIndex,
   npcLocations: NpcLocationMap,
   missionMobLocations: MissionMobLocationMap,
+  guideNpcRefs: Map<string, Ref>,
 ): MissionTask {
   const wpRef = npcRef(
     raw.WaypointNPCID ?? 0,
@@ -265,7 +297,7 @@ function normalizeTask(
       end: normalizeMessage(raw.MessageOnEnd, iconMap),
       fail: normalizeMessage(raw.MessageOnFail, iconMap),
     },
-    guideEmails: normalizeGuideEmails(raw, npcNameIndex),
+    guideEmails: normalizeGuideEmails(raw, npcNameIndex, guideNpcRefs),
   };
 }
 
@@ -276,6 +308,7 @@ function normalizeMission(
   npcLocations: NpcLocationMap,
   missionMobLocations: MissionMobLocationMap,
   nanoRefs: Map<number, Ref>,
+  guideNpcRefs: Map<string, Ref>,
 ): Mission {
   const startNPC = npcRef(raw.MissionStartNPCID ?? 0, raw.MissionStartNPCName ?? '', raw.MissionStartNPCIcon ?? '', iconMap);
   const journalNPC = npcRef(raw.MissionJournalNPCID ?? 0, raw.MissionJournalNPCName ?? '', raw.MissionJournalNPCIcon ?? '', iconMap);
@@ -325,7 +358,7 @@ function normalizeMission(
 
   const normalizedTasksById = new Map<number, MissionTask>();
   for (const task of Object.values(raw.Tasks ?? {})) {
-    const normalized = normalizeTask(task, iconMap, npcNameIndex, npcLocations, missionMobLocations);
+    const normalized = normalizeTask(task, iconMap, npcNameIndex, npcLocations, missionMobLocations, guideNpcRefs);
     normalizedTasksById.set(normalized.id, normalized);
   }
   const orderedIds = (raw.TaskOrder ?? []).filter((id) => normalizedTasksById.has(id));
@@ -348,7 +381,7 @@ function normalizeMission(
     journalNPC,
     endNPC,
     requiredGuide,
-    requiredGuideNpc: requiredGuide ? normalizeGuideNpc(requiredGuide, npcNameIndex) : null,
+    requiredGuideNpc: requiredGuide ? normalizeGuideNpc(requiredGuide, npcNameIndex, guideNpcRefs) : null,
     requiredNano: nanoRefs.get(requiredNanoId) ?? nanoRef(requiredNanoId, raw.RequiredNano ?? '', '', iconMap),
     requiredMissions,
     requiredByMissions: [], // filled in a second pass
@@ -439,9 +472,10 @@ export async function normalizeMissions(
   }
   const raw = JSON.parse(entry.getData().toString('utf8')) as Record<string, RawMission>;
   const nanoRefs = buildNanoRefIndex(zip, iconMap);
+  const guideNpcRefs = buildGuideNpcRefs(zip, iconMap);
 
   const missions: Mission[] = Object.values(raw)
-    .map((m) => normalizeMission(m, iconMap, npcNameIndex, npcLocations, missionMobLocations, nanoRefs))
+    .map((m) => normalizeMission(m, iconMap, npcNameIndex, npcLocations, missionMobLocations, nanoRefs, guideNpcRefs))
     .sort((a, b) => a.id - b.id);
 
   // Build the inverted indexes:

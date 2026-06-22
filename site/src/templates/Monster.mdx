@@ -42,6 +42,35 @@ import { formatDurationSeconds } from '../data/formatTime';
   {(props.data.respawnTime || props.data.respawnSeconds > 0) && <><dt>Respawn</dt><dd>{props.data.respawnTime || formatDurationSeconds(props.data.respawnSeconds)}</dd></>}
 </dl>
 
+
+{props.data.locationGroups.length > 0 && (
+  <Dropdown summary={`Spawn locations (${props.data.locationGroups.length} group${props.data.locationGroups.length === 1 ? '' : 's'})`}>
+    <ul className="ref-list location-list">
+      {props.data.locationGroups.map((loc, i) => (
+        <li key={i}>
+          <MapSpot
+            x={loc.x}
+            y={loc.y}
+            z={loc.z}
+            areaId={loc.areaId}
+            title={loc.areaZone}
+            instanceName={loc.instanceName}
+            instanceID={loc.instanceID}
+            points={loc.points}
+            icon={props.data.mapIcon}
+          />
+          <span className="muted location-list-meta">
+            {loc.spawnCount.toLocaleString()} spawn{loc.spawnCount === 1 ? '' : 's'}
+          </span>
+          {loc.hp > 0 && loc.hp !== props.data.displayHP && (
+            <span className="muted location-list-meta">HP {loc.hp.toLocaleString()}</span>
+          )}
+        </li>
+      ))}
+    </ul>
+  </Dropdown>
+)}
+
 {(props.data.activeSkill || props.data.passiveBuff || props.data.supportSkill) && (
   <Dropdown summary="Skills">
     {props.data.activeSkill && (
@@ -93,32 +122,5 @@ import { formatDurationSeconds } from '../data/formatTime';
   </Dropdown>
 )}
 
-{props.data.locationGroups.length > 0 && (
-  <Dropdown summary={`Spawn locations (${props.data.locationGroups.length} group${props.data.locationGroups.length === 1 ? '' : 's'})`}>
-    <ul className="ref-list location-list">
-      {props.data.locationGroups.map((loc, i) => (
-        <li key={i}>
-          <MapSpot
-            x={loc.x}
-            y={loc.y}
-            z={loc.z}
-            areaId={loc.areaId}
-            title={loc.areaZone}
-            instanceName={loc.instanceName}
-            instanceID={loc.instanceID}
-            points={loc.points}
-            icon={props.data.mapIcon}
-          />
-          <span className="muted location-list-meta">
-            {loc.spawnCount.toLocaleString()} spawn{loc.spawnCount === 1 ? '' : 's'}
-          </span>
-          {loc.hp > 0 && loc.hp !== props.data.displayHP && (
-            <span className="muted location-list-meta">HP {loc.hp.toLocaleString()}</span>
-          )}
-        </li>
-      ))}
-    </ul>
-  </Dropdown>
-)}
 
 <p className="muted alias-ids">Mob Type ID <code>{props.data.id}</code></p>
