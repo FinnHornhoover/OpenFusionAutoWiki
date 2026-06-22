@@ -37,6 +37,7 @@
   /* Layout */
   --header-h: 56px;
   --content-max: 1100px;
+  --page-overflow-width: 0px;
 
   color-scheme: dark;
 }
@@ -97,6 +98,7 @@ pre {
 
 .site-header {
   display: flex;
+  min-width: var(--page-overflow-width);
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-3);
@@ -122,12 +124,14 @@ pre {
 .site-main {
   flex: 1;
   width: 100%;
+  min-width: var(--page-overflow-width);
   max-width: var(--content-max);
   margin: 0 auto;
   padding: var(--space-5);
 }
 
 .site-footer {
+  min-width: var(--page-overflow-width);
   padding: var(--space-4) var(--space-5);
   border-top: 1px solid var(--color-border);
   color: var(--color-text-muted);
@@ -970,8 +974,10 @@ details.dropdown > .dropdown-body {
   border: none;
 }
 
-/* Mission page */
+/* Entity pages */
 .entity-page .breadcrumb { margin-bottom: var(--space-3); }
+
+/* Mission page */
 .entity-header {
   display: flex;
   flex-direction: column;
