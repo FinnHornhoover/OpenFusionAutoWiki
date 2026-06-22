@@ -36,7 +36,7 @@ export default function CodeIndex({ build, rows, loading }: Props) {
       <div className="index-controls">
         <input
           type="search"
-          placeholder="Filter by code or item…"
+          placeholder="Filter by code or item..."
           value={q}
           onChange={(e) => { setQ(e.target.value); setPage(0); }}
           style={{ width: '100%', maxWidth: 360 }}
@@ -48,15 +48,17 @@ export default function CodeIndex({ build, rows, loading }: Props) {
       {!loading && filtered.length === 0 && <p className="muted">No matches.</p>}
       {!loading && filtered.length > 0 && (
         <>
-          <table className="location-table source-table entity-index-table">
-            <thead><tr><th>Code</th><th>Items</th></tr></thead>
+          <table className="location-table source-table entity-index-table code-index-table">
+            <thead><tr><th>Code</th></tr></thead>
             <tbody>
               {pageRows.map((r) => (
                 <tr key={r.id}>
-                  <td><Link className="entity-index-link" to={`/${build}/codes/${r.id}`}><code className="entity-index-id-code">{r.code}</code></Link></td>
                   <td>
+                    <Link className="entity-index-link code-index-code" to={`/${build}/codes/${r.id}`}><code className="entity-index-id-code">{r.code}</code></Link>
                     <div className="code-index-items">
-                      {r.items.map((item) => <EntityLink key={item.id} entity={item} iconSize={64} />)}
+                      {r.items.map((item) => (
+                        <EntityLink key={item.id} entity={item} iconSize={64} />
+                      ))}
                     </div>
                   </td>
                 </tr>
