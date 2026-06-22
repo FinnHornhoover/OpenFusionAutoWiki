@@ -329,6 +329,8 @@ export interface ItemIndexEntry {
   name: string;
   icon: string;
   type: string;
+  displayType?: string;
+  weaponType?: string;
   rarity: string;
   gender: string;
   contentLevel: number;

@@ -3,21 +3,29 @@ import { Link, useSearchParams } from 'react-router-dom';
 
 import EntityIndexSkeleton from '../../components/EntityIndexSkeleton';
 import Icon from '../../components/Icon';
+import IndexFilterDropdown from '../../components/IndexFilterDropdown';
 import type { ItemIndexEntry } from '../../data/types';
 import { useDelayedFlag } from '../../data/useDelayedFlag';
 
 const PAGE_SIZE = 50;
 
-/** Item type tabs in player-friendly order. */
-const ITEM_TYPE_TABS = [
-  'Weapon', 'Body', 'Legs', 'Shoes', 'Hat', 'Glasses',
-  'Backpack', 'General', 'CRATE', 'Vehicle',
-] as const;
-type ItemTab = (typeof ITEM_TYPE_TABS)[number] | 'All';
+const ITEM_SUPERCLASS_TABS = ['Weapon', 'Armor', 'Accessory', 'General', 'Vehicle'] as const;
+type ItemSuperclass = (typeof ITEM_SUPERCLASS_TABS)[number] | 'All';
+
+const ARMOR_TYPES = new Set(['Body', 'Legs', 'Shoes']);
+const ACCESSORY_TYPES = new Set(['Hat', 'Glasses', 'Backpack']);
+const GENERAL_TYPES = new Set(['General', 'CRATE']);
+const TYPE_RANK = new Map<string, number>([
+  'Thrown', 'Pistol', 'Rifle', 'Shattergun', 'Rocket', 'Body', 'Legs', 'Shoes',
+  'Hat', 'Glasses', 'Backpack', 'General', 'CRATE', 'Vehicle',
+].map((t, i) => [t, i] as const));
+const SUPERCLASS_RANK = new Map<ItemSuperclass, number>(
+  (['All', ...ITEM_SUPERCLASS_TABS] as ItemSuperclass[]).map((t, i) => [t, i] as const),
+);
 
 /**
- * Game's rarity progression (lowest → highest). "Any" is the enum sentinel
- * (RarityID=0) and isn't a real item rarity — omitted from the tab list.
+ * Game's rarity progression (lowest -> highest). "Any" is the enum sentinel
+ * (RarityID=0) and isn't a real item rarity -- omitted from the tab list.
  */
 const RARITY_TABS = ['Common', 'Uncommon', 'Rare', 'Ultra Rare', 'Amazing!'] as const;
 type RarityTab = (typeof RARITY_TABS)[number] | 'All';
@@ -25,9 +33,6 @@ const RARITY_RANK = new Map<string, number>(RARITY_TABS.map((r, i) => [r, i] as 
 function rarityRank(r: string): number {
   return RARITY_RANK.get(r) ?? RARITY_TABS.length;
 }
-
-const GENDER_TABS = ['Any', 'Male', 'Female'] as const;
-type GenderTab = (typeof GENDER_TABS)[number] | 'All';
 
 function pickTab<T extends string>(p: string | null, choices: readonly T[]): T | 'All' {
   if (!p) return 'All';
@@ -38,6 +43,37 @@ function pickTab<T extends string>(p: string | null, choices: readonly T[]): T |
   return 'All';
 }
 
+function parseCsvParam(value: string | null): Set<string> {
+  return new Set((value ?? '').split(',').map((v) => v.trim()).filter(Boolean));
+}
+
+function serializeCsvParam(values: Iterable<string>): string | null {
+  const sorted = [...values].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+  return sorted.length > 0 ? sorted.join(',') : null;
+}
+
+function itemSuperclass(r: ItemIndexEntry): ItemSuperclass {
+  if (r.type === 'Weapon') return 'Weapon';
+  if (ARMOR_TYPES.has(r.type)) return 'Armor';
+  if (ACCESSORY_TYPES.has(r.type)) return 'Accessory';
+  if (GENERAL_TYPES.has(r.type)) return 'General';
+  if (r.type === 'Vehicle') return 'Vehicle';
+  return 'All';
+}
+
+function itemTypeFilterLabel(r: ItemIndexEntry): string {
+  if (r.type !== 'Weapon') return r.type;
+  const weaponType = (r.weaponType ?? '').trim();
+  if (weaponType && weaponType !== 'None' && weaponType !== 'Weapon') return weaponType;
+  const displayType = (r.displayType ?? '').trim();
+  if (displayType && displayType !== 'Weapon') return displayType;
+  return '';
+}
+
+function typeRank(t: string): number {
+  return TYPE_RANK.get(t) ?? TYPE_RANK.size;
+}
+
 interface Props {
   build: string;
   rows: ItemIndexEntry[];
@@ -46,9 +82,10 @@ interface Props {
 
 export default function ItemIndex({ build, rows, loading }: Props) {
   const [searchParams, setSearchParams] = useSearchParams();
-  const activeType = pickTab<typeof ITEM_TYPE_TABS[number]>(searchParams.get('type'), ITEM_TYPE_TABS);
+  const activeClass = pickTab<typeof ITEM_SUPERCLASS_TABS[number]>(searchParams.get('class'), ITEM_SUPERCLASS_TABS);
+  const activeType = searchParams.get('type') ?? '';
   const activeRarity = pickTab<typeof RARITY_TABS[number]>(searchParams.get('rarity'), RARITY_TABS);
-  const activeGender = pickTab<typeof GENDER_TABS[number]>(searchParams.get('gender'), GENDER_TABS);
+  const activeLevels = useMemo(() => parseCsvParam(searchParams.get('levels')), [searchParams]);
   const [q, setQ] = useState('');
   const [page, setPage] = useState(0);
   const [hideUnobtainable, setHideUnobtainable] = useState(true);
@@ -57,64 +94,86 @@ export default function ItemIndex({ build, rows, loading }: Props) {
   const hasNameFilter = nameNeedle.length > 0;
   const effectiveHideUnobtainable = hideUnobtainable && !hasNameFilter;
 
-  // Each axis matcher; "All" passes through.
-  const matchType = (r: ItemIndexEntry) => activeType === 'All' || r.type === activeType;
+  const levelOptions = useMemo(() => {
+    return [...new Set(rows.map((r) => r.contentLevel).filter((level) => level > 0))].sort((a, b) => a - b);
+  }, [rows]);
+
+  const matchClass = (r: ItemIndexEntry) => activeClass === 'All' || itemSuperclass(r) === activeClass;
+  const matchType = (r: ItemIndexEntry) => !activeType || itemTypeFilterLabel(r).toLowerCase() === activeType.toLowerCase();
   const matchRarity = (r: ItemIndexEntry) => activeRarity === 'All' || r.rarity === activeRarity;
-  const matchGender = (r: ItemIndexEntry) => activeGender === 'All' || r.gender === activeGender;
+  const matchLevel = (r: ItemIndexEntry) => activeLevels.size === 0 || activeLevels.has(String(r.contentLevel));
   const matchName = hasNameFilter
     ? (r: ItemIndexEntry) => r.name.toLowerCase().includes(nameNeedle)
     : () => true;
   const matchObtainable = (r: ItemIndexEntry) => !effectiveHideUnobtainable || r.obtainable;
 
-  // Counts per option of an axis are computed against everything ELSE applied.
-  const typeCounts = useMemo(() => {
-    const acc: Record<ItemTab, number> = {
-      All: 0, Weapon: 0, Body: 0, Legs: 0, Shoes: 0, Hat: 0, Glasses: 0,
-      Backpack: 0, General: 0, CRATE: 0, Vehicle: 0,
-    };
+  const classCounts = useMemo(() => {
+    const acc: Record<ItemSuperclass, number> = { All: 0, Weapon: 0, Armor: 0, Accessory: 0, General: 0, Vehicle: 0 };
     for (const r of rows) {
-      if (!matchRarity(r) || !matchGender(r) || !matchName(r) || !matchObtainable(r)) continue;
+      if (!matchType(r) || !matchRarity(r) || !matchLevel(r) || !matchName(r) || !matchObtainable(r)) continue;
       acc.All++;
-      if ((ITEM_TYPE_TABS as readonly string[]).includes(r.type)) acc[r.type as ItemTab]++;
+      const superclass = itemSuperclass(r);
+      if (superclass !== 'All') acc[superclass]++;
     }
     return acc;
-  }, [rows, activeRarity, activeGender, q, effectiveHideUnobtainable]);
+  }, [rows, activeType, activeRarity, activeLevels, q, effectiveHideUnobtainable]);
+
+  const typeCounts = useMemo(() => {
+    const acc = new Map<string, number>();
+    for (const r of rows) {
+      if (!matchClass(r) || !matchRarity(r) || !matchLevel(r) || !matchName(r) || !matchObtainable(r)) continue;
+      const label = itemTypeFilterLabel(r);
+      if (!label || label === 'Weapon') continue;
+      acc.set(label, (acc.get(label) ?? 0) + 1);
+    }
+    return acc;
+  }, [rows, activeClass, activeRarity, activeLevels, q, effectiveHideUnobtainable]);
+
+  const typeOptions = useMemo(() => {
+    return [...typeCounts.keys()].sort((a, b) => {
+      const rankDelta = typeRank(a) - typeRank(b);
+      return rankDelta || a.localeCompare(b, undefined, { numeric: true });
+    });
+  }, [typeCounts]);
 
   const rarityCounts = useMemo(() => {
     const acc: Record<RarityTab, number> = {
       All: 0, Common: 0, Uncommon: 0, Rare: 0, 'Ultra Rare': 0, 'Amazing!': 0,
     };
     for (const r of rows) {
-      if (!matchType(r) || !matchGender(r) || !matchName(r) || !matchObtainable(r)) continue;
+      if (!matchClass(r) || !matchType(r) || !matchLevel(r) || !matchName(r) || !matchObtainable(r)) continue;
       acc.All++;
       if ((RARITY_TABS as readonly string[]).includes(r.rarity)) acc[r.rarity as RarityTab]++;
     }
     return acc;
-  }, [rows, activeType, activeGender, q, effectiveHideUnobtainable]);
+  }, [rows, activeClass, activeType, activeLevels, q, effectiveHideUnobtainable]);
 
-  const genderCounts = useMemo(() => {
-    const acc: Record<GenderTab, number> = { All: 0, Any: 0, Male: 0, Female: 0 };
+  const levelCounts = useMemo(() => {
+    const acc = new Map<number, number>();
+    for (const level of levelOptions) acc.set(level, 0);
     for (const r of rows) {
-      if (!matchType(r) || !matchRarity(r) || !matchName(r) || !matchObtainable(r)) continue;
-      acc.All++;
-      if ((GENDER_TABS as readonly string[]).includes(r.gender)) acc[r.gender as GenderTab]++;
+      if (!matchClass(r) || !matchType(r) || !matchRarity(r) || !matchName(r) || !matchObtainable(r)) continue;
+      if (r.contentLevel > 0) acc.set(r.contentLevel, (acc.get(r.contentLevel) ?? 0) + 1);
     }
     return acc;
-  }, [rows, activeType, activeRarity, q, effectiveHideUnobtainable]);
+  }, [rows, activeClass, activeType, activeRarity, q, effectiveHideUnobtainable, levelOptions]);
 
   const filtered = useMemo(() => {
     const pool = rows.filter((r) =>
-      matchType(r) && matchRarity(r) && matchGender(r) && matchName(r) && matchObtainable(r),
+      matchClass(r) && matchType(r) && matchRarity(r) && matchLevel(r) && matchName(r) && matchObtainable(r),
     );
     return pool.sort((a, b) => {
-      if (a.typeId !== b.typeId) return a.typeId - b.typeId;
+      const classDelta = (SUPERCLASS_RANK.get(itemSuperclass(a)) ?? SUPERCLASS_RANK.size) - (SUPERCLASS_RANK.get(itemSuperclass(b)) ?? SUPERCLASS_RANK.size);
+      if (classDelta !== 0) return classDelta;
+      const typeDelta = typeRank(itemTypeFilterLabel(a)) - typeRank(itemTypeFilterLabel(b));
+      if (typeDelta !== 0) return typeDelta;
       if (a.contentLevel !== b.contentLevel) return a.contentLevel - b.contentLevel;
       const ra = rarityRank(a.rarity);
       const rb = rarityRank(b.rarity);
       if (ra !== rb) return ra - rb;
       return a.name.localeCompare(b.name);
     });
-  }, [rows, activeType, activeRarity, activeGender, q, effectiveHideUnobtainable]);
+  }, [rows, activeClass, activeType, activeRarity, activeLevels, q, effectiveHideUnobtainable]);
 
   const start = page * PAGE_SIZE;
   const pageRows = filtered.slice(start, start + PAGE_SIZE);
@@ -130,20 +189,60 @@ export default function ItemIndex({ build, rows, loading }: Props) {
     });
   }
 
+  function selectClass(t: ItemSuperclass) {
+    setPage(0);
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (t === 'All') next.delete('class');
+      else next.set('class', t.toLowerCase());
+      next.delete('type');
+      return next;
+    });
+  }
+
+  function toggleLevel(level: number) {
+    const next = new Set(activeLevels);
+    const value = String(level);
+    if (next.has(value)) next.delete(value);
+    else next.add(value);
+    setParam('levels', serializeCsvParam(next));
+  }
+
   return (
     <>
       <p className="muted">{filtered.length.toLocaleString()} of {rows.length.toLocaleString()}</p>
 
-      <nav className="type-tabs" aria-label="Filter by item type">
-        {(['All', ...ITEM_TYPE_TABS] as ItemTab[]).map((t) => (
+      <nav className="type-tabs" aria-label="Filter by item superclass">
+        {(['All', ...ITEM_SUPERCLASS_TABS] as ItemSuperclass[]).map((t) => (
           <button
             key={t}
             type="button"
-            className={'type-tab' + (activeType === t ? ' active' : '')}
-            onClick={() => setParam('type', t === 'All' ? null : t.toLowerCase())}
-            disabled={t !== 'All' && typeCounts[t] === 0}
+            className={'type-tab' + (activeClass === t ? ' active' : '')}
+            onClick={() => selectClass(t)}
+            disabled={t !== 'All' && classCounts[t] === 0}
           >
-            {t} <span className="type-tab-count">({typeCounts[t].toLocaleString()})</span>
+            {t} <span className="type-tab-count">({classCounts[t].toLocaleString()})</span>
+          </button>
+        ))}
+      </nav>
+
+      <nav className="type-tabs" aria-label="Filter by item type">
+        <button
+          type="button"
+          className={'type-tab' + (!activeType ? ' active' : '')}
+          onClick={() => setParam('type', null)}
+        >
+          All <span className="type-tab-count">({[...typeCounts.values()].reduce((sum, count) => sum + count, 0).toLocaleString()})</span>
+        </button>
+        {typeOptions.map((t) => (
+          <button
+            key={t}
+            type="button"
+            className={'type-tab' + (activeType.toLowerCase() === t.toLowerCase() ? ' active' : '')}
+            onClick={() => setParam('type', t)}
+            disabled={(typeCounts.get(t) ?? 0) === 0}
+          >
+            {t} <span className="type-tab-count">({(typeCounts.get(t) ?? 0).toLocaleString()})</span>
           </button>
         ))}
       </nav>
@@ -162,29 +261,31 @@ export default function ItemIndex({ build, rows, loading }: Props) {
         ))}
       </nav>
 
-      <nav className="type-tabs" aria-label="Filter by gender">
-        {(['All', ...GENDER_TABS] as GenderTab[]).map((g) => (
-          <button
-            key={g}
-            type="button"
-            className={'type-tab' + (activeGender === g ? ' active' : '')}
-            onClick={() => setParam('gender', g === 'All' ? null : g.toLowerCase())}
-            disabled={g !== 'All' && genderCounts[g] === 0}
-          >
-            {g} <span className="type-tab-count">({genderCounts[g].toLocaleString()})</span>
-          </button>
-        ))}
-      </nav>
-
       <div className="index-controls">
         <input
           type="search"
-          placeholder="Filter by name…"
+          placeholder="Filter by name..."
           value={q}
           onChange={(e) => { setQ(e.target.value); setPage(0); }}
           style={{ width: '100%', maxWidth: 360 }}
           aria-label="Filter items"
         />
+        <IndexFilterDropdown summary={<>Level {activeLevels.size > 0 && <span className="type-tab-count">({activeLevels.size})</span>}</>}>
+            <button type="button" className="link-button" onClick={() => setParam('levels', null)} disabled={activeLevels.size === 0}>Clear levels</button>
+            <div className="index-filter-options">
+              {levelOptions.map((level) => (
+                <label key={level} className="checkbox index-filter-option">
+                  <input
+                    type="checkbox"
+                    checked={activeLevels.has(String(level))}
+                    onChange={() => toggleLevel(level)}
+                    disabled={(levelCounts.get(level) ?? 0) === 0}
+                  />
+                  <span>Level {level} <span className="type-tab-count">({(levelCounts.get(level) ?? 0).toLocaleString()})</span></span>
+                </label>
+              ))}
+            </div>
+        </IndexFilterDropdown>
         <label className="checkbox">
           <input
             type="checkbox"
@@ -204,16 +305,13 @@ export default function ItemIndex({ build, rows, loading }: Props) {
             <thead>
               <tr>
                 <th>Item</th>
-                <th>Type</th>
-                <th>Rarity</th>
-                <th>Gender</th>
                 <th>Level</th>
-                <th>Status</th>
+                <th>Rarity</th>
               </tr>
             </thead>
             <tbody>
               {pageRows.map((r) => (
-                <tr key={r.id}>
+                <tr key={r.id} className={r.obtainable ? undefined : 'entity-index-row-muted'}>
                   <td>
                     <div className="entity-index-name">
                       {r.icon
@@ -222,11 +320,8 @@ export default function ItemIndex({ build, rows, loading }: Props) {
                       <Link className="entity-index-link" to={`/${build}/items/${r.id}`}>{r.name}</Link>
                     </div>
                   </td>
-                  <td>{r.type || <span className="muted">—</span>}</td>
-                  <td>{r.rarity && r.rarity !== 'Any' ? r.rarity : <span className="muted">—</span>}</td>
-                  <td>{r.gender && r.gender !== 'Any' ? r.gender : <span className="muted">—</span>}</td>
-                  <td>{r.contentLevel > 0 ? r.contentLevel : <span className="muted">—</span>}</td>
-                  <td>{r.obtainable ? 'Obtainable' : 'Unobtainable'}</td>
+                  <td>{r.contentLevel > 0 ? r.contentLevel : <span className="muted">-</span>}</td>
+                  <td>{r.rarity && r.rarity !== 'Any' ? r.rarity : <span className="muted">-</span>}</td>
                 </tr>
               ))}
             </tbody>
