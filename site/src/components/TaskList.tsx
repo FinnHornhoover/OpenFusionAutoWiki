@@ -41,7 +41,7 @@ function MessageSection({ label, msg }: { label: string; msg: TaskMessage | null
   return (
     <div className="task-message">
       <h4>{label}</h4>
-      {msg.sender && <p>From <EntityLink entity={msg.sender} /></p>}
+      {msg.sender && <p className="task-message-from"><span>From</span><EntityLink entity={msg.sender} /></p>}
       {msg.text && <blockquote>{msg.text}</blockquote>}
       {msg.bubble && (msg.bubble.sender || msg.bubble.text) && (
         <p className="dialog-bubble">
@@ -72,8 +72,8 @@ function GuideEmailsSection({ emails }: { emails: GuideEmail[] }) {
       {emails.map((e, i) => (
         <article key={i} className="guide-email">
           <header className="guide-email-from">
-            From{' '}
-            {e.senderRef ? <EntityLink entity={e.senderRef} withIcon={false} /> : <strong>{e.sender || 'Unknown'}</strong>}
+            <span>From</span>
+            {e.senderRef ? <EntityLink entity={e.senderRef} /> : <strong>{e.sender || 'Unknown'}</strong>}
           </header>
           <blockquote>{e.body}</blockquote>
         </article>
@@ -257,6 +257,7 @@ function TaskGraph({ tasks, startTaskId, endTaskId }: { tasks: MissionTask[]; st
 
 function TaskItem({ task, index, startTaskId, endTaskId }: { task: MissionTask; index: number; startTaskId: number | null; endTaskId: number | null }) {
   const timeLimit = formatTimeLimit(task.timeLimitSeconds);
+  const waypointLabel = task.type === 'Talk' ? 'Talk' : 'Go to';
   return (
     <Dropdown
       open={index === 0}
@@ -280,6 +281,29 @@ function TaskItem({ task, index, startTaskId, endTaskId }: { task: MissionTask; 
     >
       <table className="task-detail-table">
         <tbody>
+          {task.waypointNPC && (
+            <tr>
+              <th scope="row">{waypointLabel}</th>
+              <td className="task-waypoint-cell">
+                <EntityLink entity={task.waypointNPC} />
+                {task.waypointPoint && (
+                  <span className="task-mapspot">
+                    <MapSpot
+                      x={task.waypointPoint.x}
+                      y={task.waypointPoint.y}
+                      z={task.waypointPoint.z}
+                      size={256}
+                      areaId={task.waypointPoint.areaId}
+                      title={task.waypointPoint.areaZone}
+                      instanceName={task.waypointPoint.instanceName}
+                      instanceID={task.waypointPoint.instanceID}
+                      icon={missionWaypointIcon(task.type, Boolean(task.waypointNPC))}
+                    />
+                  </span>
+                )}
+              </td>
+            </tr>
+          )}
           {task.monsterRequirements.length > 0 && (
             <tr>
               <th scope="row">Defeat</th>
@@ -319,33 +343,10 @@ function TaskItem({ task, index, startTaskId, endTaskId }: { task: MissionTask; 
             </tr>
           )}
           {task.escortNPC && <tr><th scope="row">Escort</th><td><EntityLink entity={task.escortNPC} /></td></tr>}
-          {task.waypointNPC && (
-            <tr>
-              <th scope="row">Go to</th>
-              <td className="task-waypoint-cell">
-                <EntityLink entity={task.waypointNPC} />
-                {task.waypointPoint && (
-                  <span className="task-mapspot">
-                    <MapSpot
-                      x={task.waypointPoint.x}
-                      y={task.waypointPoint.y}
-                      z={task.waypointPoint.z}
-                      size={256}
-                      areaId={task.waypointPoint.areaId}
-                      title={task.waypointPoint.areaZone}
-                      instanceName={task.waypointPoint.instanceName}
-                      instanceID={task.waypointPoint.instanceID}
-                      icon={missionWaypointIcon(task.type, Boolean(task.waypointNPC))}
-                    />
-                  </span>
-                )}
-              </td>
-            </tr>
-          )}
           {timeLimit && <tr><th scope="row">Time limit</th><td>{timeLimit}</td></tr>}
           {task.requiredInstance && <tr><th scope="row">Inside</th><td><EntityLink entity={task.requiredInstance} /></td></tr>}
-          {task.onEndObjective && <tr><th scope="row">Then</th><td>{task.onEndObjective}</td></tr>}
-          {task.onFailObjective && <tr><th scope="row">On fail</th><td>{task.onFailObjective}</td></tr>}
+          {task.onEndObjective && <tr className="task-transition-row task-transition-start"><th scope="row">Next</th><td>{task.onEndObjective}</td></tr>}
+          {task.onFailObjective && <tr className={'task-transition-row' + (!task.onEndObjective ? ' task-transition-start' : '')}><th scope="row">On Fail</th><td>{task.onFailObjective}</td></tr>}
         </tbody>
       </table>
       <MessageSection label="On start" msg={task.messages.start} />

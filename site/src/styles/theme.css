@@ -818,6 +818,10 @@ details.dropdown > .dropdown-body {
 .task-detail-table td {
   padding-right: 0;
 }
+.task-detail-table tr.task-transition-start th,
+.task-detail-table tr.task-transition-start td {
+  border-top: 3px solid var(--color-border);
+}
 .task-ref-list {
   list-style: none;
   padding: 0;
@@ -893,6 +897,20 @@ details.dropdown > .dropdown-body {
   font-style: italic;
 }
 .task-message p { margin: var(--space-2) 0; }
+.task-message-from {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.task-message-from .entity-link-body {
+  gap: var(--space-1);
+}
+.task-message-from > .entity-link,
+.task-message-from > strong,
+.guide-email-from > .entity-link,
+.guide-email-from > strong {
+  margin-left: var(--space-2);
+}
 .task-journal-text {
   width: 100%;
   margin-top: var(--space-3);
@@ -935,9 +953,15 @@ details.dropdown > .dropdown-body {
   border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
 }
 .guide-email-from {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
   color: var(--color-text-muted);
   font-size: 0.85rem;
   margin-bottom: var(--space-1);
+}
+.guide-email-from .entity-link-body {
+  gap: var(--space-1);
 }
 .guide-email blockquote {
   margin: 0;
@@ -1197,8 +1221,8 @@ details.dropdown > .dropdown-body {
   padding-bottom: var(--space-2);
 }
 .mission-requirement-graph {
+  box-sizing: content-box;
   position: relative;
-  min-width: 100%;
 }
 .mission-requirement-graph-svg {
   position: absolute;
@@ -1218,6 +1242,8 @@ details.dropdown > .dropdown-body {
 }
 .mission-requirement-node {
   position: absolute;
+  z-index: 1;
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
   justify-content: center;

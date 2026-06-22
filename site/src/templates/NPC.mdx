@@ -24,6 +24,28 @@ import { transportIcon } from '../data/mapMarkers';
   <blockquote className="npc-comment">"{props.data.comment.trim()}"</blockquote>
 )}
 
+
+{props.data.locations.length > 0 && (
+  <Dropdown summary={`Spawn locations (${props.data.locations.length})`}>
+    <ul className="ref-list location-list">
+      {props.data.locations.map((loc, i) => (
+        <li key={i}>
+          <MapSpot
+            x={loc.x}
+            y={loc.y}
+            z={loc.z}
+            areaId={loc.areaId}
+            title={loc.areaZone}
+            instanceName={loc.instanceName}
+            instanceID={loc.instanceID}
+            icon={props.data.mapIcon}
+          />
+        </li>
+      ))}
+    </ul>
+  </Dropdown>
+)}
+
 {props.data.startedMissions.length > 0 && (
   <Dropdown summary={`Gives ${props.data.startedMissions.length} mission${props.data.startedMissions.length === 1 ? '' : 's'}`} open>
     <ul className="ref-list">
@@ -126,23 +148,3 @@ import { transportIcon } from '../data/mapMarkers';
 )}
 
 
-{props.data.locations.length > 0 && (
-  <Dropdown summary={`Spawn locations (${props.data.locations.length})`}>
-    <ul className="ref-list location-list">
-      {props.data.locations.map((loc, i) => (
-        <li key={i}>
-          <MapSpot
-            x={loc.x}
-            y={loc.y}
-            z={loc.z}
-            areaId={loc.areaId}
-            title={loc.areaZone}
-            instanceName={loc.instanceName}
-            instanceID={loc.instanceID}
-            icon={props.data.mapIcon}
-          />
-        </li>
-      ))}
-    </ul>
-  </Dropdown>
-)}

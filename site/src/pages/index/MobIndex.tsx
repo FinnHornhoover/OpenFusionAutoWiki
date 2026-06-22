@@ -3,6 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 
 import EntityIndexSkeleton from '../../components/EntityIndexSkeleton';
 import Icon from '../../components/Icon';
+import IndexFilterDropdown from '../../components/IndexFilterDropdown';
 import type { MobIndexEntry } from '../../data/types';
 import { useDelayedFlag } from '../../data/useDelayedFlag';
 
@@ -21,6 +22,15 @@ function tabFromParam(p: string | null): ColorTab {
   return 'All';
 }
 
+function parseCsvParam(value: string | null): Set<string> {
+  return new Set((value ?? '').split(',').map((v) => v.trim()).filter(Boolean));
+}
+
+function serializeCsvParam(values: Iterable<string>): string | null {
+  const sorted = [...values].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+  return sorted.length > 0 ? sorted.join(',') : null;
+}
+
 interface Props {
   build: string;
   rows: MobIndexEntry[];
@@ -30,48 +40,78 @@ interface Props {
 export default function MobIndex({ build, rows, loading }: Props) {
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = tabFromParam(searchParams.get('color'));
+  const activeLevels = useMemo(() => parseCsvParam(searchParams.get('levels')), [searchParams]);
   const [q, setQ] = useState('');
   const [page, setPage] = useState(0);
   const [hideOutOfGame, setHideOutOfGame] = useState(true);
   const showSkeleton = useDelayedFlag(loading);
 
+  const levelOptions = useMemo(() => {
+    return [...new Set(rows.map((r) => r.level).filter((level) => level > 0))].sort((a, b) => a - b);
+  }, [rows]);
+
   const counts = useMemo(() => {
     const acc: Record<ColorTab, number> = { All: 0, Adaptium: 0, Blastons: 0, Cosmix: 0 };
     for (const r of rows) {
       if (hideOutOfGame && !r.inGame) continue;
+      if (activeLevels.size > 0 && !activeLevels.has(String(r.level))) continue;
       acc.All++;
       if ((COLOR_TYPE_TABS as readonly string[]).includes(r.colorType)) {
         acc[r.colorType as ColorTab]++;
       }
     }
     return acc;
-  }, [rows, hideOutOfGame]);
+  }, [rows, hideOutOfGame, activeLevels]);
+
+  const levelCounts = useMemo(() => {
+    const acc = new Map<number, number>();
+    for (const level of levelOptions) acc.set(level, 0);
+    for (const r of rows) {
+      if (hideOutOfGame && !r.inGame) continue;
+      if (activeTab !== 'All' && r.colorType !== activeTab) continue;
+      if (r.level > 0) acc.set(r.level, (acc.get(r.level) ?? 0) + 1);
+    }
+    return acc;
+  }, [activeTab, hideOutOfGame, levelOptions, rows]);
 
   const filtered = useMemo(() => {
     const needle = q.trim().toLowerCase();
     let pool = rows;
     if (hideOutOfGame) pool = pool.filter((r) => r.inGame);
     if (activeTab !== 'All') pool = pool.filter((r) => r.colorType === activeTab);
+    if (activeLevels.size > 0) pool = pool.filter((r) => activeLevels.has(String(r.level)));
     if (needle) pool = pool.filter((r) => r.name.toLowerCase().includes(needle));
     return pool.slice().sort((a, b) => {
       if (a.level !== b.level) return a.level - b.level;
       if (a.standardHP !== b.standardHP) return a.standardHP - b.standardHP;
       return a.name.localeCompare(b.name) || a.id - b.id;
     });
-  }, [rows, q, activeTab, hideOutOfGame]);
+  }, [rows, q, activeTab, activeLevels, hideOutOfGame]);
 
   const start = page * PAGE_SIZE;
   const pageRows = filtered.slice(start, start + PAGE_SIZE);
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
 
-  function selectTab(t: ColorTab) {
+  function updateParam(name: string, value: string | null) {
     setPage(0);
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev);
-      if (t === 'All') next.delete('color');
-      else next.set('color', t.toLowerCase());
+      if (value === null) next.delete(name);
+      else next.set(name, value);
       return next;
     });
+  }
+
+  function selectTab(t: ColorTab) {
+    updateParam('color', t === 'All' ? null : t.toLowerCase());
+  }
+
+  function toggleLevel(level: number) {
+    const next = new Set(activeLevels);
+    const value = String(level);
+    if (next.has(value)) next.delete(value);
+    else next.add(value);
+    updateParam('levels', serializeCsvParam(next));
   }
 
   return (
@@ -101,6 +141,22 @@ export default function MobIndex({ build, rows, loading }: Props) {
           style={{ width: '100%', maxWidth: 360 }}
           aria-label="Filter monsters"
         />
+        <IndexFilterDropdown summary={<>Level {activeLevels.size > 0 && <span className="type-tab-count">({activeLevels.size})</span>}</>}>
+            <button type="button" className="link-button" onClick={() => updateParam('levels', null)} disabled={activeLevels.size === 0}>Clear levels</button>
+            <div className="index-filter-options">
+              {levelOptions.map((level) => (
+                <label key={level} className="checkbox index-filter-option">
+                  <input
+                    type="checkbox"
+                    checked={activeLevels.has(String(level))}
+                    onChange={() => toggleLevel(level)}
+                    disabled={(levelCounts.get(level) ?? 0) === 0}
+                  />
+                  <span>Level {level} <span className="type-tab-count">({(levelCounts.get(level) ?? 0).toLocaleString()})</span></span>
+                </label>
+              ))}
+            </div>
+        </IndexFilterDropdown>
         <label className="checkbox">
           <input
             type="checkbox"
