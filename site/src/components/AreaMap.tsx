@@ -22,6 +22,19 @@ function clampZoom(value: number): number {
   return Math.min(MAX_AREA_MAP_ZOOM, Math.max(MIN_AREA_MAP_ZOOM, value));
 }
 
+interface PointerPoint {
+  x: number;
+  y: number;
+}
+
+function distance(a: PointerPoint, b: PointerPoint): number {
+  return Math.hypot(a.x - b.x, a.y - b.y);
+}
+
+function midpoint(a: PointerPoint, b: PointerPoint): PointerPoint {
+  return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+}
+
 export default function AreaMap({ area, build, size = 960 }: AreaMapProps) {
   const center = worldToPx(area.x + area.width / 2, area.y + area.height / 2);
   const extent = Math.max(area.width, area.height) / 2;
@@ -31,7 +44,9 @@ export default function AreaMap({ area, build, size = 960 }: AreaMapProps) {
   const [visibleKinds, setVisibleKinds] = useState<VisibleMarkerKinds>(() => defaultVisibleMarkerKinds());
   const [renderedWidth, setRenderedWidth] = useState(size);
   const mapRef = useRef<SVGSVGElement | null>(null);
+  const activePointers = useRef(new Map<number, PointerPoint>());
   const drag = useRef<{ pointerId: number; startX: number; startY: number; originX: number; originY: number; width: number; height: number } | null>(null);
+  const pinch = useRef<{ startDistance: number; startZoom: number; startViewBox: typeof viewBox; anchorX: number; anchorY: number } | null>(null);
 
   useEffect(() => {
     setZoom(MIN_AREA_MAP_ZOOM);
@@ -122,6 +137,25 @@ export default function AreaMap({ area, build, size = 960 }: AreaMapProps) {
       onPointerDown={(event) => {
         if ((event.target as Element).closest('a')) return;
         event.currentTarget.setPointerCapture(event.pointerId);
+        activePointers.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
+
+        if (activePointers.current.size >= 2) {
+          const rect = event.currentTarget.getBoundingClientRect();
+          const [first, second] = [...activePointers.current.values()];
+          const mid = midpoint(first, second);
+          const relativeX = (mid.x - rect.left) / rect.width;
+          const relativeY = (mid.y - rect.top) / rect.height;
+          pinch.current = {
+            startDistance: distance(first, second),
+            startZoom: zoom,
+            startViewBox: viewBox,
+            anchorX: viewBox.x + relativeX * viewBox.width,
+            anchorY: viewBox.y + relativeY * viewBox.height,
+          };
+          drag.current = null;
+          return;
+        }
+
         drag.current = {
           pointerId: event.pointerId,
           startX: event.clientX,
@@ -133,6 +167,29 @@ export default function AreaMap({ area, build, size = 960 }: AreaMapProps) {
         };
       }}
       onPointerMove={(event) => {
+        if (!activePointers.current.has(event.pointerId)) return;
+        activePointers.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
+
+        if (pinch.current && activePointers.current.size >= 2) {
+          const rect = event.currentTarget.getBoundingClientRect();
+          const [first, second] = [...activePointers.current.values()];
+          const mid = midpoint(first, second);
+          const ratio = distance(first, second) / Math.max(1, pinch.current.startDistance);
+          const nextZoom = clampZoom(pinch.current.startZoom * ratio);
+          const nextWidth = size / nextZoom;
+          const nextHeight = size / nextZoom;
+          const relativeX = (mid.x - rect.left) / rect.width;
+          const relativeY = (mid.y - rect.top) / rect.height;
+          setZoom(nextZoom);
+          setViewBox({
+            x: pinch.current.anchorX - relativeX * nextWidth,
+            y: pinch.current.anchorY - relativeY * nextHeight,
+            width: nextWidth,
+            height: nextHeight,
+          });
+          return;
+        }
+
         const active = drag.current;
         if (!active || active.pointerId !== event.pointerId) return;
         const rect = event.currentTarget.getBoundingClientRect();
@@ -144,9 +201,15 @@ export default function AreaMap({ area, build, size = 960 }: AreaMapProps) {
         });
       }}
       onPointerUp={(event) => {
+        activePointers.current.delete(event.pointerId);
         if (drag.current?.pointerId === event.pointerId) drag.current = null;
+        pinch.current = null;
       }}
-      onPointerCancel={() => { drag.current = null; }}
+      onPointerCancel={(event) => {
+        activePointers.current.delete(event.pointerId);
+        if (drag.current?.pointerId === event.pointerId) drag.current = null;
+        pinch.current = null;
+      }}
     >
       <image href="/minimap/all.png" x={imageX} y={imageY} width={imageSize} height={imageSize} className="map-base-image" />
       {visibleMarkers.map((marker) => {

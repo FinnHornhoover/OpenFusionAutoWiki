@@ -38,6 +38,19 @@ function clampZoom(value: number): number {
   return Math.min(MAX_WORLD_MAP_ZOOM, Math.max(MIN_WORLD_MAP_ZOOM, value));
 }
 
+interface PointerPoint {
+  x: number;
+  y: number;
+}
+
+function distance(a: PointerPoint, b: PointerPoint): number {
+  return Math.hypot(a.x - b.x, a.y - b.y);
+}
+
+function midpoint(a: PointerPoint, b: PointerPoint): PointerPoint {
+  return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+}
+
 function useAreas(build: string | undefined) {
   const [state, setState] = useState<{ areas: Area[]; loading: boolean; error: string | null }>({ areas: [], loading: Boolean(build), error: null });
 
@@ -75,7 +88,9 @@ export default function WorldMap() {
   const [hoverRoutes, setHoverRoutes] = useState<string[]>([]);
   const [visibleKinds, setVisibleKinds] = useState<VisibleMarkerKinds>(() => defaultVisibleMarkerKinds());
   const viewportRef = useRef<HTMLDivElement | null>(null);
+  const activePointers = useRef(new Map<number, PointerPoint>());
   const drag = useRef<{ pointerId: number; startX: number; startY: number; originX: number; originY: number } | null>(null);
+  const pinch = useRef<{ startDistance: number; startZoom: number; anchorX: number; anchorY: number } | null>(null);
 
   useDocumentTitle(entry ? `World Map · ${buildPageTitle(entry)}` : build ? `World Map · ${build}` : null);
 
@@ -172,17 +187,59 @@ export default function WorldMap() {
           onPointerDown={(event) => {
             if ((event.target as Element).closest('a')) return;
             event.currentTarget.setPointerCapture(event.pointerId);
+            activePointers.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
+
+            if (activePointers.current.size >= 2) {
+              const rect = event.currentTarget.getBoundingClientRect();
+              const [first, second] = [...activePointers.current.values()];
+              const mid = midpoint(first, second);
+              const cursorX = mid.x - rect.left;
+              const cursorY = mid.y - rect.top;
+              pinch.current = {
+                startDistance: distance(first, second),
+                startZoom: zoom,
+                anchorX: (cursorX - offset.x) / zoom,
+                anchorY: (cursorY - offset.y) / zoom,
+              };
+              drag.current = null;
+              return;
+            }
+
             drag.current = { pointerId: event.pointerId, startX: event.clientX, startY: event.clientY, originX: offset.x, originY: offset.y };
           }}
           onPointerMove={(event) => {
+            if (!activePointers.current.has(event.pointerId)) return;
+            activePointers.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
+
+            if (pinch.current && activePointers.current.size >= 2) {
+              const rect = event.currentTarget.getBoundingClientRect();
+              const [first, second] = [...activePointers.current.values()];
+              const mid = midpoint(first, second);
+              const nextZoom = clampZoom(pinch.current.startZoom * distance(first, second) / Math.max(1, pinch.current.startDistance));
+              const cursorX = mid.x - rect.left;
+              const cursorY = mid.y - rect.top;
+              setZoom(nextZoom);
+              setOffset({
+                x: cursorX - pinch.current.anchorX * nextZoom,
+                y: cursorY - pinch.current.anchorY * nextZoom,
+              });
+              return;
+            }
+
             const active = drag.current;
             if (!active || active.pointerId !== event.pointerId) return;
             setOffset({ x: active.originX + event.clientX - active.startX, y: active.originY + event.clientY - active.startY });
           }}
           onPointerUp={(event) => {
+            activePointers.current.delete(event.pointerId);
             if (drag.current?.pointerId === event.pointerId) drag.current = null;
+            pinch.current = null;
           }}
-          onPointerCancel={() => { drag.current = null; }}
+          onPointerCancel={(event) => {
+            activePointers.current.delete(event.pointerId);
+            if (drag.current?.pointerId === event.pointerId) drag.current = null;
+            pinch.current = null;
+          }}
         >
           <div
             className="world-map-canvas"
