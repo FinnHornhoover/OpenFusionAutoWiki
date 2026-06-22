@@ -6,22 +6,16 @@ import EntityLink from '../components/EntityLink';
   <thead>
     <tr>
       <th>Item</th>
-      <th>Type</th>
-      <th>Rarity</th>
-      <th>Gender</th>
       <th>Level</th>
-      <th>Status</th>
+      <th>Rarity</th>
     </tr>
   </thead>
   <tbody>
     {props.data.items.map((r) => (
-      <tr key={r.ref.id}>
+      <tr key={r.ref.id} className={r.obtainable ? undefined : 'entity-index-row-muted'}>
         <td><EntityLink entity={r.ref} iconSize={64} /></td>
-        <td>{r.type || <span className="muted">—</span>}</td>
-        <td>{r.rarity && r.rarity !== 'Any' ? r.rarity : <span className="muted">—</span>}</td>
-        <td>{r.gender && r.gender !== 'Any' ? r.gender : <span className="muted">—</span>}</td>
-        <td>{r.contentLevel > 0 ? r.contentLevel : <span className="muted">—</span>}</td>
-        <td>{r.obtainable ? 'Obtainable' : 'Unobtainable'}</td>
+        <td>{r.contentLevel > 0 ? r.contentLevel : <span className="muted">-</span>}</td>
+        <td>{r.rarity && r.rarity !== 'Any' ? r.rarity : <span className="muted">-</span>}</td>
       </tr>
     ))}
   </tbody>
