@@ -128,6 +128,8 @@ export interface MissionIndexEntry {
   type: string;
   startNPC: { name: string; icon: string } | null;
   displayNPC?: { name: string; icon: string } | null;
+  requiredMissions?: Ref[];
+  requiredByMissions?: Ref[];
 }
 
 /** Where an NPC is spawned in the world. */

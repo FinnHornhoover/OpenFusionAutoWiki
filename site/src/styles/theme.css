@@ -754,6 +754,34 @@ details.dropdown > .dropdown-body {
 
 /* Tasks */
 .task-list { margin: var(--space-3) 0; }
+.task-dropdown {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+.task-dropdown > .dropdown-body {
+  width: auto;
+  max-width: 100%;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.task-dropdown summary {
+  overflow-wrap: anywhere;
+}
+.task-dropdown .task-detail-table,
+.task-dropdown .task-journal-text {
+  table-layout: fixed;
+  width: 100%;
+  min-width: 0;
+}
+.task-dropdown .task-detail-table td,
+.task-dropdown .task-journal-text td,
+.task-dropdown .task-message,
+.task-dropdown .guide-email,
+.task-dropdown blockquote {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
 .task-index {
   display: inline-block;
   min-width: 1.5em;
@@ -831,6 +859,18 @@ details.dropdown > .dropdown-body {
     justify-self: start;
   }
 }
+.task-dropdown .task-detail-table th,
+.task-dropdown .task-journal-text th {
+  width: 8.5rem;
+  min-width: 8.5rem;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.task-dropdown .task-detail-table td,
+.task-dropdown .task-journal-text td {
+  width: auto;
+}
+
 .task-message {
   margin: var(--space-3) 0;
   padding: var(--space-2) var(--space-3);
@@ -1145,6 +1185,71 @@ details.dropdown > .dropdown-body {
   letter-spacing: 0.04em;
 }
 
+
+.mission-requirement-graph-section {
+  margin: var(--space-6) 0 var(--space-4);
+}
+.mission-requirement-graph-section h2 {
+  margin-bottom: var(--space-3);
+}
+.mission-requirement-graph-scroll {
+  overflow-x: auto;
+  padding-bottom: var(--space-2);
+}
+.mission-requirement-graph {
+  position: relative;
+  min-width: 100%;
+}
+.mission-requirement-graph-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+.mission-requirement-arrow {
+  fill: none;
+  stroke: var(--color-text-muted);
+  stroke-width: 2;
+}
+.mission-requirement-arrow-head {
+  fill: var(--color-text-muted);
+}
+.mission-requirement-node {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-elevated);
+  box-shadow: var(--shadow-sm);
+}
+.mission-requirement-node-current {
+  border-color: var(--color-accent-strong);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-accent) 28%, transparent);
+}
+.mission-requirement-node-role {
+  color: var(--color-text-muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.mission-requirement-node .entity-link,
+.mission-requirement-node .entity-link-body {
+  min-width: 0;
+  max-width: 100%;
+}
+.mission-requirement-node .entity-link-name {
+  color: var(--color-link);
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
 .area-index-cell {
   min-width: 360px;
 }

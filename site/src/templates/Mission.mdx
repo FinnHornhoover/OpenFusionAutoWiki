@@ -1,6 +1,7 @@
 import Dropdown from '../components/Dropdown';
 import EntityLink from '../components/EntityLink';
 import RewardBox from '../components/RewardBox';
+import MissionRequirementGraph from '../components/MissionRequirementGraph';
 import TaskList from '../components/TaskList';
 
 # {props.data.name}
@@ -34,6 +35,8 @@ import TaskList from '../components/TaskList';
     </div>
   )}
 </div>
+
+<MissionRequirementGraph mission={props.data} />
 
 {(props.data.requiredMissions.length > 0 || props.data.requiredNano || props.data.requiredGuide) && (
   <Dropdown summary="Requirements">

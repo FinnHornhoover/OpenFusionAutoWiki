@@ -120,6 +120,8 @@ export interface MissionIndexEntry {
   type: string;
   startNPC: { name: string; icon: string } | null;
   displayNPC?: { name: string; icon: string } | null;
+  requiredMissions?: Ref[];
+  requiredByMissions?: Ref[];
 }
 
 export interface NpcLocation {
