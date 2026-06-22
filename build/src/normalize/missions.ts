@@ -374,6 +374,8 @@ function indexEntry(m: Mission): MissionIndexEntry {
     type: m.type,
     startNPC: m.startNPC ? { name: m.startNPC.name, icon: m.startNPC.icon ?? '' } : null,
     displayNPC: displayNPC ? { name: displayNPC.name, icon: displayNPC.icon ?? '' } : null,
+    requiredMissions: m.requiredMissions,
+    requiredByMissions: m.requiredByMissions,
   };
 }
 
