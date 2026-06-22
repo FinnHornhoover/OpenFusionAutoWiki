@@ -1,3 +1,5 @@
+import { Link } from 'react-router-dom';
+
 import Dropdown from '../components/Dropdown';
 import DropChance from '../components/DropChance';
 import EntityLink from '../components/EntityLink';
@@ -29,7 +31,7 @@ import SimilarItems from '../components/SimilarItems';
   {props.data.singleDamage > 0 && <><dt>Damage (single)</dt><dd>{props.data.singleDamage.toLocaleString()}</dd></>}
   {props.data.multiDamage > 0 && <><dt>Damage (multi)</dt><dd>{props.data.multiDamage.toLocaleString()} × {props.data.numberOfTargets} targets</dd></>}
   {props.data.weaponType && props.data.weaponType !== 'None' && <><dt>Weapon class</dt><dd>{props.data.weaponType}</dd></>}
-  {props.data.range && props.data.range !== 'None' && <><dt>Range</dt><dd>{props.data.range}{props.data.rangeValue ? ` (${props.data.rangeValue})` : ''}</dd></>}
+  {props.data.range && props.data.range !== 'None' && <><dt>Range</dt><dd>{props.data.range}{props.data.rangeValue ? ' (' + props.data.rangeValue + ')' : ''}</dd></>}
   {props.data.rateOfFire > 0 && <><dt>Rate of fire</dt><dd>{props.data.rateOfFire}</dd></>}
   {props.data.defense > 0 && <><dt>Defense</dt><dd>{props.data.defense.toLocaleString()}</dd></>}
   {props.data.maxStack > 1 && <><dt>Stack</dt><dd>{props.data.maxStack}</dd></>}
@@ -38,192 +40,219 @@ import SimilarItems from '../components/SimilarItems';
   <><dt>Sellable</dt><dd>{props.data.sellable ? 'Yes' : 'No'}</dd></>
 </dl>
 
-{props.data.typeId === 9 && props.data.crateDrops.length > 0 && (
-  <Dropdown summary={`Drops (${props.data.crateDrops.length})`} open>
-    <table className="location-table source-table">
-      <thead>
-        <tr>
-          <th>Item</th>
-          <th>Chance</th>
-        </tr>
-      </thead>
-      <tbody>
-        {props.data.crateDrops.map((d, i) => (
-          <tr key={`${d.ref.id}-${i}`}>
-            <td><EntityLink entity={d.ref} /></td>
-            <td><DropChance data={d} leadingSeparator={false} /></td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
-  </Dropdown>
-)}
-
-
-{props.data.containingCrates.length > 0 && (
-  <Dropdown summary={`Containing CRATEs (${props.data.containingCrates.length})`} open>
-    <table className="location-table source-table">
-      <thead>
-        <tr>
-          <th>CRATE</th>
-          <th>Chance</th>
-        </tr>
-      </thead>
-      <tbody>
-        {props.data.containingCrates.map((c, i) => (
-          <tr key={`${c.ref.id}-${i}`}>
-            <td><EntityLink entity={c.ref} /></td>
-            <td><DropChance data={c} leadingSeparator={false} /></td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
-  </Dropdown>
-)}
-
 {(() => {
-  const buckets = {
-    'Mission rewards': props.data.sources.filter((s) => s.kind === 'mission' || s.kind === 'mission-crate'),
-    'Dropped by': props.data.sources
-      .filter((s) => s.kind === 'mob')
-      .slice()
-      .sort((a, b) => {
-        const ma = Math.max(a.boyProbability, a.girlProbability);
-        const mb = Math.max(b.boyProbability, b.girlProbability);
-        return (mb - ma) || a.mob.name.localeCompare(b.mob.name);
-      }),
-    'Sold by': props.data.sources.filter((s) => s.kind === 'vendor'),
-    'Eggs': props.data.sources.filter((s) => s.kind === 'egg'),
-    'Racing rewards': props.data.sources.filter((s) => s.kind === 'racing'),
-    'Code redemptions': props.data.sources.filter((s) => s.kind === 'code'),
-    'Event drops': props.data.sources
+  const areaIdFor = (areaZone) => {
+    if (!areaZone || areaZone === 'Unknown - Unknown') return '';
+    const slug = areaZone
+      .toLowerCase()
+      .replace(/\s*-\s*/g, '-')
+      .replace(/[^a-z0-9-]+/g, '-')
+      .replace(/-{2,}/g, '-')
+      .replace(/^-+|-+$/g, '');
+    return slug || areaZone.toLowerCase();
+  };
+  const locationLine = (areaZone) => {
+    if (!areaZone) return null;
+    const areaId = areaIdFor(areaZone);
+    return (
+      <div className="muted item-source-location">
+        <em>{areaId ? <Link to={'/' + props.build + '/areas/' + areaId}>{areaZone}</Link> : areaZone}</em>
+      </div>
+    );
+  };
+  const droppedBy = props.data.sources
+    .filter((s) => s.kind === 'mob')
+    .slice()
+    .sort((a, b) => {
+      const ma = Math.max(a.boyProbability, a.girlProbability);
+      const mb = Math.max(b.boyProbability, b.girlProbability);
+      return (mb - ma) || a.mob.name.localeCompare(b.mob.name);
+    });
+  const buckets = [
+    ['Mission rewards', props.data.sources.filter((s) => s.kind === 'mission' || s.kind === 'mission-crate')],
+    ['Sold by', props.data.sources.filter((s) => s.kind === 'vendor')],
+    ['Eggs', props.data.sources.filter((s) => s.kind === 'egg')],
+    ['Racing rewards', props.data.sources.filter((s) => s.kind === 'racing')],
+    ['Code redemptions', props.data.sources.filter((s) => s.kind === 'code')],
+    ['Event drops', props.data.sources
       .filter((s) => s.kind === 'event')
       .slice()
       .sort((a, b) => {
         const ma = Math.max(a.boyProbability, a.girlProbability);
         const mb = Math.max(b.boyProbability, b.girlProbability);
         return (mb - ma) || a.eventName.localeCompare(b.eventName);
-      }),
-  };
-  return Object.entries(buckets)
-    .filter(([, list]) => list.length > 0)
-    .map(([label, list]) => (
-      <Dropdown key={label} summary={`${label} (${list.length})`} open={list.length <= 20}>
-        {list[0]?.kind === 'mob' ? (
+      })],
+  ];
+  return (
+    <>
+      {droppedBy.length > 0 && (
+        <Dropdown summary={'Dropped by (' + droppedBy.length + ')'} open={droppedBy.length <= 20}>
           <table className="location-table source-table">
             <thead>
               <tr>
                 <th>Monster</th>
-                <th>Location</th>
                 <th>Drop chance</th>
               </tr>
             </thead>
             <tbody>
-              {list.map((s, i) => (
-                <tr key={i}>
-                  <td><EntityLink entity={s.mob} /></td>
-                  <td>{s.areaZone || <span className="muted">—</span>}</td>
-                  <td><DropChance data={s} leadingSeparator={false} /></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        ) : list[0]?.kind === 'vendor' ? (
-          <table className="location-table source-table">
-            <thead>
-              <tr>
-                <th>Seller</th>
-                <th>Price</th>
-                <th>Location</th>
-              </tr>
-            </thead>
-            <tbody>
-              {list.map((s, i) => (
-                <tr key={i}>
-                  <td><EntityLink entity={s.npc} /></td>
-                  <td>{s.price > 0 ? `${s.price.toLocaleString()} Taros` : <span className="muted">—</span>}</td>
-                  <td>{s.areaZone || <span className="muted">—</span>}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        ) : list[0]?.kind === 'egg' ? (
-          <table className="location-table source-table">
-            <thead>
-              <tr>
-                <th>Egg</th>
-                <th>Location</th>
-                <th>Drop chance</th>
-              </tr>
-            </thead>
-            <tbody>
-              {list.map((s, i) => (
+              {droppedBy.map((s, i) => (
                 <tr key={i}>
                   <td>
-                    <strong>{s.eggName || 'Egg'}</strong>
-                  </td>
-                  <td>
-                    {s.areaZone ? (
-                      <MapSpot
-                        x={s.x}
-                        y={s.y}
-                        z={s.z}
-                        areaId={s.areaId}
-                        title={s.areaZone}
-                        instanceName={s.instanceName}
-                        icon="/minimap/mapicons/world_egg_shiny_npc.png"
-                      />
-                    ) : <span className="muted">—</span>}
+                    <EntityLink entity={s.mob} />
+                    {locationLine(s.areaZone)}
                   </td>
                   <td><DropChance data={s} leadingSeparator={false} /></td>
                 </tr>
               ))}
             </tbody>
           </table>
-        ) : (
-        <ul className="ref-list">
-          {list.map((s, i) => {
-            if (s.kind === 'mission' || s.kind === 'mission-crate') {
-              return (
-                <li key={i}>
-                  <span className="task-label requirement-label">{s.kind === 'mission-crate' ? 'From Reward CRATE:' : 'Direct Reward:'}</span>
-                  <EntityLink entity={s.mission} />
-                  <InlineMeta leading>{s.selectionNeeded && <span>choose one</span>}</InlineMeta>
-                </li>
-              );
-            }
-            if (s.kind === 'racing') {
-              return (
-                <li key={i}>
-                  {s.npc ? <EntityLink entity={s.npc} withIcon={false} /> : <strong>Race</strong>}
-                  <InlineMeta leading>
-                    {s.instanceName && <span>{s.instanceName}</span>}
-                    {s.requiredScore > 0 && <span>score {s.requiredScore.toLocaleString()}+</span>}
-                    {s.requiredStars > 0 && <span>{s.requiredStars}★</span>}
-                  </InlineMeta>
-                </li>
-              );
-            }
-            if (s.kind === 'code') {
-              return <li key={i}><EntityLink entity={s.ref} withIcon={false} /></li>;
-            }
-            if (s.kind === 'event') {
-              return (
-                <li key={i}>
-                  <strong>{s.eventName || `Event #${s.eventId}`}</strong>
-                  <DropChance data={s} />
-                </li>
-              );
-            }
-            return null;
-          })}
-        </ul>
-        )}
-      </Dropdown>
-    ));
+        </Dropdown>
+      )}
+
+      {props.data.containingCrates.length > 0 && (
+        <Dropdown summary={'Containing CRATEs (' + props.data.containingCrates.length + ')'} open>
+          <table className="location-table source-table">
+            <thead>
+              <tr>
+                <th>CRATE</th>
+                <th>Chance</th>
+              </tr>
+            </thead>
+            <tbody>
+              {props.data.containingCrates.map((c, i) => (
+                <tr key={c.ref.id + '-' + i}>
+                  <td><EntityLink entity={c.ref} /></td>
+                  <td><DropChance data={c} leadingSeparator={false} /></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </Dropdown>
+      )}
+
+      {props.data.typeId === 9 && props.data.crateDrops.length > 0 && (
+        <Dropdown summary={'Drops (' + props.data.crateDrops.length + ')'} open>
+          <table className="location-table source-table">
+            <thead>
+              <tr>
+                <th>Item</th>
+                <th>Chance</th>
+              </tr>
+            </thead>
+            <tbody>
+              {props.data.crateDrops.map((d, i) => (
+                <tr key={d.ref.id + '-' + i}>
+                  <td><EntityLink entity={d.ref} /></td>
+                  <td><DropChance data={d} leadingSeparator={false} /></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </Dropdown>
+      )}
+
+      {buckets
+        .filter(([, list]) => list.length > 0)
+        .map(([label, list]) => (
+          <Dropdown key={label} summary={label + ' (' + list.length + ')'} open={list.length <= 20}>
+            {list[0]?.kind === 'vendor' ? (
+              <table className="location-table source-table">
+                <thead>
+                  <tr>
+                    <th>Seller</th>
+                    <th>Price</th>
+                    <th>Location</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {list.map((s, i) => (
+                    <tr key={i}>
+                      <td><EntityLink entity={s.npc} /></td>
+                      <td>{s.price > 0 ? s.price.toLocaleString() + ' Taros' : <span className="muted">-</span>}</td>
+                      <td>{s.areaZone || <span className="muted">-</span>}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : list[0]?.kind === 'egg' ? (
+              <table className="location-table source-table">
+                <thead>
+                  <tr>
+                    <th>Egg</th>
+                    <th>Location</th>
+                    <th>Drop chance</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {list.map((s, i) => (
+                    <tr key={i}>
+                      <td>
+                        <strong>{s.eggName || 'Egg'}</strong>
+                      </td>
+                      <td>
+                        {s.areaZone ? (
+                          <MapSpot
+                            x={s.x}
+                            y={s.y}
+                            z={s.z}
+                            areaId={s.areaId}
+                            title={s.areaZone}
+                            instanceName={s.instanceName}
+                            icon="/minimap/mapicons/world_egg_shiny_npc.png"
+                          />
+                        ) : <span className="muted">-</span>}
+                      </td>
+                      <td><DropChance data={s} leadingSeparator={false} /></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <ul className="ref-list">
+                {list.map((s, i) => {
+                  if (s.kind === 'mission' || s.kind === 'mission-crate') {
+                    return (
+                      <li key={i}>
+                        <span className="task-label requirement-label">{s.kind === 'mission-crate' ? 'From Reward CRATE:' : 'Direct Reward:'}</span>
+                        <EntityLink entity={s.mission} />
+                        <InlineMeta leading>{s.selectionNeeded && <span>choose one</span>}</InlineMeta>
+                      </li>
+                    );
+                  }
+                  if (s.kind === 'racing') {
+                    return (
+                      <li key={i}>
+                        {s.npc ? <EntityLink entity={s.npc} withIcon={false} /> : <strong>Race</strong>}
+                        <InlineMeta leading>
+                          {s.instanceName && <span>{s.instanceName}</span>}
+                          {s.requiredScore > 0 && <span>score {s.requiredScore.toLocaleString()}+</span>}
+                          {s.requiredStars > 0 && <span>{s.requiredStars}★</span>}
+                        </InlineMeta>
+                      </li>
+                    );
+                  }
+                  if (s.kind === 'code') {
+                    return <li key={i}><EntityLink entity={s.ref} withIcon={false} /></li>;
+                  }
+                  if (s.kind === 'event') {
+                    return (
+                      <li key={i}>
+                        <strong>{s.eventName || 'Event #' + s.eventId}</strong>
+                        <DropChance data={s} />
+                      </li>
+                    );
+                  }
+                  return null;
+                })}
+              </ul>
+            )}
+          </Dropdown>
+        ))}
+    </>
+  );
 })()}
 
-{props.data.sources.length === 0 && (
+{props.data.sources.length === 0 && props.data.crateDrops.length === 0 && props.data.containingCrates.length === 0 && (
   <p className="muted">No known sources for this item.</p>
 )}
 

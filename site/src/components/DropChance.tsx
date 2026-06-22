@@ -1,3 +1,5 @@
+import type { ReactNode } from 'react';
+
 import type { DropChance as DropChanceData } from '../data/types';
 import InlineMeta from './InlineMeta';
 
@@ -22,13 +24,13 @@ interface Props {
  *  - both 0 → renders nothing
  *  - boy === girl → "1.68%"
  *  - one side 0 → "1.68% (boys-only)" or "1.68% (girls-only)"
- *  - asymmetric → "1.68% boys / 1.96% girls"
+ *  - asymmetric -> boys and girls render on separate lines
  */
 export default function DropChance({ data, leadingSeparator = true }: Props) {
   const { boyProbability: b, girlProbability: g } = data;
   if (b <= 0 && g <= 0) return null;
   const same = Math.abs(b - g) < 1e-9;
-  let label: string;
+  let label: ReactNode;
   if (same) {
     label = fmt(b);
   } else if (b > 0 && g <= 0) {
@@ -36,7 +38,11 @@ export default function DropChance({ data, leadingSeparator = true }: Props) {
   } else if (g > 0 && b <= 0) {
     label = `${fmt(g)} (girls-only)`;
   } else {
-    label = `${fmt(b)} boys / ${fmt(g)} girls`;
+    label = <>
+      {fmt(b)} boys
+      <br />
+      {fmt(g)} girls
+    </>;
   }
 
   return <InlineMeta leading={leadingSeparator}>{label}</InlineMeta>;

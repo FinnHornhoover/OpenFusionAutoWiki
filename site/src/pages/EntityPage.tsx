@@ -110,7 +110,7 @@ export default function EntityPage() {
           {' · '}
           <Link to={`/${build}/items`}>Items</Link>
         </p>
-        <ItemTemplate data={entity as Item} />
+        <ItemTemplate data={entity as Item} build={build} />
       </section>
     );
   }
