@@ -94,13 +94,12 @@ import { warpIcon } from '../data/mapMarkers';
 
 {props.data.exitWarps.length > 0 && (
   <Dropdown summary={`Exit warps (${props.data.exitWarps.length})`}>
-    <table className="location-table source-table">
-      <thead><tr><th>Warp NPC</th><th>Destination</th></tr></thead>
-      <tbody>
-        {props.data.exitWarps.map((warp) => (
-          <tr key={warp.id}>
-            <td>{warp.npc ? <EntityLink entity={warp.npc} /> : <span className="muted">-</span>}</td>
-            <td>{warp.exitLocation ? (
+    <ul className="ref-list location-list">
+      {props.data.exitWarps.map((warp) => (
+        <li key={warp.id}>
+          {warp.npc ? <EntityLink entity={warp.npc} /> : <span className="muted">-</span>}
+          <span className="source-card-detail">
+            {warp.exitLocation ? (
               <MapSpot
                 x={warp.exitLocation.x}
                 y={warp.exitLocation.y}
@@ -109,11 +108,11 @@ import { warpIcon } from '../data/mapMarkers';
                 title={warp.exitLocation.areaZone}
                 icon="/minimap/mapicons/warp_npc.png"
               />
-            ) : <span className="muted">-</span>}</td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
+            ) : <span className="muted">-</span>}
+          </span>
+        </li>
+      ))}
+    </ul>
   </Dropdown>
 )}
 
@@ -137,17 +136,16 @@ import { warpIcon } from '../data/mapMarkers';
 {props.data.rankRewards.map((reward) => reward.item && (
   <Dropdown key={`reward-${reward.stars}`} summary={`${reward.label} rewards`}>
     {reward.crateDrops.length > 0 ? (
-      <table className="location-table source-table">
-        <thead><tr><th>Item</th><th>Chance</th></tr></thead>
-        <tbody>
-          {reward.crateDrops.map((drop, i) => (
-            <tr key={`${drop.ref.id}-${i}`}>
-              <td><EntityLink entity={drop.ref} /></td>
-              <td><DropChance data={drop} leadingSeparator={false} /></td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      <ul className="ref-list">
+        {reward.crateDrops.map((drop, i) => (
+          <li key={`${drop.ref.id}-${i}`}>
+            <EntityLink entity={drop.ref} />
+            <InlineMeta className="muted source-card-meta">
+              <DropChance data={drop} leadingSeparator={false} />
+            </InlineMeta>
+          </li>
+        ))}
+      </ul>
     ) : (
       <ul className="reward-items">
         <li><EntityLink entity={reward.item} /></li>

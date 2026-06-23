@@ -87,67 +87,47 @@ import SimilarItems from '../components/SimilarItems';
     <>
       {droppedBy.length > 0 && (
         <Dropdown summary={'Dropped by (' + droppedBy.length + ')'} open={droppedBy.length <= 20}>
-          <table className="location-table source-table">
-            <thead>
-              <tr>
-                <th>Monster</th>
-                <th>Drop chance</th>
-              </tr>
-            </thead>
-            <tbody>
-              {droppedBy.map((s, i) => (
-                <tr key={i}>
-                  <td>
-                    <EntityLink entity={s.mob} />
-                    {locationLine(s.areaZone)}
-                  </td>
-                  <td><DropChance data={s} leadingSeparator={false} /></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <ul className="ref-list">
+            {droppedBy.map((s, i) => (
+              <li key={i}>
+                <EntityLink entity={s.mob} />
+                {locationLine(s.areaZone)}
+                <InlineMeta className="muted source-card-meta">
+                  <DropChance data={s} leadingSeparator={false} />
+                </InlineMeta>
+              </li>
+            ))}
+          </ul>
         </Dropdown>
       )}
 
       {props.data.containingCrates.length > 0 && (
         <Dropdown summary={'Containing CRATEs (' + props.data.containingCrates.length + ')'} open>
-          <table className="location-table source-table">
-            <thead>
-              <tr>
-                <th>CRATE</th>
-                <th>Chance</th>
-              </tr>
-            </thead>
-            <tbody>
-              {props.data.containingCrates.map((c, i) => (
-                <tr key={c.ref.id + '-' + i}>
-                  <td><EntityLink entity={c.ref} /></td>
-                  <td><DropChance data={c} leadingSeparator={false} /></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <ul className="ref-list">
+            {props.data.containingCrates.map((c, i) => (
+              <li key={c.ref.id + '-' + i}>
+                <EntityLink entity={c.ref} />
+                <InlineMeta className="muted source-card-meta">
+                  <DropChance data={c} leadingSeparator={false} />
+                </InlineMeta>
+              </li>
+            ))}
+          </ul>
         </Dropdown>
       )}
 
       {props.data.typeId === 9 && props.data.crateDrops.length > 0 && (
         <Dropdown summary={'Drops (' + props.data.crateDrops.length + ')'} open>
-          <table className="location-table source-table">
-            <thead>
-              <tr>
-                <th>Item</th>
-                <th>Chance</th>
-              </tr>
-            </thead>
-            <tbody>
-              {props.data.crateDrops.map((d, i) => (
-                <tr key={d.ref.id + '-' + i}>
-                  <td><EntityLink entity={d.ref} /></td>
-                  <td><DropChance data={d} leadingSeparator={false} /></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <ul className="ref-list">
+            {props.data.crateDrops.map((d, i) => (
+              <li key={d.ref.id + '-' + i}>
+                <EntityLink entity={d.ref} />
+                <InlineMeta className="muted source-card-meta">
+                  <DropChance data={d} leadingSeparator={false} />
+                </InlineMeta>
+              </li>
+            ))}
+          </ul>
         </Dropdown>
       )}
 

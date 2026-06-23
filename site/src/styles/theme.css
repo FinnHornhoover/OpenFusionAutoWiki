@@ -37,7 +37,6 @@
   /* Layout */
   --header-h: 56px;
   --content-max: 1100px;
-  --page-overflow-width: 0px;
 
   color-scheme: dark;
 }
@@ -98,7 +97,6 @@ pre {
 
 .site-header {
   display: flex;
-  min-width: var(--page-overflow-width);
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-3);
@@ -124,14 +122,12 @@ pre {
 .site-main {
   flex: 1;
   width: 100%;
-  min-width: var(--page-overflow-width);
   max-width: var(--content-max);
   margin: 0 auto;
   padding: var(--space-5);
 }
 
 .site-footer {
-  min-width: var(--page-overflow-width);
   padding: var(--space-4) var(--space-5);
   border-top: 1px solid var(--color-border);
   color: var(--color-text-muted);
@@ -361,8 +357,7 @@ input:focus {
 
 /* Dropdowns (details/summary) */
 details.dropdown {
-  min-width: 100%;
-  width: max-content;
+  width: 100%;
   background: var(--color-bg-elevated);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
@@ -383,14 +378,13 @@ details.dropdown > summary::before {
 }
 details.dropdown[open] > summary::before { transform: rotate(90deg); }
 details.dropdown > .dropdown-body {
-  min-width: 100%;
-  width: max-content;
+  max-width: 100%;
   padding: 0 var(--space-4) var(--space-4);
+  overflow-x: auto;
 }
 .dropdown-body > .location-table,
 .dropdown-body > table {
-  width: max-content;
-  min-width: 100%;
+  width: 100%;
 }
 
 /* Minimap viewport */
@@ -867,10 +861,15 @@ details.dropdown > .dropdown-body {
     justify-self: start;
   }
 }
-.task-dropdown .task-detail-table th,
+.task-dropdown .task-detail-table th {
+  width: 4.25rem;
+  min-width: 4.25rem;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
 .task-dropdown .task-journal-text th {
-  width: 8.5rem;
-  min-width: 8.5rem;
+  width: 5.75rem;
+  min-width: 5.75rem;
   white-space: normal;
   overflow-wrap: anywhere;
 }
@@ -1181,6 +1180,14 @@ details.dropdown > .dropdown-body {
 .ref-list .requirement-label {
   display: block;
   margin: 0 0 var(--space-1);
+}
+.source-card-meta {
+  display: flex;
+  margin-top: var(--space-1);
+}
+.source-card-detail {
+  display: block;
+  margin-top: var(--space-2);
 }
 .monster-drop-meta {
   display: flex;

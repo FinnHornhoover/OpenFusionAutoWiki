@@ -1,5 +1,4 @@
-import { useLayoutEffect } from 'react';
-import { Link, Route, Routes, useLocation } from 'react-router-dom';
+import { Link, Route, Routes } from 'react-router-dom';
 import BuildSwitcher from './components/BuildSwitcher';
 import QuickPicks from './components/QuickPicks';
 import SearchBar from './components/SearchBar';
@@ -11,51 +10,7 @@ import NotFound from './pages/NotFound';
 import PlayerStats from './pages/PlayerStats';
 import WorldMap from './pages/WorldMap';
 
-function useLayoutScrollWidth() {
-  const location = useLocation();
-
-  useLayoutEffect(() => {
-    let frame = 0;
-    const root = document.documentElement;
-
-    const update = () => {
-      cancelAnimationFrame(frame);
-      frame = requestAnimationFrame(() => {
-        root.style.setProperty('--page-overflow-width', '0px');
-        const width = Math.max(root.scrollWidth, document.body?.scrollWidth ?? 0);
-        const main = document.querySelector<HTMLElement>('.site-main');
-        const mainStyle = main ? getComputedStyle(main) : null;
-        const endPadding = mainStyle ? parseFloat(mainStyle.paddingInlineEnd || mainStyle.paddingRight) || 0 : 0;
-        const overflowWidth = width > root.clientWidth + 1 ? width + endPadding : 0;
-        root.style.setProperty('--page-overflow-width', Math.ceil(overflowWidth) + 'px');
-      });
-    };
-
-    update();
-    window.addEventListener('resize', update);
-    window.addEventListener('toggle', update, true);
-
-    const resizeObserver = new ResizeObserver(update);
-    resizeObserver.observe(root);
-    if (document.body) resizeObserver.observe(document.body);
-
-    const mutationObserver = new MutationObserver(update);
-    if (document.body) {
-      mutationObserver.observe(document.body, { attributes: true, childList: true, subtree: true });
-    }
-
-    return () => {
-      cancelAnimationFrame(frame);
-      window.removeEventListener('resize', update);
-      window.removeEventListener('toggle', update, true);
-      resizeObserver.disconnect();
-      mutationObserver.disconnect();
-    };
-  }, [location.pathname, location.search]);
-}
-
 export default function App() {
-  useLayoutScrollWidth();
   return (
     <div className="app">
       <header className="site-header">

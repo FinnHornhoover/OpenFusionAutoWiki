@@ -44,20 +44,11 @@ import { transportIcon, warpIcon } from '../data/mapMarkers';
 
 {props.data.missionsStarting.length > 0 && (
   <Dropdown summary={`Missions starting here (${props.data.missionsStarting.length})`} open={props.data.missionsStarting.length <= 20}>
-    <table className="location-table source-table">
-      <thead>
-        <tr>
-          <th>Mission</th>
-        </tr>
-      </thead>
-      <tbody>
-        {props.data.missionsStarting.map((m) => (
-          <tr key={m.id}>
-            <td><EntityLink entity={m} /></td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
+    <ul className="ref-list">
+      {props.data.missionsStarting.map((m) => (
+        <li key={m.id}><EntityLink entity={m} /></li>
+      ))}
+    </ul>
   </Dropdown>
 )}
 
