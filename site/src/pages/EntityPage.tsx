@@ -35,7 +35,7 @@ export default function EntityPage() {
   const entityName = (entity as { name?: string } | null)?.name;
   const typeLabel = type ? type.charAt(0).toUpperCase() + type.replace(/s$/, '').slice(1) : '';
   useDocumentTitle(
-    entityName ? `${entityName} · ${typeLabel} · ${buildLabel ?? ''}`.trim() : null,
+    entityName ? `${entityName} > ${typeLabel} > ${buildLabel ?? ''}`.trim() : null,
   );
 
   if (!supported) {
@@ -79,7 +79,7 @@ export default function EntityPage() {
       <section className="entity-page mission-page">
         <p className="breadcrumb muted">
           <Link to={`/${build}`}>{buildLabel}</Link>
-          {' · '}
+          {' › '}
           <Link to={`/${build}/missions`}>Missions</Link>
         </p>
         <MissionTemplate data={entity as Mission} />
@@ -92,7 +92,7 @@ export default function EntityPage() {
       <section className="entity-page npc-page">
         <p className="breadcrumb muted">
           <Link to={`/${build}`}>{buildLabel}</Link>
-          {' · '}
+          {' › '}
           <Link to={`/${build}/npcs`}>NPCs</Link>
         </p>
         {'kind' in (entity as object) && (entity as NpcAmbiguity).kind === 'npc-ambiguity'
@@ -107,7 +107,7 @@ export default function EntityPage() {
       <section className="entity-page item-page">
         <p className="breadcrumb muted">
           <Link to={`/${build}`}>{buildLabel}</Link>
-          {' · '}
+          {' › '}
           <Link to={`/${build}/items`}>Items</Link>
         </p>
         <ItemTemplate data={entity as Item} build={build} />
@@ -120,7 +120,7 @@ export default function EntityPage() {
       <section className="entity-page code-page">
         <p className="breadcrumb muted">
           <Link to={`/${build}`}>{buildLabel}</Link>
-          {' · '}
+          {' › '}
           <Link to={`/${build}/codes`}>Codes</Link>
         </p>
         <CodeTemplate data={entity as Code} />
@@ -133,7 +133,7 @@ export default function EntityPage() {
       <section className="entity-page monster-page">
         <p className="breadcrumb muted">
           <Link to={`/${build}`}>{buildLabel}</Link>
-          {' · '}
+          {' › '}
           <Link to={`/${build}/monsters`}>Monsters</Link>
         </p>
         <MonsterTemplate data={entity as Mob} />
@@ -146,7 +146,7 @@ export default function EntityPage() {
       <section className="entity-page area-page">
         <p className="breadcrumb muted">
           <Link to={`/${build}`}>{buildLabel}</Link>
-          {' · '}
+          {' › '}
           <Link to={`/${build}/areas`}>Areas</Link>
         </p>
         <AreaTemplate data={entity as Area} build={build} />
@@ -159,7 +159,7 @@ export default function EntityPage() {
       <section className="entity-page instance-page">
         <p className="breadcrumb muted">
           <Link to={`/${build}`}>{buildLabel}</Link>
-          {' · '}
+          {' › '}
           <Link to={`/${build}/instances`}>Instances</Link>
         </p>
         <InstanceTemplate data={entity as Instance} />
@@ -172,7 +172,7 @@ export default function EntityPage() {
       <section className="entity-page infected-zone-page">
         <p className="breadcrumb muted">
           <Link to={`/${build}`}>{buildLabel}</Link>
-          {' · '}
+          {' › '}
           <Link to={`/${build}/infected-zones`}>Infected Zones</Link>
         </p>
         <InfectedZoneTemplate data={entity as InfectedZone} />
@@ -185,7 +185,7 @@ export default function EntityPage() {
       <section className="entity-page nano-page">
         <p className="breadcrumb muted">
           <Link to={`/${build}`}>{buildLabel}</Link>
-          {' · '}
+          {' › '}
           <Link to={`/${build}/nanos`}>Nanos</Link>
         </p>
         <NanoTemplate data={entity as Nano} />
