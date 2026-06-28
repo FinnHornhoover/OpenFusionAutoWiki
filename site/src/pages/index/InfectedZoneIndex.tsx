@@ -68,37 +68,39 @@ export default function InfectedZoneIndex({ build, rows, loading }: Props) {
       {!loading && filtered.length === 0 && <p className="muted">No matches.</p>}
       {!loading && filtered.length > 0 && (
         <>
-          <table className="location-table source-table entity-index-table">
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>Infected zone</th>
-                <th>Location</th>
-                <th>Pods</th>
-                <th>Time</th>
-                <th>Max score</th>
-                <th>Warps</th>
-              </tr>
-            </thead>
-            <tbody>
-              {pageRows.map((r) => (
-                <tr key={r.id}>
-                  <td><code className="entity-index-id-code">{r.id}</code></td>
-                  <td>
-                    <Link className="infected-zone-index-card" to={`/${build}/infected-zones/${r.id}`}>
-                      {r.icon ? <Icon src={r.icon} alt="" size={239} /> : <span className="icon icon-empty" aria-hidden />}
-                      <span className="entity-index-link">{r.name}</span>
-                    </Link>
-                  </td>
-                  <td>{r.areaId ? <MapSpot x={r.firstEntryX} y={r.firstEntryY} z={r.firstEntryZ} areaId={r.areaId} title={r.areaZone} icon="/minimap/mapicons/warp_npc.png" /> : r.areaZone || <span className="muted">-</span>}</td>
-                  <td>{r.podCount.toLocaleString()}</td>
-                  <td>{formatTime(r.timeLimitSeconds, r.timeLimit) ?? <span className="muted">-</span>}</td>
-                  <td>{r.maxScore > 0 ? r.maxScore.toLocaleString() : <span className="muted">-</span>}</td>
-                  <td>{r.entryWarpCount.toLocaleString()} / {r.exitWarpCount.toLocaleString()}</td>
+          <div className="table-scroll">
+            <table className="location-table source-table entity-index-table">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Infected zone</th>
+                  <th>Location</th>
+                  <th>Pods</th>
+                  <th>Time</th>
+                  <th>Max score</th>
+                  <th>Warps</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {pageRows.map((r) => (
+                  <tr key={r.id}>
+                    <td><code className="entity-index-id-code">{r.id}</code></td>
+                    <td>
+                      <Link className="infected-zone-index-card" to={`/${build}/infected-zones/${r.id}`}>
+                        {r.icon ? <Icon src={r.icon} alt="" size={239} /> : <span className="icon icon-empty" aria-hidden />}
+                        <span className="entity-index-link">{r.name}</span>
+                      </Link>
+                    </td>
+                    <td>{r.areaId ? <MapSpot x={r.firstEntryX} y={r.firstEntryY} z={r.firstEntryZ} areaId={r.areaId} title={r.areaZone} icon="/minimap/mapicons/warp_npc.png" /> : r.areaZone || <span className="muted">-</span>}</td>
+                    <td>{r.podCount.toLocaleString()}</td>
+                    <td>{formatTime(r.timeLimitSeconds, r.timeLimit) ?? <span className="muted">-</span>}</td>
+                    <td>{r.maxScore > 0 ? r.maxScore.toLocaleString() : <span className="muted">-</span>}</td>
+                    <td>{r.entryWarpCount.toLocaleString()} / {r.exitWarpCount.toLocaleString()}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
           {totalPages > 1 && (
             <nav className="pager" aria-label="Pagination">
               <button onClick={() => setPage(Math.max(0, page - 1))} disabled={page === 0}>‹ Prev</button>

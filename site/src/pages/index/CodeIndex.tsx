@@ -48,23 +48,25 @@ export default function CodeIndex({ build, rows, loading }: Props) {
       {!loading && filtered.length === 0 && <p className="muted">No matches.</p>}
       {!loading && filtered.length > 0 && (
         <>
-          <table className="location-table source-table entity-index-table code-index-table">
-            <thead><tr><th>Code</th></tr></thead>
-            <tbody>
-              {pageRows.map((r) => (
-                <tr key={r.id}>
-                  <td>
-                    <Link className="entity-index-link code-index-code" to={`/${build}/codes/${r.id}`}><code className="entity-index-id-code">{r.code}</code></Link>
-                    <div className="code-index-items">
-                      {r.items.map((item) => (
-                        <EntityLink key={item.id} entity={item} iconSize={64} />
-                      ))}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <div className="table-scroll">
+            <table className="location-table source-table entity-index-table code-index-table">
+              <thead><tr><th>Code</th></tr></thead>
+              <tbody>
+                {pageRows.map((r) => (
+                  <tr key={r.id}>
+                    <td>
+                      <Link className="entity-index-link code-index-code" to={`/${build}/codes/${r.id}`}><code className="entity-index-id-code">{r.code}</code></Link>
+                      <div className="code-index-items">
+                        {r.items.map((item) => (
+                          <EntityLink key={item.id} entity={item} iconSize={64} />
+                        ))}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
           {totalPages > 1 && (
             <nav className="pager" aria-label="Pagination">
               <button onClick={() => setPage(Math.max(0, page - 1))} disabled={page === 0}>‹ Prev</button>

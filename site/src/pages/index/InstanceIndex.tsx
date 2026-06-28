@@ -58,24 +58,26 @@ export default function InstanceIndex({ build, rows, loading }: Props) {
       {!loading && filtered.length === 0 && <p className="muted">No matches.</p>}
       {!loading && filtered.length > 0 && (
         <>
-          <table className="location-table source-table entity-index-table">
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>Instance</th>
-                <th>Infected zone</th>
-              </tr>
-            </thead>
-            <tbody>
-              {pageRows.map((r) => (
-                <tr key={r.id} className={r.inGame ? undefined : 'entity-index-row-muted'}>
-                  <td><code className="entity-index-id-code">{r.id}</code></td>
-                  <td><Link className="entity-index-link" to={`/${build}/instances/${r.id}`}>{r.name}</Link></td>
-                  <td>{r.infectedZone ? <EntityLink entity={r.infectedZone} iconSize={64} /> : <span className="muted">-</span>}</td>
+          <div className="table-scroll">
+            <table className="location-table source-table entity-index-table">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Instance</th>
+                  <th>Infected zone</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {pageRows.map((r) => (
+                  <tr key={r.id} className={r.inGame ? undefined : 'entity-index-row-muted'}>
+                    <td><code className="entity-index-id-code">{r.id}</code></td>
+                    <td><Link className="entity-index-link" to={`/${build}/instances/${r.id}`}>{r.name}</Link></td>
+                    <td>{r.infectedZone ? <EntityLink entity={r.infectedZone} iconSize={64} /> : <span className="muted">-</span>}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
           {totalPages > 1 && (
             <nav className="pager" aria-label="Pagination">
               <button onClick={() => setPage(Math.max(0, page - 1))} disabled={page === 0}>‹ Prev</button>

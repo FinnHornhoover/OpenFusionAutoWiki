@@ -95,37 +95,39 @@ export default function AreaIndex({ build, rows, loading }: Props) {
       {!loading && filtered.length === 0 && <p className="muted">No matches.</p>}
       {!loading && filtered.length > 0 && (
         <>
-          <table className="location-table source-table area-index-table">
-            <thead>
-              <tr>
-                <th>Area</th>
-              </tr>
-            </thead>
-            <tbody>
-              {pageRows.map((r) => (
-                <tr key={r.id}>
-                  <td className="area-index-cell">
-                    <div className="area-index-name">
-                      {r.width > 0 && r.height > 0 && (
-                        <Link to={`/${build}/areas/${r.id}`} aria-label={r.name}>
-                          <Minimap
-                            x={r.x + r.width / 2}
-                            y={r.y + r.height / 2}
-                            width={r.width}
-                            height={r.height}
-                            size={256}
-                            extent={Math.max(r.width, r.height) / 2 + 16384}
-                            title={r.name}
-                          />
-                        </Link>
-                      )}
-                      <Link className="area-index-link" to={`/${build}/areas/${r.id}`}>{r.zoneName ? r.name + " - " + r.zoneName : r.name}</Link>
-                    </div>
-                  </td>
+          <div className="table-scroll">
+            <table className="location-table source-table area-index-table">
+              <thead>
+                <tr>
+                  <th>Area</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {pageRows.map((r) => (
+                  <tr key={r.id}>
+                    <td className="area-index-cell">
+                      <div className="area-index-name">
+                        {r.width > 0 && r.height > 0 && (
+                          <Link to={`/${build}/areas/${r.id}`} aria-label={r.name}>
+                            <Minimap
+                              x={r.x + r.width / 2}
+                              y={r.y + r.height / 2}
+                              width={r.width}
+                              height={r.height}
+                              size={256}
+                              extent={Math.max(r.width, r.height) / 2 + 16384}
+                              title={r.name}
+                            />
+                          </Link>
+                        )}
+                        <Link className="area-index-link" to={`/${build}/areas/${r.id}`}>{r.zoneName ? r.name + " - " + r.zoneName : r.name}</Link>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
           {totalPages > 1 && (
             <nav className="pager" aria-label="Pagination">
               <button onClick={() => setPage(Math.max(0, page - 1))} disabled={page === 0}>‹ Prev</button>

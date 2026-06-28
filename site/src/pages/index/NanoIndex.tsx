@@ -101,31 +101,33 @@ export default function NanoIndex({ build, rows, loading }: Props) {
       {!loading && filtered.length === 0 && <p className="muted">No matches.</p>}
       {!loading && filtered.length > 0 && (
         <>
-          <table className="location-table source-table entity-index-table">
-            <thead>
-              <tr>
-                <th>Nano</th>
-                <th>Level</th>
-                <th>Type</th>
-              </tr>
-            </thead>
-            <tbody>
-              {pageRows.map((r) => (
-                <tr key={r.id}>
-                  <td>
-                    <div className="entity-index-name">
-                      {r.icon
-                        ? <Icon src={r.icon} alt={r.name} size={64} />
-                        : <span className="icon icon-empty" aria-hidden />}
-                      <Link className="entity-index-link" to={`/${build}/nanos/${r.id}`}>{r.name}</Link>
-                    </div>
-                  </td>
-                  <td>{r.awardLevel > 0 ? r.awardLevel : <span className="muted">—</span>}</td>
-                  <td>{r.nanoType || <span className="muted">—</span>}</td>
+          <div className="table-scroll">
+            <table className="location-table source-table entity-index-table">
+              <thead>
+                <tr>
+                  <th>Nano</th>
+                  <th>Level</th>
+                  <th>Type</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {pageRows.map((r) => (
+                  <tr key={r.id}>
+                    <td>
+                      <div className="entity-index-name">
+                        {r.icon
+                          ? <Icon src={r.icon} alt={r.name} size={64} />
+                          : <span className="icon icon-empty" aria-hidden />}
+                        <Link className="entity-index-link" to={`/${build}/nanos/${r.id}`}>{r.name}</Link>
+                      </div>
+                    </td>
+                    <td>{r.awardLevel > 0 ? r.awardLevel : <span className="muted">—</span>}</td>
+                    <td>{r.nanoType || <span className="muted">—</span>}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
           {totalPages > 1 && (
             <nav className="pager" aria-label="Pagination">
               <button onClick={() => setPage(Math.max(0, page - 1))} disabled={page === 0}>‹ Prev</button>

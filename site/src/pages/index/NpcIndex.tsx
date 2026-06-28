@@ -222,31 +222,33 @@ export default function NpcIndex({ build, rows, loading }: Props) {
       {!loading && filtered.length === 0 && <p className="muted">No matches.</p>}
       {!loading && filtered.length > 0 && (
         <>
-          <table className="location-table source-table entity-index-table">
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>NPC</th>
-                <th>Category</th>
-              </tr>
-            </thead>
-            <tbody>
-              {pageRows.map((r) => (
-                <tr key={r.id} className={npcStatus(r, hideOutOfGame) === 'in-game' ? undefined : 'entity-index-row-muted'}>
-                  <td>{npcVisibleIdCount(r, hideOutOfGame) === 1 ? <code className="entity-index-id-code">{npcRouteId(r, hideOutOfGame)}</code> : <em>{npcVisibleIdCount(r, hideOutOfGame).toLocaleString()} IDs</em>}</td>
-                  <td>
-                    <div className="entity-index-name">
-                      {r.icon
-                        ? <Icon src={r.icon} alt={r.name} size={64} />
-                        : <span className="icon icon-empty" aria-hidden />}
-                      <Link className="entity-index-link" to={`/${build}/npcs/${npcRouteId(r, hideOutOfGame)}`}>{r.name}</Link>
-                    </div>
-                  </td>
-                  <td>{npcCategory(r, hideOutOfGame) || <span className="muted">—</span>}</td>
+          <div className="table-scroll">
+            <table className="location-table source-table entity-index-table">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>NPC</th>
+                  <th>Category</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {pageRows.map((r) => (
+                  <tr key={r.id} className={npcStatus(r, hideOutOfGame) === 'in-game' ? undefined : 'entity-index-row-muted'}>
+                    <td>{npcVisibleIdCount(r, hideOutOfGame) === 1 ? <code className="entity-index-id-code">{npcRouteId(r, hideOutOfGame)}</code> : <em>{npcVisibleIdCount(r, hideOutOfGame).toLocaleString()} IDs</em>}</td>
+                    <td>
+                      <div className="entity-index-name">
+                        {r.icon
+                          ? <Icon src={r.icon} alt={r.name} size={64} />
+                          : <span className="icon icon-empty" aria-hidden />}
+                        <Link className="entity-index-link" to={`/${build}/npcs/${npcRouteId(r, hideOutOfGame)}`}>{r.name}</Link>
+                      </div>
+                    </td>
+                    <td>{npcCategory(r, hideOutOfGame) || <span className="muted">—</span>}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
           {totalPages > 1 && (
             <nav className="pager" aria-label="Pagination">
               <button onClick={() => setPage(Math.max(0, page - 1))} disabled={page === 0}>‹ Prev</button>

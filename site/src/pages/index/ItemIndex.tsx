@@ -301,31 +301,33 @@ export default function ItemIndex({ build, rows, loading }: Props) {
       {!loading && filtered.length === 0 && <p className="muted">No matches.</p>}
       {!loading && filtered.length > 0 && (
         <>
-          <table className="location-table source-table entity-index-table">
-            <thead>
-              <tr>
-                <th>Item</th>
-                <th>Level</th>
-                <th>Rarity</th>
-              </tr>
-            </thead>
-            <tbody>
-              {pageRows.map((r) => (
-                <tr key={r.id} className={r.obtainable ? undefined : 'entity-index-row-muted'}>
-                  <td>
-                    <div className="entity-index-name">
-                      {r.icon
-                        ? <Icon src={r.icon} alt={r.name} size={64} />
-                        : <span className="icon icon-empty" aria-hidden />}
-                      <Link className="entity-index-link" to={`/${build}/items/${r.id}`}>{r.name}</Link>
-                    </div>
-                  </td>
-                  <td>{r.contentLevel > 0 ? r.contentLevel : <span className="muted">-</span>}</td>
-                  <td>{r.rarity && r.rarity !== 'Any' ? r.rarity : <span className="muted">-</span>}</td>
+          <div className="table-scroll">
+            <table className="location-table source-table entity-index-table">
+              <thead>
+                <tr>
+                  <th>Item</th>
+                  <th>Level</th>
+                  <th>Rarity</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {pageRows.map((r) => (
+                  <tr key={r.id} className={r.obtainable ? undefined : 'entity-index-row-muted'}>
+                    <td>
+                      <div className="entity-index-name">
+                        {r.icon
+                          ? <Icon src={r.icon} alt={r.name} size={64} />
+                          : <span className="icon icon-empty" aria-hidden />}
+                        <Link className="entity-index-link" to={`/${build}/items/${r.id}`}>{r.name}</Link>
+                      </div>
+                    </td>
+                    <td>{r.contentLevel > 0 ? r.contentLevel : <span className="muted">-</span>}</td>
+                    <td>{r.rarity && r.rarity !== 'Any' ? r.rarity : <span className="muted">-</span>}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
           {totalPages > 1 && (
             <nav className="pager" aria-label="Pagination">
               <button onClick={() => setPage(Math.max(0, page - 1))} disabled={page === 0}>‹ Prev</button>
