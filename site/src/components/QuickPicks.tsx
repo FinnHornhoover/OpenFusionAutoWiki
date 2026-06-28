@@ -1,4 +1,4 @@
-import { useMatch } from 'react-router-dom';
+import { useMatch, useNavigate } from 'react-router-dom';
 import { useManifest } from '../data/useManifest';
 import { useBuildSwitch } from '../data/useBuildSwitch';
 
@@ -11,6 +11,7 @@ const PICKS: Array<{ label: string; slug: string }> = [
 export default function QuickPicks() {
   const match = useMatch('/:build/*');
   const build = match?.params.build;
+  const navigate = useNavigate();
   const switchBuild = useBuildSwitch();
   const { manifest, loading } = useManifest();
   if (loading || !manifest) return null;
@@ -26,7 +27,13 @@ export default function QuickPicks() {
           key={p.slug}
           type="button"
           className={'quick-pick' + (build === p.slug ? ' active' : '')}
-          onClick={() => switchBuild(p.slug)}
+          onClick={() => {
+            if (build === p.slug) {
+              navigate("/" + p.slug);
+            } else {
+              switchBuild(p.slug);
+            }
+          }}
         >
           {p.label}
         </button>
