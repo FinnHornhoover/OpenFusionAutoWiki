@@ -171,33 +171,35 @@ export default function MobIndex({ build, rows, loading }: Props) {
       {!loading && filtered.length === 0 && <p className="muted">No matches.</p>}
       {!loading && filtered.length > 0 && (
         <>
-          <table className="location-table source-table entity-index-table">
-            <thead>
-              <tr>
-                <th>Monster</th>
-                <th>Level</th>
-                <th>HP</th>
-                <th>Type</th>
-              </tr>
-            </thead>
-            <tbody>
-              {pageRows.map((r) => (
-                <tr key={r.id} className={r.inGame ? undefined : 'entity-index-row-muted'}>
-                  <td>
-                    <div className="entity-index-name">
-                      {r.icon
-                        ? <Icon src={r.icon} alt={r.name} size={64} />
-                        : <span className="icon icon-empty" aria-hidden />}
-                      <Link className="entity-index-link" to={`/${build}/monsters/${r.id}`}>{r.name}</Link>
-                    </div>
-                  </td>
-                  <td>{r.level > 0 ? r.level : <span className="muted">—</span>}</td>
-                  <td>{r.standardHP > 0 ? r.standardHP.toLocaleString() : <span className="muted">—</span>}</td>
-                  <td>{r.colorType || <span className="muted">—</span>}</td>
+          <div className="table-scroll">
+            <table className="location-table source-table entity-index-table">
+              <thead>
+                <tr>
+                  <th>Monster</th>
+                  <th>Level</th>
+                  <th>HP</th>
+                  <th>Type</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {pageRows.map((r) => (
+                  <tr key={r.id} className={r.inGame ? undefined : 'entity-index-row-muted'}>
+                    <td>
+                      <div className="entity-index-name">
+                        {r.icon
+                          ? <Icon src={r.icon} alt={r.name} size={64} />
+                          : <span className="icon icon-empty" aria-hidden />}
+                        <Link className="entity-index-link" to={`/${build}/monsters/${r.id}`}>{r.name}</Link>
+                      </div>
+                    </td>
+                    <td>{r.level > 0 ? r.level : <span className="muted">—</span>}</td>
+                    <td>{r.standardHP > 0 ? r.standardHP.toLocaleString() : <span className="muted">—</span>}</td>
+                    <td>{r.colorType || <span className="muted">—</span>}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
           {totalPages > 1 && (
             <nav className="pager" aria-label="Pagination">
               <button onClick={() => setPage(Math.max(0, page - 1))} disabled={page === 0}>‹ Prev</button>

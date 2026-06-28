@@ -216,33 +216,35 @@ export default function MissionIndex({ build, rows, loading }: Props) {
       {!loading && filtered.length === 0 && <p className="muted">No matches.</p>}
       {!loading && filtered.length > 0 && (
         <>
-          <table className="location-table source-table entity-index-table">
-            <thead>
-              <tr>
-                <th>Mission</th>
-                <th>Level</th>
-                <th>Difficulty</th>
-                <th>Type</th>
-              </tr>
-            </thead>
-            <tbody>
-              {pageRows.map((r) => (
-                <tr key={r.id}>
-                  <td>
-                    <div className="entity-index-name">
-                      {r.displayNPC?.icon
-                        ? <Icon src={r.displayNPC.icon} alt={r.displayNPC.name} size={64} />
-                        : <span className="icon icon-empty" aria-hidden />}
-                      <Link className="entity-index-link" to={`/${build}/missions/${r.id}`}>{r.name}</Link>
-                    </div>
-                  </td>
-                  <td>{r.level > 0 ? r.level : <span className="muted">—</span>}</td>
-                  <td>{r.difficulty || <span className="muted">—</span>}</td>
-                  <td>{r.type || <span className="muted">—</span>}</td>
+          <div className="table-scroll">
+            <table className="location-table source-table entity-index-table">
+              <thead>
+                <tr>
+                  <th>Mission</th>
+                  <th>Level</th>
+                  <th>Difficulty</th>
+                  <th>Type</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {pageRows.map((r) => (
+                  <tr key={r.id}>
+                    <td>
+                      <div className="entity-index-name">
+                        {r.displayNPC?.icon
+                          ? <Icon src={r.displayNPC.icon} alt={r.displayNPC.name} size={64} />
+                          : <span className="icon icon-empty" aria-hidden />}
+                        <Link className="entity-index-link" to={`/${build}/missions/${r.id}`}>{r.name}</Link>
+                      </div>
+                    </td>
+                    <td>{r.level > 0 ? r.level : <span className="muted">—</span>}</td>
+                    <td>{r.difficulty || <span className="muted">—</span>}</td>
+                    <td>{r.type || <span className="muted">—</span>}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
           {totalPages > 1 && (
             <nav className="pager" aria-label="Pagination">
               <button onClick={() => setPage(Math.max(0, page - 1))} disabled={page === 0}>‹ Prev</button>
