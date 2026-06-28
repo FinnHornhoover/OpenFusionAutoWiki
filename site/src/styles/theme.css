@@ -973,8 +973,35 @@ details.dropdown > .dropdown-body {
   border: none;
 }
 
+/* Breadcrumbs */
+.breadcrumb {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-3);
+}
+.breadcrumb a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2rem;
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: var(--color-bg-subtle);
+  color: var(--color-text);
+  font-size: 0.875rem;
+  line-height: 1.2;
+  text-decoration: none;
+}
+.breadcrumb a:hover {
+  border-color: var(--color-accent);
+  background: var(--color-bg-elevated);
+  color: var(--color-link-hover);
+  text-decoration: none;
+}
+
 /* Entity pages */
-.entity-page .breadcrumb { margin-bottom: var(--space-3); }
 
 /* Mission page */
 .entity-header {
