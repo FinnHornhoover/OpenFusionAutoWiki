@@ -8,7 +8,7 @@ export default function Home() {
   useDocumentTitle(null);
 
   return (
-    <section>
+    <section className="home-page">
       <h1>FusionFall Wiki</h1>
       <p className="muted">
         Auto-generated reference for every FusionFall game build — missions, NPCs, monsters, items,
@@ -30,11 +30,13 @@ export default function Home() {
         </div>
       )}
       {manifest && manifest.length > 0 && (
-        <ul>
+        <ul className="home-link-list build-list">
           {manifest.map((b) => (
             <li key={b.slug}>
-              <Link to={`/${b.slug}`}>{b.displayName}</Link>
-              <span className="muted"> — {b.date}</span>
+              <Link className="home-link-card" to={`/${b.slug}`}>
+                <span className="home-link-title">{b.displayName}</span>
+                <span className="home-link-meta">{b.date}</span>
+              </Link>
             </li>
           ))}
         </ul>

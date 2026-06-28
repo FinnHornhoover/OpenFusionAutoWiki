@@ -23,14 +23,16 @@ export default function BuildHome() {
   if (!build) return null;
 
   return (
-    <section>
+    <section className="build-home-page">
       <h1>{entry ? buildPageTitle(entry) : build}</h1>
       {entry && <p className="build-subtitle muted">{buildPageSubtitle(entry)}</p>}
       <p className="muted">Browse this build:</p>
-      <ul>
+      <ul className="home-link-list build-nav-list">
         {ENTITY_TYPES.map(({ type, label }) => (
           <li key={type}>
-            <Link to={`/${build}/${type}`}>{label}</Link>
+            <Link className="home-link-card" to={`/${build}/${type}`}>
+              <span className="home-link-title">{label}</span>
+            </Link>
           </li>
         ))}
       </ul>
