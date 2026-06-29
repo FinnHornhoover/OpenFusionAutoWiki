@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { LruCache } from './lruCache';
 
 export interface SearchRow {
-  type: 'missions' | 'npcs' | 'items' | 'codes' | 'monsters' | 'areas' | 'instances' | 'infected-zones' | 'nanos' | 'player-stats';
+  type: 'missions' | 'npcs' | 'items' | 'item-sets' | 'codes' | 'monsters' | 'areas' | 'instances' | 'infected-zones' | 'nanos' | 'player-stats';
   id: number | string;
   name: string;
   icon: string;

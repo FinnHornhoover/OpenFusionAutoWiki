@@ -1,6 +1,6 @@
 /** Reference to another wiki entity. */
 export interface Ref {
-  type: 'mission' | 'npc' | 'item' | 'monster' | 'nano' | 'instance' | 'infected-zone' | 'code';
+  type: 'mission' | 'npc' | 'item' | 'monster' | 'nano' | 'instance' | 'infected-zone' | 'code' | 'item-set';
   /**
    * Stable URL id. Items use "typeId-itemId" because ItemID is reused by type.
    */
@@ -835,6 +835,25 @@ export interface NanoIndexEntry {
   icon: string;
   nanoType: string;
   awardLevel: number;
+}
+
+export interface ItemSetItem extends Ref {
+  contentLevel: number;
+  requiredLevel: number;
+  rarity: string;
+  obtainable: boolean;
+}
+
+export interface ItemSet {
+  id: number;
+  name: string;
+  items: ItemSetItem[];
+}
+
+export interface ItemSetIndexEntry {
+  id: number;
+  name: string;
+  itemCount: number;
 }
 
 // ---- Player stats -----------------------------------------------------------

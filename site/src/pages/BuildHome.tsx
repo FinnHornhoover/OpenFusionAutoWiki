@@ -9,6 +9,7 @@ const ENTITY_TYPES = [
   { type: 'npcs', label: 'NPCs' },
   { type: 'monsters', label: 'Monsters' },
   { type: 'items', label: 'Items' },
+  { type: 'item-sets', label: 'Item Sets' },
   { type: 'codes', label: 'Codes' },
   { type: 'areas', label: 'Areas' },
   { type: 'instances', label: 'Instances' },

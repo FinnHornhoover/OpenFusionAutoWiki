@@ -1,0 +1,22 @@
+import EntityLink from '../components/EntityLink';
+
+# {props.data.name}
+
+<table className="location-table source-table entity-index-table">
+  <thead>
+    <tr>
+      <th>Item</th>
+      <th>Level</th>
+      <th>Rarity</th>
+    </tr>
+  </thead>
+  <tbody>
+    {props.data.items.map((item) => (
+      <tr key={item.id} className={item.obtainable ? undefined : 'entity-index-row-muted'}>
+        <td><EntityLink entity={item} iconSize={64} /></td>
+        <td>{item.contentLevel > 0 ? item.contentLevel : <span className="muted">-</span>}</td>
+        <td>{item.rarity && item.rarity !== 'Any' ? item.rarity : <span className="muted">-</span>}</td>
+      </tr>
+    ))}
+  </tbody>
+</table>
