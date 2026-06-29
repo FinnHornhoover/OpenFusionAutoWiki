@@ -765,6 +765,7 @@ export interface ItemSetItem extends Ref {
   requiredLevel: number;
   rarity: string;
   obtainable: boolean;
+  itemSetSortType?: string;
 }
 
 export interface ItemSet {
