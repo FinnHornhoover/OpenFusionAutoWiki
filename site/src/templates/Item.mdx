@@ -5,6 +5,7 @@ import DropChance from '../components/DropChance';
 import EntityLink from '../components/EntityLink';
 import Icon from '../components/Icon';
 import InlineMeta from '../components/InlineMeta';
+import ItemSetMembership from '../components/ItemSetMembership';
 import MapSpot from '../components/MapSpot';
 import SimilarItems from '../components/SimilarItems';
 
@@ -235,6 +236,8 @@ import SimilarItems from '../components/SimilarItems';
 {props.data.sources.length === 0 && props.data.crateDrops.length === 0 && props.data.containingCrates.length === 0 && (
   <p className="muted">No known sources for this item.</p>
 )}
+
+<ItemSetMembership build={props.build} itemId={props.data.id} />
 
 <SimilarItems current={props.data} />
 

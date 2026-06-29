@@ -3,7 +3,7 @@
  * Kept in sync with build/src/normalize/types.ts.
  */
 
-export type EntityType = 'mission' | 'npc' | 'item' | 'monster' | 'nano' | 'instance' | 'infected-zone' | 'code';
+export type EntityType = 'mission' | 'npc' | 'item' | 'monster' | 'nano' | 'instance' | 'infected-zone' | 'code' | 'item-set';
 
 export interface Ref {
   type: EntityType;
@@ -758,6 +758,25 @@ export interface PlayerStatsRow {
   nanoMission: Ref | null;
   nanoMissionTaskId: number;
   nanoMissionTask: string;
+}
+
+export interface ItemSetItem extends Ref {
+  contentLevel: number;
+  requiredLevel: number;
+  rarity: string;
+  obtainable: boolean;
+}
+
+export interface ItemSet {
+  id: number;
+  name: string;
+  items: ItemSetItem[];
+}
+
+export interface ItemSetIndexEntry {
+  id: number;
+  name: string;
+  itemCount: number;
 }
 
 export interface BuildMeta {
