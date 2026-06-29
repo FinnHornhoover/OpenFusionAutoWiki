@@ -5,6 +5,14 @@ import type { IconMap } from '../icons.js';
 import { itemRef } from './refs.js';
 import type { Code, CodeIndexEntry, CodeItemEntry, Ref } from './types.js';
 
+const TYPE_RANK = new Map<string, number>([
+  'Thrown', 'Pistol', 'Rifle', 'Shattergun', 'Rocket', 'Body', 'Legs', 'Shoes',
+  'Hat', 'Glasses', 'Backpack', 'General', 'CRATE', 'Vehicle',
+].map((type, index) => [type, index] as const));
+const RARITY_RANK = new Map<string, number>([
+  'Common', 'Uncommon', 'Rare', 'Ultra Rare', 'Amazing!',
+].map((rarity, index) => [rarity, index] as const));
+
 interface RawCodeItem {
   ID?: string;
   TypeID?: number;
@@ -47,6 +55,27 @@ function normalizeItem(raw: RawCodeItem, iconMap: IconMap): CodeItemEntry | null
   };
 }
 
+function typeRank(type: string): number {
+  return TYPE_RANK.get(type) ?? TYPE_RANK.size;
+}
+
+function rarityRank(rarity: string): number {
+  return RARITY_RANK.get(rarity) ?? RARITY_RANK.size;
+}
+
+function compareCodeItems(a: CodeItemEntry, b: CodeItemEntry): number {
+  const typeDelta = typeRank(a.type) - typeRank(b.type);
+  if (typeDelta !== 0) return typeDelta;
+  const typeNameDelta = a.type.localeCompare(b.type, undefined, { numeric: true });
+  if (typeNameDelta !== 0) return typeNameDelta;
+  if (a.contentLevel !== b.contentLevel) return a.contentLevel - b.contentLevel;
+  const rarityDelta = rarityRank(a.rarity) - rarityRank(b.rarity);
+  if (rarityDelta !== 0) return rarityDelta;
+  const nameDelta = a.ref.name.localeCompare(b.ref.name, undefined, { numeric: true });
+  if (nameDelta !== 0) return nameDelta;
+  return String(a.ref.id).localeCompare(String(b.ref.id), undefined, { numeric: true });
+}
+
 function indexEntry(code: Code): CodeIndexEntry {
   return {
     id: code.id,
@@ -73,7 +102,7 @@ export async function normalizeCodes(
       const items = Object.values(value.Items ?? {})
         .map((item) => normalizeItem(item, iconMap))
         .filter((item): item is CodeItemEntry => Boolean(item))
-        .sort((a, b) => a.ref.name.localeCompare(b.ref.name));
+        .sort(compareCodeItems);
       const ref: Ref = { type: 'code', id: codeId(code), name: code };
       return { id: codeId(code), code, name: code, ref, items };
     })
