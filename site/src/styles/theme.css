@@ -417,6 +417,23 @@ select {
   min-width: 14rem;
   max-width: min(24rem, 100%);
 }
+
+@media (max-width: 580px) {
+  .site-header {
+    align-items: stretch;
+  }
+
+  .build-select,
+  .search-trigger {
+    flex: 1 0 100%;
+    width: 100%;
+    max-width: none;
+  }
+
+  .search-trigger {
+    margin-left: 0;
+  }
+}
 select:focus,
 input:focus {
   outline: 2px solid var(--color-accent);
