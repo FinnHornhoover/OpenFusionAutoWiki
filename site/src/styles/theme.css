@@ -466,6 +466,11 @@ details.dropdown > .dropdown-body {
   max-width: 100%;
   padding: 0 var(--space-4) var(--space-4);
   overflow-x: auto;
+  background:
+    linear-gradient(to right, var(--color-bg-elevated) 30%, rgba(22, 38, 58, 0)) left center / 2.5rem 100% no-repeat local,
+    linear-gradient(to left, var(--color-bg-elevated) 30%, rgba(22, 38, 58, 0)) right center / 2.5rem 100% no-repeat local,
+    linear-gradient(to right, rgba(0, 0, 0, 0.36), rgba(0, 0, 0, 0)) left center / 1.25rem 100% no-repeat scroll,
+    linear-gradient(to left, rgba(0, 0, 0, 0.36), rgba(0, 0, 0, 0)) right center / 1.25rem 100% no-repeat scroll;
 }
 .dropdown-body > .location-table,
 .dropdown-body > table {
