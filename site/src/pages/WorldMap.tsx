@@ -88,11 +88,21 @@ export default function WorldMap() {
   const [hoverRoutes, setHoverRoutes] = useState<string[]>([]);
   const [visibleKinds, setVisibleKinds] = useState<VisibleMarkerKinds>(() => defaultVisibleMarkerKinds());
   const viewportRef = useRef<HTMLDivElement | null>(null);
+  const zoomRef = useRef(zoom);
+  const offsetRef = useRef(offset);
   const activePointers = useRef(new Map<number, PointerPoint>());
   const drag = useRef<{ pointerId: number; startX: number; startY: number; originX: number; originY: number } | null>(null);
   const pinch = useRef<{ startDistance: number; startZoom: number; anchorX: number; anchorY: number } | null>(null);
 
   useDocumentTitle(entry ? `World Map · ${buildPageTitle(entry)}` : build ? `World Map · ${build}` : null);
+
+  useEffect(() => { zoomRef.current = zoom; }, [zoom]);
+  useEffect(() => { offsetRef.current = offset; }, [offset]);
+  useEffect(() => () => {
+    activePointers.current.clear();
+    drag.current = null;
+    pinch.current = null;
+  }, []);
 
   const markers = useMemo(() => build && areas.length > 0 ? buildWorldMapMarkers(areas, build) : [], [areas, build]);
   const visibleMarkers = useMemo<RenderedWorldMarker[]>(() => {
@@ -120,21 +130,47 @@ export default function WorldMap() {
   useEffect(() => {
     const viewport = viewportRef.current;
     if (!viewport) return;
-    const applyZoom = () => {
+    const updateViewport = () => {
       const rect = viewport.getBoundingClientRect();
-      const nextZoom = MIN_WORLD_MAP_ZOOM;
-      setViewportSize({ width: rect.width, height: rect.height });
-      setZoom(nextZoom);
-      setOffset({
-        x: rect.width / 2 - (MINIMAP_PX / 2) * nextZoom,
-        y: rect.height / 2 - (MINIMAP_PX / 2) * nextZoom,
+      const nextSize = { width: rect.width, height: rect.height };
+      setViewportSize((prev) => {
+        if (nextSize.width <= 0 || nextSize.height <= 0) return nextSize;
+
+        const currentZoom = zoomRef.current;
+        const currentOffset = offsetRef.current;
+        if (prev.width <= 0 || prev.height <= 0) {
+          const nextOffset = {
+            x: nextSize.width / 2 - (MINIMAP_PX / 2) * currentZoom,
+            y: nextSize.height / 2 - (MINIMAP_PX / 2) * currentZoom,
+          };
+          offsetRef.current = nextOffset;
+          setOffset(nextOffset);
+          return nextSize;
+        }
+
+        const centerX = (prev.width / 2 - currentOffset.x) / currentZoom;
+        const centerY = (prev.height / 2 - currentOffset.y) / currentZoom;
+        const nextOffset = {
+          x: nextSize.width / 2 - centerX * currentZoom,
+          y: nextSize.height / 2 - centerY * currentZoom,
+        };
+        offsetRef.current = nextOffset;
+        setOffset(nextOffset);
+        return nextSize;
       });
     };
-    applyZoom();
-    const observer = new ResizeObserver(applyZoom);
+    updateViewport();
+    const observer = new ResizeObserver(updateViewport);
     observer.observe(viewport);
     return () => observer.disconnect();
   }, []);
+
+  function clearPointer(pointerId: number) {
+    activePointers.current.delete(pointerId);
+    if (drag.current?.pointerId === pointerId) drag.current = null;
+    pinch.current = null;
+  }
+
 
   function toggleMarkerKind(kind: MapMarkerKind) {
     setVisibleKinds((prev) => ({ ...prev, [kind]: !prev[kind] }));
@@ -186,6 +222,7 @@ export default function WorldMap() {
           }}
           onPointerDown={(event) => {
             if ((event.target as Element).closest('a')) return;
+            event.preventDefault();
             event.currentTarget.setPointerCapture(event.pointerId);
             activePointers.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
 
@@ -209,6 +246,7 @@ export default function WorldMap() {
           }}
           onPointerMove={(event) => {
             if (!activePointers.current.has(event.pointerId)) return;
+            event.preventDefault();
             activePointers.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
 
             if (pinch.current && activePointers.current.size >= 2) {
@@ -230,16 +268,10 @@ export default function WorldMap() {
             if (!active || active.pointerId !== event.pointerId) return;
             setOffset({ x: active.originX + event.clientX - active.startX, y: active.originY + event.clientY - active.startY });
           }}
-          onPointerUp={(event) => {
-            activePointers.current.delete(event.pointerId);
-            if (drag.current?.pointerId === event.pointerId) drag.current = null;
-            pinch.current = null;
-          }}
-          onPointerCancel={(event) => {
-            activePointers.current.delete(event.pointerId);
-            if (drag.current?.pointerId === event.pointerId) drag.current = null;
-            pinch.current = null;
-          }}
+          onPointerUp={(event) => { clearPointer(event.pointerId); }}
+          onPointerCancel={(event) => { clearPointer(event.pointerId); }}
+          onLostPointerCapture={(event) => { clearPointer(event.pointerId); }}
+          onPointerLeave={(event) => { if (!event.currentTarget.hasPointerCapture(event.pointerId)) clearPointer(event.pointerId); }}
         >
           <div
             className="world-map-canvas"

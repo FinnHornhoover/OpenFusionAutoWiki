@@ -53,6 +53,12 @@ export default function AreaMap({ area, build, size = 960 }: AreaMapProps) {
     setViewBox({ x: 0, y: 0, width: size, height: size });
   }, [area.id, size]);
 
+  useEffect(() => () => {
+    activePointers.current.clear();
+    drag.current = null;
+    pinch.current = null;
+  }, []);
+
   const handleWheel = useCallback((event: WheelEvent) => {
     event.preventDefault();
     const map = mapRef.current;
@@ -109,6 +115,13 @@ export default function AreaMap({ area, build, size = 960 }: AreaMapProps) {
   const tooltipFontSize = 15 * screenUnit;
   const tooltipStrokeWidth = 5 * screenUnit;
 
+  function clearPointer(pointerId: number) {
+    activePointers.current.delete(pointerId);
+    if (drag.current?.pointerId === pointerId) drag.current = null;
+    pinch.current = null;
+  }
+
+
   function toggleMarkerKind(kind: MapMarkerKind) {
     setVisibleKinds((prev) => ({ ...prev, [kind]: !prev[kind] }));
   }
@@ -136,6 +149,7 @@ export default function AreaMap({ area, build, size = 960 }: AreaMapProps) {
       aria-label={area.fullName}
       onPointerDown={(event) => {
         if ((event.target as Element).closest('a')) return;
+        event.preventDefault();
         event.currentTarget.setPointerCapture(event.pointerId);
         activePointers.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
 
@@ -168,6 +182,7 @@ export default function AreaMap({ area, build, size = 960 }: AreaMapProps) {
       }}
       onPointerMove={(event) => {
         if (!activePointers.current.has(event.pointerId)) return;
+        event.preventDefault();
         activePointers.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
 
         if (pinch.current && activePointers.current.size >= 2) {
@@ -200,16 +215,10 @@ export default function AreaMap({ area, build, size = 960 }: AreaMapProps) {
           height: active.height,
         });
       }}
-      onPointerUp={(event) => {
-        activePointers.current.delete(event.pointerId);
-        if (drag.current?.pointerId === event.pointerId) drag.current = null;
-        pinch.current = null;
-      }}
-      onPointerCancel={(event) => {
-        activePointers.current.delete(event.pointerId);
-        if (drag.current?.pointerId === event.pointerId) drag.current = null;
-        pinch.current = null;
-      }}
+      onPointerUp={(event) => { clearPointer(event.pointerId); }}
+      onPointerCancel={(event) => { clearPointer(event.pointerId); }}
+      onLostPointerCapture={(event) => { clearPointer(event.pointerId); }}
+      onPointerLeave={(event) => { if (!event.currentTarget.hasPointerCapture(event.pointerId)) clearPointer(event.pointerId); }}
     >
       <image href="/minimap/all.png" x={imageX} y={imageY} width={imageSize} height={imageSize} className="map-base-image" />
       {visibleMarkers.map((marker) => {
