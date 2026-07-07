@@ -13,7 +13,8 @@
     "build:all": "npm run build:data && npm run build:site",
     "dev": "npm run dev -w site",
     "preview": "npm run preview -w site",
-    "clean": "rm -rf site/dist site/public/data site/public/icons site/public/builds.json build/dist"
+    "clean": "rm -rf site/dist site/public/data site/public/icons site/public/builds.json build/dist",
+    "item-sets:editor": "node scripts/item-set-editor.mjs"
   },
   "engines": {
     "node": ">=20"
