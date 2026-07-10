@@ -1,11 +1,10 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 
 import type { ItemIndexEntry, ItemSet } from '../data/types';
 import { useIndex } from '../data/useIndex';
 import Dropdown from './Dropdown';
 import EntityLink from './EntityLink';
-import InlineMeta from './InlineMeta';
 
 const itemSetCache = new Map<string, Promise<Record<string, ItemSet>>>();
 
@@ -13,7 +12,18 @@ const ARMOR_TYPES = new Set(['Body', 'Legs', 'Shoes']);
 const ACCESSORY_TYPES = new Set(['Hat', 'Glasses', 'Backpack']);
 const GENERAL_TYPES = new Set(['General', 'CRATE']);
 type ItemSuperclass = 'Weapon' | 'Armor' | 'Accessory' | 'General' | 'Vehicle' | 'All';
-type SimilarItem = ItemIndexEntry & { setNames: string[]; ruleMatch: boolean };
+
+interface SimilarItemsProps {
+  current: { id: string; type: string; displayType: string; rarity: string; contentLevel: number };
+}
+
+interface SimilarItemGroup {
+  key: string;
+  title: string;
+  sortTitle: string;
+  isSet: boolean;
+  items: ItemIndexEntry[];
+}
 
 function itemSuperclass(item: { type: string }): ItemSuperclass {
   if (item.type === 'Weapon') return 'Weapon';
@@ -22,6 +32,14 @@ function itemSuperclass(item: { type: string }): ItemSuperclass {
   if (GENERAL_TYPES.has(item.type)) return 'General';
   if (item.type === 'Vehicle') return 'Vehicle';
   return 'All';
+}
+
+function ruleReason(item: { contentLevel: number; rarity: string; displayType: string }): string {
+  return [
+    item.contentLevel > 0 ? `Lv${item.contentLevel}` : '',
+    item.rarity,
+    item.displayType,
+  ].filter(Boolean).join(' ');
 }
 
 async function loadItemSets(build: string): Promise<Record<string, ItemSet>> {
@@ -36,14 +54,12 @@ async function loadItemSets(build: string): Promise<Record<string, ItemSet>> {
   return promise;
 }
 
-interface SimilarItemsProps {
-  current: { id: string; type: string; displayType: string; rarity: string; contentLevel: number };
-}
-
 export default function SimilarItems({ current }: SimilarItemsProps) {
   const { build } = useParams();
   const { rows, loading } = useIndex<ItemIndexEntry>(build, 'items');
   const [sets, setSets] = useState<Record<string, ItemSet> | null>(null);
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const [hasOverflow, setHasOverflow] = useState(false);
 
   useEffect(() => {
     if (!build) {
@@ -58,31 +74,31 @@ export default function SimilarItems({ current }: SimilarItemsProps) {
     return () => { alive = false; };
   }, [build]);
 
-  const siblings = useMemo(() => {
-    const byId = new Map<string, SimilarItem>();
+  const { groups, uniqueCount } = useMemo(() => {
     const rowsById = new Map((rows ?? []).map((row) => [row.id, row] as const));
     const currentSuperclass = itemSuperclass(current);
+    const byGroup = new Map<string, SimilarItemGroup>();
+    const uniqueIds = new Set<string>();
 
-    const upsert = (item: ItemIndexEntry, patch: { setName?: string; ruleMatch?: boolean }) => {
-      const id = String(item.id);
-      const existing = byId.get(id);
-      const setNames = existing?.setNames ?? [];
-      if (patch.setName && !setNames.includes(patch.setName)) setNames.push(patch.setName);
-      byId.set(id, {
-        ...(existing ?? item),
-        setNames,
-        ruleMatch: (existing?.ruleMatch ?? false) || (patch.ruleMatch ?? false),
-      });
+    const addToGroup = (key: string, title: string, isSet: boolean, item: ItemIndexEntry) => {
+      let group = byGroup.get(key);
+      if (!group) {
+        group = { key, title, sortTitle: title.toLowerCase(), isSet, items: [] };
+        byGroup.set(key, group);
+      }
+      if (!group.items.some((existing) => existing.id === item.id)) group.items.push(item);
+      uniqueIds.add(item.id);
     };
 
-    for (const r of rows ?? []) {
+    const directReason = ruleReason(current);
+    for (const row of rows ?? []) {
       if (
-        r.id !== current.id &&
-        r.displayType === current.displayType &&
-        r.rarity === current.rarity &&
-        r.contentLevel === current.contentLevel
+        row.id !== current.id &&
+        row.displayType === current.displayType &&
+        row.rarity === current.rarity &&
+        row.contentLevel === current.contentLevel
       ) {
-        upsert(r, { ruleMatch: true });
+        addToGroup('rule:' + directReason, directReason, false, row);
       }
     }
 
@@ -92,42 +108,56 @@ export default function SimilarItems({ current }: SimilarItemsProps) {
         const id = String(item.id);
         if (id === current.id) continue;
         const row = rowsById.get(id);
-        if (row && itemSuperclass(row) === currentSuperclass) upsert(row, { setName: set.name });
+        if (row && itemSuperclass(row) === currentSuperclass) addToGroup('set:' + set.id + ':' + currentSuperclass, `${set.name} - ${currentSuperclass}`, true, row);
       }
     }
 
-    return [...byId.values()].sort((a, b) => {
-      const aReason = a.setNames.join(', ');
-      const bReason = b.setNames.join(', ');
-      if (!aReason && bReason) return -1;
-      if (aReason && !bReason) return 1;
-      if (aReason || bReason) return aReason.localeCompare(bReason) || a.name.localeCompare(b.name);
-      return a.name.localeCompare(b.name);
-    });
+    const groups = [...byGroup.values()]
+      .map((group) => ({
+        ...group,
+        items: group.items.slice().sort((a, b) => a.name.localeCompare(b.name)),
+      }))
+      .sort((a, b) => Number(a.isSet) - Number(b.isSet) || a.sortTitle.localeCompare(b.sortTitle));
+
+    return { groups, uniqueCount: uniqueIds.size };
   }, [rows, sets, current]);
 
-  if (loading || !sets || siblings.length === 0) return null;
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const update = () => setHasOverflow(el.scrollWidth > el.clientWidth + 1);
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(el);
+    window.addEventListener('resize', update);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', update);
+    };
+  }, [groups]);
+
+  if (loading || !sets || groups.length === 0) return null;
 
   return (
-    <Dropdown summary={`Similar items (${siblings.length})`}>
-      <ul className="ref-list">
-        {siblings.map((s) => {
-          const ruleReason = [
-            s.contentLevel > 0 ? `Lv${s.contentLevel}` : '',
-            s.rarity,
-            s.displayType,
-          ].filter(Boolean).join(' ');
-          return (
-            <li key={s.id}>
-              <EntityLink entity={{ type: 'item', id: s.id, name: s.name, icon: s.icon }} />
-              <InlineMeta className="muted source-card-meta">
-                {s.setNames.length > 0 && <span>{s.setNames.join(', ')}</span>}
-                {s.setNames.length === 0 && s.ruleMatch && <span>{ruleReason}</span>}
-              </InlineMeta>
-            </li>
-          );
-        })}
-      </ul>
+    <Dropdown summary={`Similar items (${uniqueCount})`} className="similar-items-dropdown">
+      <div ref={scrollRef} className={['table-scroll', 'similar-items-scroll', hasOverflow ? 'table-scroll-has-overflow' : ''].filter(Boolean).join(' ')}>
+        <table className="location-table source-table similar-items-table">
+          <tbody>
+            {groups.map((group) => (
+              <tr key={group.key}>
+                <td>
+                  <strong className="similar-items-source-title">{group.title}</strong>
+                  <div className="similar-items-grid">
+                    {group.items.map((item) => (
+                      <EntityLink key={item.id} entity={{ type: 'item', id: item.id, name: item.name, icon: item.icon }} iconSize={64} />
+                    ))}
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </Dropdown>
   );
 }

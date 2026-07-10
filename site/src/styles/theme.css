@@ -1495,6 +1495,48 @@ details.dropdown > .dropdown-body {
   line-height: 1.2;
 }
 
+.similar-items-dropdown > .dropdown-body {
+  background: none;
+}
+.table-scroll.similar-items-scroll {
+  background: none;
+}
+.table-scroll.similar-items-scroll.table-scroll-has-overflow {
+  background:
+    linear-gradient(to right, var(--color-bg-elevated) 30%, rgba(22, 38, 58, 0)) left center / 2.5rem 100% no-repeat local,
+    linear-gradient(to left, var(--color-bg-elevated) 30%, rgba(22, 38, 58, 0)) right center / 2.5rem 100% no-repeat local,
+    linear-gradient(to right, rgba(0, 0, 0, 0.36), rgba(0, 0, 0, 0)) left center / 1.25rem 100% no-repeat scroll,
+    linear-gradient(to left, rgba(0, 0, 0, 0.36), rgba(0, 0, 0, 0)) right center / 1.25rem 100% no-repeat scroll;
+}
+.similar-items-table td {
+  min-width: 520px;
+}
+.similar-items-source-title {
+  display: block;
+  margin-bottom: var(--space-3);
+}
+.similar-items-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: var(--space-3);
+  align-items: start;
+}
+.similar-items-grid .entity-link {
+  min-width: 0;
+}
+.similar-items-grid .entity-link-body {
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+  text-align: center;
+}
+.similar-items-grid .entity-link-name {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  font-size: 0.85rem;
+  line-height: 1.2;
+}
+
 /* Index controls (search + filters) */
 .index-controls {
   display: flex;
