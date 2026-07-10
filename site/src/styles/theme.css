@@ -1475,12 +1475,14 @@ details.dropdown > .dropdown-body {
 }
 .code-index-items {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(112px, 1fr));
   gap: var(--space-3);
   align-items: start;
 }
 .code-index-items .entity-link {
+  width: 112px;
   min-width: 0;
+  justify-content: center;
 }
 .code-index-items .entity-link-body {
   flex-direction: column;
