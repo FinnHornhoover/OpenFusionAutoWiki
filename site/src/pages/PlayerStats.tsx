@@ -5,7 +5,7 @@ import ErrorState from '../components/ErrorState';
 import type { PlayerStatsRow, Ref } from '../data/types';
 import { useBuildEntry } from '../data/useBuildEntry';
 import { useBuildMeta } from '../data/useBuildMeta';
-import { useDocumentTitle } from '../data/useDocumentTitle';
+import { TITLE_SEPARATOR, useDocumentTitle } from '../data/useDocumentTitle';
 import { useIndex } from '../data/useIndex';
 
 function isAcademyLikeBuild(entry: { date: string } | null): boolean {
@@ -24,7 +24,7 @@ export default function PlayerStats() {
   const { rows, loading, error } = useIndex<PlayerStatsRow>(supported ? build : undefined, supported ? 'player-stats' : undefined);
   const buildLabel = entry ? entry.displayName : build;
   const showAssignedMissionColumn = !isAcademyLikeBuild(entry);
-  useDocumentTitle(('Player Stats · ' + (buildLabel ?? '')).trim());
+  useDocumentTitle(`Player Stats${TITLE_SEPARATOR}${buildLabel ?? ''}`.trim());
 
   return (
     <section className="player-stats-page">

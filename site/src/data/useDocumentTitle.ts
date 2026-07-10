@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 
+export const TITLE_SEPARATOR = ' · ';
 const SUFFIX = 'FusionFall Wiki';
 
 /**
@@ -14,7 +15,7 @@ const SUFFIX = 'FusionFall Wiki';
 export function useDocumentTitle(title: string | null | undefined) {
   useEffect(() => {
     const prev = document.title;
-    document.title = title ? `${title} · ${SUFFIX}` : SUFFIX;
+    document.title = title ? `${title}${TITLE_SEPARATOR}${SUFFIX}` : SUFFIX;
     return () => { document.title = prev; };
   }, [title]);
 }

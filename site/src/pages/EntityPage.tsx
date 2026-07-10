@@ -7,7 +7,7 @@ import type { Area, Code, InfectedZone, Instance, Item, ItemSet, Mission, Mob, N
 import { useBuildEntry } from '../data/useBuildEntry';
 import { useBuildMeta } from '../data/useBuildMeta';
 import { useDelayedFlag } from '../data/useDelayedFlag';
-import { useDocumentTitle } from '../data/useDocumentTitle';
+import { TITLE_SEPARATOR, useDocumentTitle } from '../data/useDocumentTitle';
 import { useEntity } from '../data/useEntity';
 import AreaTemplate from '../templates/Area.mdx';
 import CodeTemplate from '../templates/Code.mdx';
@@ -69,7 +69,7 @@ export default function EntityPage() {
   const entityName = (entity as { name?: string } | null)?.name;
   const typeLabel = type ? type.charAt(0).toUpperCase() + type.replace(/s$/, '').slice(1) : '';
   useDocumentTitle(
-    entityName ? `${entityName} > ${typeLabel} > ${buildLabel ?? ''}`.trim() : ambiguity ? `${ambiguity.title} > ${typeLabel} > ${buildLabel ?? ''}`.trim() : null,
+    entityName ? [entityName, typeLabel, buildLabel].filter(Boolean).join(TITLE_SEPARATOR) : ambiguity ? [ambiguity.title, typeLabel, buildLabel].filter(Boolean).join(TITLE_SEPARATOR) : null,
   );
 
   useEffect(() => {
