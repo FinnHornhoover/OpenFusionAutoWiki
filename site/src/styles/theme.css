@@ -1514,13 +1514,21 @@ details.dropdown > .dropdown-body {
 .similar-items-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(86px, 1fr));
+  max-width: min(100%, calc((86px * 9) + (var(--space-3) * 8)));
   gap: var(--space-3);
-  align-items: start;
+  align-items: stretch;
+}
+.similar-items-grid > span {
+  display: flex;
+  align-items: stretch;
 }
 .similar-items-grid .entity-link {
+  box-sizing: border-box;
   width: 96px;
   min-width: 0;
-  justify-content: center;
+  height: 100%;
+  align-items: flex-start;
+  justify-content: flex-start;
 }
 .similar-items-grid .entity-link-body {
   flex-direction: column;
