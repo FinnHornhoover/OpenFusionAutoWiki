@@ -44,7 +44,7 @@ import { formatDurationSeconds } from '../data/formatTime';
 
 
 {props.data.locationGroups.length > 0 && (
-  <Dropdown summary={`Spawn locations (${props.data.locationGroups.length} group${props.data.locationGroups.length === 1 ? '' : 's'})`}>
+  <Dropdown summary={`Spawn locations (${props.data.locationGroups.length} group${props.data.locationGroups.length === 1 ? '' : 's'})`} open>
     <ul className="ref-list location-list">
       {props.data.locationGroups.map((loc, i) => (
         <li key={i}>
@@ -72,7 +72,7 @@ import { formatDurationSeconds } from '../data/formatTime';
 )}
 
 {(props.data.activeSkill || props.data.passiveBuff || props.data.supportSkill) && (
-  <Dropdown summary="Skills">
+  <Dropdown summary="Skills" open>
     {props.data.activeSkill && (
       <div className="task-row">
         <span className="task-label">Active:</span>

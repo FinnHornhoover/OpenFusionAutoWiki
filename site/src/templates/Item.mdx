@@ -86,7 +86,7 @@ import SimilarItems from '../components/SimilarItems';
   return (
     <>
       {droppedBy.length > 0 && (
-        <Dropdown summary={'Dropped by (' + droppedBy.length + ')'} open={droppedBy.length <= 20}>
+        <Dropdown summary={'Dropped by (' + droppedBy.length + ')'} open={droppedBy.length <= 10}>
           <ul className="ref-list">
             {droppedBy.map((s, i) => (
               <li key={i}>
@@ -102,7 +102,7 @@ import SimilarItems from '../components/SimilarItems';
       )}
 
       {props.data.containingCrates.length > 0 && (
-        <Dropdown summary={'Containing CRATEs (' + props.data.containingCrates.length + ')'} open>
+        <Dropdown summary={'Containing CRATEs (' + props.data.containingCrates.length + ')'} open={props.data.containingCrates.length <= 10}>
           <ul className="ref-list">
             {props.data.containingCrates.map((c, i) => (
               <li key={c.ref.id + '-' + i}>
@@ -134,7 +134,7 @@ import SimilarItems from '../components/SimilarItems';
       {buckets
         .filter(([, list]) => list.length > 0)
         .map(([label, list]) => (
-          <Dropdown key={label} summary={label + ' (' + list.length + ')'} open={list.length <= 20}>
+          <Dropdown key={label} summary={label + ' (' + list.length + ')'} open={list.length <= 10}>
             {list[0]?.kind === 'vendor' ? (
               <table className="location-table source-table">
                 <thead>

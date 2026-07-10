@@ -26,7 +26,7 @@ import { transportIcon } from '../data/mapMarkers';
 
 
 {props.data.locations.length > 0 && (
-  <Dropdown summary={`Spawn locations (${props.data.locations.length})`}>
+  <Dropdown summary={`Spawn locations (${props.data.locations.length})`} open>
     <ul className="ref-list location-list">
       {props.data.locations.map((loc, i) => (
         <li key={i}>
@@ -108,7 +108,7 @@ import { transportIcon } from '../data/mapMarkers';
 )}
 
 {props.data.vendorItems.length > 0 && (
-  <Dropdown summary={`Sells ${props.data.vendorItems.length} item${props.data.vendorItems.length === 1 ? '' : 's'}`}>
+  <Dropdown summary={`Sells ${props.data.vendorItems.length} item${props.data.vendorItems.length === 1 ? '' : 's'}`} open>
     <ul className="reward-items">
       {props.data.vendorItems.map((v, i) => (
         <li key={`${v.ref.id}-${i}`}>

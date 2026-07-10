@@ -142,7 +142,7 @@ export default function SimilarItems({ current }: SimilarItemsProps) {
   if (loading || !sets || groups.length === 0) return null;
 
   return (
-    <Dropdown summary={`Similar items (${uniqueCount})`} className="similar-items-dropdown">
+    <Dropdown summary={`Similar items (${uniqueCount})`} className="similar-items-dropdown" open={groups.length <= 3}>
       <div className="similar-items-wrap">
         <table className="location-table source-table similar-items-table">
           <tbody>
