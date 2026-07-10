@@ -32,7 +32,7 @@ function RouteAmbiguityPage({ build, type, title, matches }: { build: string; ty
             {match.icon ? <Icon src={match.icon} alt={match.name} size={48} /> : null}
             <span className="entity-index-main">
               <span className="entity-index-link">{match.name}</span>
-              {match.detail ? <span className="muted">{match.detail}</span> : null}
+              {match.detail ? <span className="muted ambiguity-match-detail">{match.detail}</span> : null}
             </span>
           </Link>
         ))}

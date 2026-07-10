@@ -1691,6 +1691,17 @@ details.dropdown > .dropdown-body {
   color: var(--color-text-muted);
 }
 .entity-index-main { flex: 1; }
+.ambiguity-page .entity-index-main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+.ambiguity-match-detail {
+  margin-left: auto;
+  text-align: right;
+  flex-shrink: 0;
+}
 
 .pager {
   display: flex;
