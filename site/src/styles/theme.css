@@ -1498,31 +1498,26 @@ details.dropdown > .dropdown-body {
 .similar-items-dropdown > .dropdown-body {
   background: none;
 }
-.table-scroll.similar-items-scroll {
-  background: none;
-}
-.table-scroll.similar-items-scroll.table-scroll-has-overflow {
-  background:
-    linear-gradient(to right, var(--color-bg-elevated) 30%, rgba(22, 38, 58, 0)) left center / 2.5rem 100% no-repeat local,
-    linear-gradient(to left, var(--color-bg-elevated) 30%, rgba(22, 38, 58, 0)) right center / 2.5rem 100% no-repeat local,
-    linear-gradient(to right, rgba(0, 0, 0, 0.36), rgba(0, 0, 0, 0)) left center / 1.25rem 100% no-repeat scroll,
-    linear-gradient(to left, rgba(0, 0, 0, 0.36), rgba(0, 0, 0, 0)) right center / 1.25rem 100% no-repeat scroll;
-}
-.similar-items-table td {
-  min-width: 520px;
+.similar-items-wrap {
+  max-width: 100%;
 }
 .similar-items-source-title {
   display: block;
   margin-bottom: var(--space-3);
 }
+.similar-items-source-link {
+  font-weight: 600;
+}
 .similar-items-grid {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
   gap: var(--space-3);
   align-items: start;
 }
 .similar-items-grid .entity-link {
+  width: 96px;
   min-width: 0;
+  justify-content: center;
 }
 .similar-items-grid .entity-link-body {
   flex-direction: column;
@@ -1535,6 +1530,26 @@ details.dropdown > .dropdown-body {
   overflow-wrap: anywhere;
   font-size: 0.85rem;
   line-height: 1.2;
+}
+.similar-items-current {
+  color: var(--color-text);
+  background: var(--color-bg-subtle);
+  border: 1px solid var(--color-accent);
+  cursor: default;
+}
+.similar-items-current:hover {
+  background: var(--color-bg-subtle);
+}
+.similar-items-current .entity-link-name {
+  color: var(--color-text);
+}
+.similar-items-muted > .entity-link,
+.similar-items-current.similar-items-muted {
+  background: rgba(141, 152, 170, 0.16);
+  border: 1px solid rgba(141, 152, 170, 0.42);
+}
+.similar-items-muted > .entity-link:hover {
+  background: rgba(141, 152, 170, 0.22);
 }
 
 /* Index controls (search + filters) */
