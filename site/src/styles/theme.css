@@ -1512,7 +1512,7 @@ details.dropdown > .dropdown-body {
 }
 .similar-items-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(86px, 1fr));
   gap: var(--space-3);
   align-items: start;
 }
