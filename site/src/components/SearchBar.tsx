@@ -79,7 +79,7 @@ function SearchOverlay({ build, onClose }: OverlayProps) {
   function go(row: SearchRow) {
     if (!build) return;
     onClose();
-    navigate(row.id === '' ? `/${build}/${row.type}` : `/${build}/${row.type}/${row.id}`);
+    navigate(row.id === '' ? `/${build}/${row.type}` : `/${build}/${row.type}/${row.routeId ?? row.id}`);
   }
 
   function onKey(e: React.KeyboardEvent<HTMLInputElement>) {

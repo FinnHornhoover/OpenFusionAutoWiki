@@ -12,7 +12,7 @@ function baseUrl(): string {
   return 'https://example.com';
 }
 
-interface IndexRow { id: number | string; }
+interface IndexRow { id: number | string; routeId?: string; }
 
 async function exists(path: string): Promise<boolean> {
   try { await access(path, fsc.F_OK); return true; } catch { return false; }
@@ -44,7 +44,7 @@ async function writeBuildSitemap(slug: string, base: string): Promise<number> {
     urls.push(`${base}/${slug}/${type}`);
     const rows = await loadIndex(slug, type);
     for (const r of rows) {
-      urls.push(`${base}/${slug}/${type}/${r.id}`);
+      urls.push(`${base}/${slug}/${type}/${r.routeId ?? r.id}`);
     }
   }
   for (const type of BUILD_REFERENCE_TYPES) {

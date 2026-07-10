@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { LruCache } from './lruCache';
+import { loadRouteMap, type RouteAmbiguityTarget } from './routeMap';
 
 const CHUNK_SIZE = 250;
 
@@ -54,6 +55,8 @@ async function loadChunk(slug: string, type: string, chunk: number): Promise<Rec
 
 export interface UseEntityResult<T> {
   entity: T | null;
+  ambiguity: RouteAmbiguityTarget | null;
+  canonical: string | null;
   loading: boolean;
   notFound: boolean;
   error: string | null;
@@ -67,7 +70,7 @@ interface InternalState<T> {
 function initialState<T>(key: string): InternalState<T> {
   return {
     key,
-    result: { entity: null, loading: !!key, notFound: !key, error: null },
+    result: { entity: null, ambiguity: null, canonical: null, loading: !!key, notFound: !key, error: null },
   };
 }
 
@@ -85,27 +88,55 @@ export function useEntity<T>(
 
   useEffect(() => {
     if (!key) return;
-    const chunk = chunkFor(type!, id!);
-    if (chunk < 0) {
-      setState({ key, result: { entity: null, loading: false, notFound: true, error: null } });
-      return;
-    }
     let alive = true;
-    loadChunk(slug!, type!, chunk).then(
-      (bucket) => {
-        if (!alive) return;
-        const found = bucket[id!] as T | undefined;
+
+    loadRouteMap(slug!, type!).then((routes) => {
+      if (!alive) return null;
+      const target = routes[id!];
+      if (!target) {
+        setState({ key, result: { entity: null, ambiguity: null, canonical: null, loading: false, notFound: true, error: null } });
+        return null;
+      }
+      if (target.kind === 'ambiguity') {
+        setState({ key, result: { entity: null, ambiguity: target, canonical: target.canonical, loading: false, notFound: false, error: null } });
+        return null;
+      }
+      return loadChunk(slug!, type!, target.chunk).then((bucket) => ({ bucket, target }));
+    }).then(
+      (loaded) => {
+        if (!loaded || !alive) return;
+        const found = loaded.bucket[String(loaded.target.id)] as T | undefined;
         setState({
           key,
           result: found
-            ? { entity: found, loading: false, notFound: false, error: null }
-            : { entity: null, loading: false, notFound: true, error: null },
+            ? { entity: found, ambiguity: null, canonical: loaded.target.canonical, loading: false, notFound: false, error: null }
+            : { entity: null, ambiguity: null, canonical: null, loading: false, notFound: true, error: null },
         });
       },
-      (err: unknown) => {
+      () => {
         if (!alive) return;
-        const msg = err instanceof Error ? err.message : 'Failed to load entity';
-        setState({ key, result: { entity: null, loading: false, notFound: false, error: msg } });
+        const chunk = chunkFor(type!, id!);
+        if (chunk < 0) {
+          setState({ key, result: { entity: null, ambiguity: null, canonical: null, loading: false, notFound: true, error: null } });
+          return;
+        }
+        loadChunk(slug!, type!, chunk).then(
+          (bucket) => {
+            if (!alive) return;
+            const found = bucket[id!] as T | undefined;
+            setState({
+              key,
+              result: found
+                ? { entity: found, ambiguity: null, canonical: id!, loading: false, notFound: false, error: null }
+                : { entity: null, ambiguity: null, canonical: null, loading: false, notFound: true, error: null },
+            });
+          },
+          (err: unknown) => {
+            if (!alive) return;
+            const msg = err instanceof Error ? err.message : 'Failed to load entity';
+            setState({ key, result: { entity: null, ambiguity: null, canonical: null, loading: false, notFound: false, error: msg } });
+          },
+        );
       },
     );
     return () => {

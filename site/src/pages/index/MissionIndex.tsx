@@ -234,7 +234,7 @@ export default function MissionIndex({ build, rows, loading }: Props) {
                         {r.displayNPC?.icon
                           ? <Icon src={r.displayNPC.icon} alt={r.displayNPC.name} size={64} />
                           : <span className="icon icon-empty" aria-hidden />}
-                        <Link className="entity-index-link" to={`/${build}/missions/${r.id}`}>{r.name}</Link>
+                        <Link className="entity-index-link" to={`/${build}/missions/${r.routeId ?? r.id}`}>{r.name}</Link>
                       </div>
                     </td>
                     <td>{r.level > 0 ? r.level : <span className="muted">—</span>}</td>

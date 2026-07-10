@@ -1,5 +1,6 @@
 import { Link, useParams } from 'react-router-dom';
 import type { Ref } from '../data/types';
+import { canonicalRoute, useRouteMap } from '../data/routeMap';
 import { useBuildMeta } from '../data/useBuildMeta';
 import Icon from './Icon';
 
@@ -31,10 +32,12 @@ interface EntityLinkProps {
 export default function EntityLink({ entity, withIcon = true, iconSize = 96 }: EntityLinkProps) {
   const { build } = useParams();
   const meta = useBuildMeta(build);
-  if (!entity) return null;
+  const route = entity ? ROUTE_FOR[entity.type] : undefined;
+  const isBuilt = Boolean(build) && Boolean(route) && Boolean(meta?.builtTypes?.includes(route!));
+  const routes = useRouteMap(isBuilt ? build : undefined, isBuilt ? route : undefined);
 
-  const route = ROUTE_FOR[entity.type];
-  const isBuilt = Boolean(build) && Boolean(meta?.builtTypes?.includes(route));
+  if (!entity || !route) return null;
+  const routeId = canonicalRoute(routes, entity.id);
 
   const body = (
     <span className="entity-link-body">
@@ -45,7 +48,7 @@ export default function EntityLink({ entity, withIcon = true, iconSize = 96 }: E
 
   if (isBuilt) {
     return (
-      <Link className="entity-link" to={`/${build}/${route}/${entity.id}`}>
+      <Link className="entity-link" to={`/${build}/${route}/${routeId}`}>
         {body}
       </Link>
     );

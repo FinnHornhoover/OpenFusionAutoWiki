@@ -189,7 +189,7 @@ export default function MobIndex({ build, rows, loading }: Props) {
                         {r.icon
                           ? <Icon src={r.icon} alt={r.name} size={64} />
                           : <span className="icon icon-empty" aria-hidden />}
-                        <Link className="entity-index-link" to={`/${build}/monsters/${r.id}`}>{r.name}</Link>
+                        <Link className="entity-index-link" to={`/${build}/monsters/${r.routeId ?? r.id}`}>{r.name}</Link>
                       </div>
                     </td>
                     <td>{r.level > 0 ? r.level : <span className="muted">—</span>}</td>

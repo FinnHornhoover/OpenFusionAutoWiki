@@ -55,7 +55,7 @@ export default function CodeIndex({ build, rows, loading }: Props) {
                 {pageRows.map((r) => (
                   <tr key={r.id}>
                     <td>
-                      <Link className="entity-index-link code-index-code" to={`/${build}/codes/${r.id}`}><code className="entity-index-id-code">{r.code}</code></Link>
+                      <Link className="entity-index-link code-index-code" to={`/${build}/codes/${r.routeId ?? r.id}`}><code className="entity-index-id-code">{r.code}</code></Link>
                       <div className="code-index-items">
                         {r.items.map((item) => (
                           <EntityLink key={item.id} entity={item} iconSize={64} />

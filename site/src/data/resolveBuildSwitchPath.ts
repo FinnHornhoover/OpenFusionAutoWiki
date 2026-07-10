@@ -1,3 +1,4 @@
+import { loadRouteMap } from './routeMap';
 import { chunkFor } from './useEntity';
 import type { BuildMeta } from './types';
 
@@ -15,7 +16,7 @@ async function loadMeta(build: string): Promise<BuildMeta> {
   return pending;
 }
 
-async function entityExists(build: string, type: string, id: string): Promise<boolean> {
+async function legacyEntityExists(build: string, type: string, id: string): Promise<boolean> {
   const chunk = chunkFor(type, id);
   if (chunk < 0) return false;
   const key = `${build}::${type}::${id}`;
@@ -33,16 +34,27 @@ async function entityExists(build: string, type: string, id: string): Promise<bo
   return pending;
 }
 
-async function suffixExists(build: string, suffix: string[]): Promise<boolean> {
-  if (suffix.length === 0) return true;
-  if (suffix[0] === 'map') return suffix.length === 1;
+async function resolveEntitySuffix(build: string, type: string, id: string): Promise<string[] | null> {
+  try {
+    const routes = await loadRouteMap(build, type);
+    const target = routes[id];
+    if (target) return [type, target.canonical];
+  } catch {
+    // Older generated data can still be checked through legacy chunks.
+  }
+  return (await legacyEntityExists(build, type, id)) ? [type, id] : null;
+}
+
+async function resolveSuffix(build: string, suffix: string[]): Promise<string[] | null> {
+  if (suffix.length === 0) return [];
+  if (suffix[0] === 'map') return suffix.length === 1 ? suffix : null;
 
   const meta = await loadMeta(build);
   const type = suffix[0];
-  if (!meta.builtTypes.includes(type)) return false;
-  if (suffix.length === 1) return true;
-  if (suffix.length === 2) return entityExists(build, type, suffix[1]);
-  return false;
+  if (!meta.builtTypes.includes(type)) return null;
+  if (suffix.length === 1) return suffix;
+  if (suffix.length === 2) return resolveEntitySuffix(build, type, suffix[1]);
+  return null;
 }
 
 export async function resolveBuildSwitchPath(build: string, pathname: string): Promise<string> {
@@ -50,8 +62,9 @@ export async function resolveBuildSwitchPath(build: string, pathname: string): P
   const suffix = segments.slice(1);
   for (let length = suffix.length; length >= 0; length -= 1) {
     const candidate = suffix.slice(0, length);
-    if (await suffixExists(build, candidate)) {
-      return `/${[build, ...candidate].join('/')}`;
+    const resolved = await resolveSuffix(build, candidate);
+    if (resolved) {
+      return `/${[build, ...resolved].join('/')}`;
     }
   }
   return `/${build}`;

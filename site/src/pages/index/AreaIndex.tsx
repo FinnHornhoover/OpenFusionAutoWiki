@@ -108,7 +108,7 @@ export default function AreaIndex({ build, rows, loading }: Props) {
                     <td className="area-index-cell">
                       <div className="area-index-name">
                         {r.width > 0 && r.height > 0 && (
-                          <Link to={`/${build}/areas/${r.id}`} aria-label={r.name}>
+                          <Link to={`/${build}/areas/${r.routeId ?? r.id}`} aria-label={r.name}>
                             <Minimap
                               x={r.x + r.width / 2}
                               y={r.y + r.height / 2}
@@ -120,7 +120,7 @@ export default function AreaIndex({ build, rows, loading }: Props) {
                             />
                           </Link>
                         )}
-                        <Link className="area-index-link" to={`/${build}/areas/${r.id}`}>{r.zoneName ? r.name + " - " + r.zoneName : r.name}</Link>
+                        <Link className="area-index-link" to={`/${build}/areas/${r.routeId ?? r.id}`}>{r.zoneName ? r.name + " - " + r.zoneName : r.name}</Link>
                       </div>
                     </td>
                   </tr>

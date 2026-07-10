@@ -106,7 +106,7 @@ function npcVisibleIdCount(r: NpcIndexEntry, hideOutOfGame: boolean): number {
 
 function npcRouteId(r: NpcIndexEntry, hideOutOfGame: boolean): string | number {
   const members = visibleNpcMembers(r, hideOutOfGame);
-  return members.length === 1 ? members[0].id : r.id;
+  return members.length === 1 ? members[0].id : r.routeId ?? r.id;
 }
 
 function tabFromParam(p: string | null): NpcTab {

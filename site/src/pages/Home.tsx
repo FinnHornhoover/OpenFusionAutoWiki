@@ -11,8 +11,9 @@ export default function Home() {
     <section className="home-page">
       <h1>FusionFall Wiki</h1>
       <p className="muted">
-        Auto-generated reference for every FusionFall game build — missions, NPCs, monsters, items,
-        areas, and nanos.
+        Auto-generated reference for every FusionFall game build.
+        <br />
+        Just select a build below or from the above build buttons to get started.
       </p>
 
       <h2>Builds</h2>

@@ -86,7 +86,7 @@ export default function InfectedZoneIndex({ build, rows, loading }: Props) {
                   <tr key={r.id}>
                     <td><code className="entity-index-id-code">{r.id}</code></td>
                     <td>
-                      <Link className="infected-zone-index-card" to={`/${build}/infected-zones/${r.id}`}>
+                      <Link className="infected-zone-index-card" to={`/${build}/infected-zones/${r.routeId ?? r.id}`}>
                         {r.icon ? <Icon src={r.icon} alt="" size={239} /> : <span className="icon icon-empty" aria-hidden />}
                         <span className="entity-index-link">{r.name}</span>
                       </Link>

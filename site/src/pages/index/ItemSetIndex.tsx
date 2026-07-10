@@ -58,7 +58,7 @@ export default function ItemSetIndex({ build, rows, loading }: Props) {
               <tbody>
                 {pageRows.map((r) => (
                   <tr key={r.id}>
-                    <td><Link className="entity-index-link" to={`/${build}/item-sets/${r.id}`}>{r.name}</Link></td>
+                    <td><Link className="entity-index-link" to={`/${build}/item-sets/${r.routeId ?? r.id}`}>{r.name}</Link></td>
                     <td>{r.itemCount.toLocaleString()}</td>
                   </tr>
                 ))}

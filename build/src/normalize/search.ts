@@ -22,6 +22,8 @@ export interface SearchRow {
   type: 'missions' | 'npcs' | 'items' | 'item-sets' | 'codes' | 'monsters' | 'areas' | 'instances' | 'infected-zones' | 'nanos' | 'player-stats';
   /** URL identifier (numeric or compound string, same shape Ref.id uses). */
   id: number | string;
+  /** Canonical URL segment when semantic route maps are available. */
+  routeId?: string;
   name: string;
   icon: string;
 }
@@ -60,38 +62,38 @@ export async function writeSearchIndex(slug: string): Promise<{ count: number; b
 
   const rows: SearchRow[] = [];
   for (const m of missions) {
-    rows.push({ type: 'missions', id: m.id, name: m.name, icon: m.startNPC?.icon ?? '' });
+    rows.push({ type: 'missions', id: m.id, routeId: m.routeId, name: m.name, icon: m.startNPC?.icon ?? '' });
   }
   for (const n of npcs) {
     if (!n.inGame) continue;
-    rows.push({ type: 'npcs', id: n.id, name: n.name, icon: n.icon });
+    rows.push({ type: 'npcs', id: n.id, routeId: n.routeId, name: n.name, icon: n.icon });
   }
   for (const it of items) {
-    rows.push({ type: 'items', id: it.id, name: it.name, icon: it.icon });
+    rows.push({ type: 'items', id: it.id, routeId: it.routeId, name: it.name, icon: it.icon });
   }
   for (const set of itemSets) {
-    rows.push({ type: 'item-sets', id: set.id, name: set.name, icon: '' });
+    rows.push({ type: 'item-sets', id: set.id, routeId: set.routeId, name: set.name, icon: '' });
   }
   for (const code of codes) {
-    rows.push({ type: 'codes', id: code.id, name: code.code, icon: code.icon });
+    rows.push({ type: 'codes', id: code.id, routeId: code.routeId, name: code.code, icon: code.icon });
   }
   for (const mb of monsters) {
     if (!mb.inGame) continue;
-    rows.push({ type: 'monsters', id: mb.id, name: mb.name, icon: mb.icon });
+    rows.push({ type: 'monsters', id: mb.id, routeId: mb.routeId, name: mb.name, icon: mb.icon });
   }
   for (const a of areas) {
-    rows.push({ type: 'areas', id: a.id, name: a.name, icon: '' });
+    rows.push({ type: 'areas', id: a.id, routeId: a.routeId, name: a.name, icon: '' });
   }
   for (const inst of instances) {
     if (!inst.inGame) continue;
-    rows.push({ type: 'instances', id: inst.id, name: inst.name, icon: '' });
+    rows.push({ type: 'instances', id: inst.id, routeId: inst.routeId, name: inst.name, icon: '' });
   }
   for (const iz of infectedZones) {
     if (!iz.inGame) continue;
-    rows.push({ type: 'infected-zones', id: iz.id, name: iz.name, icon: iz.icon });
+    rows.push({ type: 'infected-zones', id: iz.id, routeId: iz.routeId, name: iz.name, icon: iz.icon });
   }
   for (const na of nanos) {
-    rows.push({ type: 'nanos', id: na.id, name: na.name, icon: na.icon });
+    rows.push({ type: 'nanos', id: na.id, routeId: na.routeId, name: na.name, icon: na.icon });
   }
   rows.push({ type: 'player-stats', id: '', name: 'Player Stats', icon: '' });
 

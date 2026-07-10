@@ -4,6 +4,7 @@ import { LruCache } from './lruCache';
 export interface SearchRow {
   type: 'missions' | 'npcs' | 'items' | 'item-sets' | 'codes' | 'monsters' | 'areas' | 'instances' | 'infected-zones' | 'nanos' | 'player-stats';
   id: number | string;
+  routeId?: string;
   name: string;
   icon: string;
 }

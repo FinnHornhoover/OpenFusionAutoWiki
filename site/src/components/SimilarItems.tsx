@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 
 import type { ItemIndexEntry, ItemSet } from '../data/types';
+import { canonicalRoute, useRouteMap } from '../data/routeMap';
 import { useIndex } from '../data/useIndex';
 import Dropdown from './Dropdown';
 import EntityLink from './EntityLink';
@@ -60,6 +61,7 @@ async function loadItemSets(build: string): Promise<Record<string, ItemSet>> {
 export default function SimilarItems({ current }: SimilarItemsProps) {
   const { build } = useParams();
   const { rows, loading } = useIndex<ItemIndexEntry>(build, 'items');
+  const itemSetRoutes = useRouteMap(build, 'item-sets');
   const [sets, setSets] = useState<Record<string, ItemSet> | null>(null);
 
   useEffect(() => {
@@ -150,7 +152,7 @@ export default function SimilarItems({ current }: SimilarItemsProps) {
               <tr key={group.key}>
                 <td>
                   {group.isSet && group.setId && build ? (
-                    <Link className="similar-items-source-title similar-items-source-link" to={`/${build}/item-sets/${group.setId}`}>{group.title}</Link>
+                    <Link className="similar-items-source-title similar-items-source-link" to={`/${build}/item-sets/${canonicalRoute(itemSetRoutes, group.setId)}`}>{group.title}</Link>
                   ) : (
                     <strong className="similar-items-source-title">{group.title}</strong>
                   )}

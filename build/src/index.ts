@@ -23,6 +23,7 @@ import { normalizeNpcs } from './normalize/npcs.js';
 import { normalizePlayerStats } from './normalize/playerStats.js';
 import { buildNpcLocationMap } from './normalize/npcLocations.js';
 import { buildNpcNameIndex } from './normalize/npcNameIndex.js';
+import { writeRouteMaps } from './normalize/routes.js';
 import { writeSearchIndex } from './normalize/search.js';
 import { writeSitemapAndRobots } from './normalize/sitemap.js';
 import { DATA_OUT } from './paths.js';
@@ -151,6 +152,8 @@ async function main(): Promise<void> {
     const itemSets = await normalizeItemSets(slug);
     totalItemSets += itemSets.count;
     totalItemSetItems += itemSets.itemCount;
+
+    await writeRouteMaps(slug, ['missions', 'npcs', 'items', 'item-sets', 'codes', 'monsters', 'areas', 'instances', 'infected-zones', 'nanos']);
 
     const search = await writeSearchIndex(slug);
     totalSearchRows += search.count;

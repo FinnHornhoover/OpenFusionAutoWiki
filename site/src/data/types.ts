@@ -114,6 +114,7 @@ export interface GuideEmail {
 
 export interface MissionIndexEntry {
   id: number;
+  routeId?: string;
   name: string;
   level: number;
   difficulty: string;
@@ -216,6 +217,7 @@ export interface NpcIndexMember {
 
 export interface NpcIndexEntry {
   id: number | string;
+  routeId?: string;
   name: string;
   icon: string;
   category: string;
@@ -316,6 +318,7 @@ export interface Code {
 
 export interface CodeIndexEntry {
   id: string;
+  routeId?: string;
   code: string;
   name: string;
   icon: string;
@@ -324,6 +327,7 @@ export interface CodeIndexEntry {
 
 export interface ItemIndexEntry {
   id: string;
+  routeId?: string;
   typeId: number;
   itemId: number;
   name: string;
@@ -427,6 +431,7 @@ export interface Mob {
 
 export interface MobIndexEntry {
   id: number;
+  routeId?: string;
   name: string;
   icon: string;
   level: number;
@@ -487,6 +492,7 @@ export interface Instance {
 
 export interface InstanceIndexEntry {
   id: number;
+  routeId?: string;
   name: string;
   inGame: boolean;
   infectedZoneId: number;
@@ -533,6 +539,7 @@ export interface InfectedZone {
 
 export interface InfectedZoneIndexEntry {
   id: number;
+  routeId?: string;
   name: string;
   icon: string;
   areaZone: string;
@@ -692,6 +699,7 @@ export interface Area {
 
 export interface AreaIndexEntry {
   id: string;
+  routeId?: string;
   name: string;
   zoneName: string;
   x: number;
@@ -737,6 +745,7 @@ export interface Nano {
 
 export interface NanoIndexEntry {
   id: number;
+  routeId?: string;
   name: string;
   icon: string;
   nanoType: string;
@@ -776,6 +785,7 @@ export interface ItemSet {
 
 export interface ItemSetIndexEntry {
   id: number;
+  routeId?: string;
   name: string;
   itemCount: number;
 }

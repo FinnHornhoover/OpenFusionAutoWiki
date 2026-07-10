@@ -118,7 +118,7 @@ export default function NanoIndex({ build, rows, loading }: Props) {
                         {r.icon
                           ? <Icon src={r.icon} alt={r.name} size={64} />
                           : <span className="icon icon-empty" aria-hidden />}
-                        <Link className="entity-index-link" to={`/${build}/nanos/${r.id}`}>{r.name}</Link>
+                        <Link className="entity-index-link" to={`/${build}/nanos/${r.routeId ?? r.id}`}>{r.name}</Link>
                       </div>
                     </td>
                     <td>{r.awardLevel > 0 ? r.awardLevel : <span className="muted">—</span>}</td>

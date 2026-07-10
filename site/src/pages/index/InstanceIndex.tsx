@@ -71,7 +71,7 @@ export default function InstanceIndex({ build, rows, loading }: Props) {
                 {pageRows.map((r) => (
                   <tr key={r.id} className={r.inGame ? undefined : 'entity-index-row-muted'}>
                     <td><code className="entity-index-id-code">{r.id}</code></td>
-                    <td><Link className="entity-index-link" to={`/${build}/instances/${r.id}`}>{r.name}</Link></td>
+                    <td><Link className="entity-index-link" to={`/${build}/instances/${r.routeId ?? r.id}`}>{r.name}</Link></td>
                     <td>{r.infectedZone ? <EntityLink entity={r.infectedZone} iconSize={64} /> : <span className="muted">-</span>}</td>
                   </tr>
                 ))}
