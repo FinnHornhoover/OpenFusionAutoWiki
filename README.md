@@ -33,7 +33,7 @@ Configure these in **Settings > Secrets and variables > Actions** before enablin
 | `MEDIAWIKI_USERNAME` | Logging in to `fusionfall.wiki/api.php`. A dedicated bot account or BotPassword username is recommended. |
 | `MEDIAWIKI_PASSWORD` | Password or BotPassword paired with `MEDIAWIKI_USERNAME`. |
 
-The MediaWiki account needs permission to read, create, and edit the target pages. `GITHUB_TOKEN` is supplied automatically by GitHub Actions and is used to resolve the latest FFInfoPacks release.
+The MediaWiki account needs permission to read, create, and edit the target pages, and to upload files. `GITHUB_TOKEN` is supplied automatically by GitHub Actions and is used to resolve the latest FFInfoPacks release.
 
 The optional `FFWIKI_BASE_URL` repository variable controls absolute sitemap URLs. It defaults to `https://openfusion-auto-wiki.pages.dev`.
 
@@ -45,6 +45,8 @@ The shared normalization stage writes chunked JSON and route maps to `site/publi
 2. `npm run build:mediawiki` renders MediaWiki wikitext into `mediawiki/output/pages/`.
 
 The MediaWiki export contains a small root `manifest.json` and bounded 500-page manifests under `mediawiki/output/shards/`. Splitting the manifest prevents Node string and heap limits on the roughly 590,000-page full export.
+
+Referenced icons and generated Phase 1 maps are registered in each page shard. Area pages include location and monster maps; instance and Infected Zone pages include warp maps. The publisher uploads missing files before editing the pages that use them and leaves existing wiki files untouched.
 
 Generated wiki sections contain `OFAW` ownership markers. Publishing replaces only sections carrying those markers and appends missing generated sections, preserving general text and all unowned sections.
 
@@ -108,6 +110,7 @@ mediawiki/              MediaWiki renderer, publisher, and configuration
   src/
     index.ts            wikitext export + shard manifests
     render.ts           type-specific links, lists, tables, and figures
+    maps.ts             static minimap crops and marker compositing
     publish.ts          section-preserving MediaWiki API publisher
   output/               generated pages and manifests (gitignored)
 site/                   Vite + React + MDX

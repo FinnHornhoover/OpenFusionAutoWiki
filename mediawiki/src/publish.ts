@@ -107,6 +107,62 @@ if (login.login.result !== "Success") {
 
 token = (await api({ action: "query", meta: "tokens" })).query.tokens.csrftoken;
 
+async function uploadOnce(record: { source: string; name: string }) {
+  const bytes = await readFile(join(root, record.source));
+  const form = new FormData();
+  form.set("action", "upload");
+  form.set("format", "json");
+  form.set("formatversion", "2");
+  form.set("filename", record.name);
+  form.set("comment", cfg.editSummary);
+  form.set("token", token);
+  form.set("file", new Blob([new Uint8Array(bytes)]), record.name);
+
+  const res = await fetch(cfg.apiUrl, {
+    method: "POST",
+    headers: {
+      accept: "application/json",
+      "user-agent": "OpenFusionAutoWiki/1.0",
+      cookie: cookieHeader(),
+    },
+    body: form,
+  });
+
+  storeCookies(res.headers);
+  const json = (await res.json()) as any;
+  if (!res.ok) throw new Error("MediaWiki HTTP " + res.status);
+  if (json.error) throw new Error(json.error.code + ": " + json.error.info);
+  if (json.upload?.result !== "Success") {
+    throw new Error(
+      "Upload failed for " + record.name + ": " + JSON.stringify(json.upload),
+    );
+  }
+}
+
+async function ensureMedia(record: { source: string; name: string }) {
+  const query = await api({
+    action: "query",
+    titles: "File:" + record.name,
+  });
+  if (!query.query.pages[0].missing) return false;
+
+  for (let attempt = 0; ; attempt++) {
+    try {
+      await uploadOnce(record);
+      return true;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (!/^(ratelimited|maxlag):/.test(message) || attempt >= 5) throw error;
+
+      const delay = Math.min(60000, 10000 * 2 ** attempt);
+      console.warn(
+        message + "; retrying upload in " + Math.ceil(delay / 1000) + "s",
+      );
+      await new Promise((resolve) => setTimeout(resolve, delay));
+    }
+  }
+}
+
 function sections(s: string) {
   return [
     ...s.matchAll(
@@ -149,9 +205,38 @@ const shards = wanted
 let changed = 0;
 let unchanged = 0;
 let failed = 0;
+let uploaded = 0;
+let existingMedia = 0;
+
+const mediaByName = new Map(
+  manifest.media.map((record: any) => [record.name, record]),
+);
+const checkedMedia = new Set<string>();
 
 for (const shard of shards) {
   const shardPages = JSON.parse(await readFile(join(out, shard.path), "utf8"));
+  const mediaNames = new Set<string>(
+    shardPages.flatMap((page: any) => page.media),
+  );
+
+  for (const name of mediaNames) {
+    if (checkedMedia.has(name)) continue;
+    checkedMedia.add(name);
+
+    const record = mediaByName.get(name) as any;
+    if (!record) {
+      console.warn("No media manifest record for " + name);
+      continue;
+    }
+
+    if (await ensureMedia(record)) uploaded++;
+    else existingMedia++;
+
+    await new Promise((resolve) =>
+      setTimeout(resolve, Number(process.env.MEDIAWIKI_EDIT_DELAY_MS || 1500)),
+    );
+  }
+
   for (const p of shardPages) {
     const generated = await readFile(join(out, p.path), "utf8");
     try {
@@ -198,5 +283,5 @@ for (const shard of shards) {
   }
 }
 
-console.log({ changed, unchanged, failed });
+console.log({ changed, unchanged, failed, uploaded, existingMedia });
 if (failed) process.exitCode = 1;

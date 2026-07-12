@@ -1,14 +1,16 @@
 import { createHash } from "node:crypto";
 import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
-import { dirname, join, resolve } from "node:path";
+import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   renderAmbiguity,
   renderEntity,
   renderIndex,
   escapeText,
+  mediaFileName,
   type Obj,
 } from "./render.js";
+import { buildPhaseOneMaps } from "./maps.js";
 import type {
   Config,
   BuildEntry,
@@ -59,6 +61,51 @@ const clean = (v: unknown) =>
 const readJson = async <T>(path: string) =>
   JSON.parse(await readFile(path, "utf8")) as T;
 
+type MediaRecord = ExportManifest["media"][number];
+const media = new Map<string, MediaRecord>();
+
+function mediaSource(value: string) {
+  return value.startsWith("/")
+    ? join(root, "site/public", value.slice(1))
+    : join(root, "site/public/icons", value);
+}
+
+async function collectMedia(
+  value: unknown,
+  key = "",
+  found = new Set<string>(),
+) {
+  if (Array.isArray(value)) {
+    for (const entry of value) await collectMedia(entry, key, found);
+    return found;
+  }
+
+  if (!value || typeof value !== "object") {
+    if (!/icon$/i.test(key) || typeof value !== "string" || !value)
+      return found;
+
+    const name = mediaFileName(value);
+    const source = mediaSource(value);
+    try {
+      const bytes = await readFile(source);
+      media.set(name, {
+        source: relative(root, source),
+        name,
+        hash: createHash("sha256").update(bytes).digest("hex"),
+      });
+      found.add(name);
+    } catch {
+      // Some source packs reference icons that are not shipped.
+    }
+    return found;
+  }
+
+  for (const [childKey, entry] of Object.entries(value)) {
+    await collectMedia(entry, childKey, found);
+  }
+  return found;
+}
+
 const chunkCache = new Map<string, Record<string, Obj>>();
 async function chunk(path: string) {
   const old = chunkCache.get(path);
@@ -98,6 +145,7 @@ async function addPage(
   type: string,
   body: string,
   pages: ManifestPage[],
+  pageMedia: string[] = [],
 ) {
   const path = join("pages", build, type, digest(title).slice(0, 24) + ".wiki");
   await mkdir(dirname(join(outRoot, path)), { recursive: true });
@@ -114,7 +162,7 @@ async function addPage(
     build,
     type,
     sections,
-    media: [],
+    media: pageMedia,
   });
 }
 
@@ -185,7 +233,15 @@ async function main() {
       const title =
         titles.get(type + ":" + ref.id) ||
         pageTitle(build.displayName, type, ref.name, ref.id);
-      return "[[" + title + "|" + escapeText(ref.name ?? ref.id) + "]]";
+      const icon =
+        typeof ref.icon === "string" && ref.icon
+          ? "[[File:" +
+            mediaFileName(ref.icon) +
+            "|24px|alt=|link=" +
+            title +
+            "]] "
+          : "";
+      return icon + "[[" + title + "|" + escapeText(ref.name ?? ref.id) + "]]";
     };
 
     for (const [type, rows] of indexes) {
@@ -235,6 +291,7 @@ async function main() {
         if (segment !== target.canonical) continue;
         if (target.kind === "ambiguity") {
           const title = titles.get(type + ":ambiguity:" + segment)!;
+          const pageMedia = [...(await collectMedia(target.matches))];
           await addPage(
             title,
             build.slug,
@@ -245,6 +302,7 @@ async function main() {
               "Disambiguation pages",
             ]),
             pages,
+            pageMedia,
           );
           continue;
         }
@@ -264,12 +322,19 @@ async function main() {
           "nanoType",
         ])
           if (entity[key]) cats.push(String(entity[key]));
+        const generatedMaps = await buildPhaseOneMaps(type, entity);
+        for (const map of generatedMaps) media.set(map.name, map.media);
+        const pageMedia = [
+          ...(await collectMedia(entity)),
+          ...generatedMaps.map((map) => map.name),
+        ];
         await addPage(
           title,
           build.slug,
           type,
-          renderEntity(type, entity, link, config, cats),
+          renderEntity(type, entity, link, config, cats, generatedMaps),
           pages,
+          pageMedia,
         );
       }
     }
@@ -295,7 +360,7 @@ async function main() {
     generatedAt: new Date().toISOString(),
     pageCount: pages.length,
     shards,
-    media: [],
+    media: [...media.values()],
   };
   await writeFile(
     join(outRoot, "manifest.json"),

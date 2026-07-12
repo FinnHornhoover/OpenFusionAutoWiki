@@ -188,6 +188,9 @@ const label = (k: string) =>
     .replaceAll("_", " ")
     .replace(/^./, (c) => c.toUpperCase());
 
+export const mediaFileName = (path: string) =>
+  "OFAW-" + path.replace(/^\/+/, "").replaceAll("/", "-");
+
 export const escapeText = (v: unknown) =>
   String(v ?? "")
     .replaceAll("&", "&amp;")
@@ -216,6 +219,19 @@ const isRef = (v: unknown): v is Obj =>
   "id" in v &&
   "name" in v;
 
+function stripIds(value: unknown, preserveReference = true): unknown {
+  if ((preserveReference && isRef(value)) || scalar(value)) return value;
+  if (Array.isArray(value)) {
+    return value.map((entry) => stripIds(entry));
+  }
+
+  return Object.fromEntries(
+    Object.entries(value as Obj)
+      .filter(([key]) => !/(^id$|id$)/i.test(key))
+      .map(([key, entry]) => [key, stripIds(entry)]),
+  );
+}
+
 function cell(v: unknown, link: Linker): string {
   if (isRef(v)) return link(v);
   if (v === true) return "Yes";
@@ -229,7 +245,19 @@ function cell(v: unknown, link: Linker): string {
   if (Array.isArray(v)) return v.map((x) => cell(x, link)).join("<br />");
   return Object.entries(v as Obj)
     .filter(([, x]) => present(x))
-    .map(([k, x]) => "'''" + label(k) + ":''' " + cell(x, link))
+    .map(
+      ([k, x]) =>
+        "'''" +
+        label(k) +
+        ":''' " +
+        (/icon$/i.test(k) && typeof x === "string"
+          ? "[[File:" +
+            mediaFileName(x) +
+            "|32px|alt=" +
+            escapeText(label(k)) +
+            "]]"
+          : cell(x, link)),
+    )
     .join("<br />");
 }
 
@@ -295,11 +323,8 @@ function field(k: string, v: unknown, link: Linker) {
       return table(
         (v as Obj[]).map((x, i) => ({
           Order: i + 1,
-          ID: x.id,
           Objective: x.objective,
           Type: x.type,
-          "On success": x.nextTaskOnEnd,
-          "On failure": x.nextTaskOnFail,
           "Time limit": x.timeLimitSeconds,
         })),
         link,
@@ -316,7 +341,10 @@ export function renderEntity(
   link: Linker,
   c: Config,
   categories: string[],
+  maps: Array<{ name: string; caption: string }> = [],
 ) {
+  if (type !== "items") e = stripIds(e, false) as Obj;
+
   const out: string[] = [];
   for (const [title, fields] of groups[type] || [
     ["Game data", Object.keys(e)],
@@ -334,8 +362,8 @@ export function renderEntity(
           .join("\n\n");
     if (!out.length && e.icon)
       body =
-        "[[File:OFAW-" +
-        e.icon +
+        "[[File:" +
+        mediaFileName(String(e.icon)) +
         "|thumb|right|160px|alt=" +
         escapeText(e.name) +
         "|" +
@@ -346,6 +374,32 @@ export function renderEntity(
       section(type, title.toLowerCase().replace(/\W+/g, "-"), title, body, c),
     );
   }
+  if (maps.length) {
+    const body =
+      maps.length === 1
+        ? "[[File:" +
+          maps[0].name +
+          "|thumb|center|768px|alt=" +
+          escapeText(maps[0].caption) +
+          "|" +
+          escapeText(maps[0].caption) +
+          "]]"
+        : '<gallery mode="packed" widths="360" heights="360">\n' +
+          maps
+            .map(
+              (map) =>
+                "File:" +
+                map.name +
+                "|" +
+                escapeText(map.caption) +
+                "|alt=" +
+                escapeText(map.caption),
+            )
+            .join("\n") +
+          "\n</gallery>";
+    out.splice(1, 0, section(type, "maps", "Maps", body, c));
+  }
+
   if (out.length)
     out[out.length - 1] =
       out[out.length - 1].trimEnd() + "\n\n" + categoryText(categories) + "\n";
@@ -361,7 +415,7 @@ export function renderIndex(
   const rs = rows.map((r) => {
     const x: Obj = { Name: pageLink(r) };
     for (const k of [
-      "id",
+      ...(type === "items" ? ["id"] : []),
       "level",
       "difficulty",
       "type",
