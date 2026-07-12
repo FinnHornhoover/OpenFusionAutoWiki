@@ -1,0 +1,9 @@
+{
+  "apiUrl": "https://fusionfall.wiki/api.php",
+  "schemaVersion": 1,
+  "maxArticleBytes": 1800000,
+  "shardSize": 500,
+  "editSummary": "Update OpenFusion AutoWiki data",
+  "collapsibleTemplate": "Navbox",
+  "checkpointRoot": "Project:OpenFusionAutoWiki/Manifest"
+}

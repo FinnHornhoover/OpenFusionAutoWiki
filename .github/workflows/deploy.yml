@@ -4,6 +4,22 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      mediawiki_build:
+        description: Optional build slug to export (for example, retrobution)
+        required: false
+        type: string
+      mediawiki_shard:
+        description: Optional shard ID to publish (for example, 000000)
+        required: false
+        type: string
+      mediawiki_max_shards:
+        description: Number of shards to publish when no shard ID is supplied
+        required: false
+        default: '1'
+        type: string
+  schedule:
+    - cron: '17 3 * * *'
 
 # Don't deploy two runs in parallel — Cloudflare Pages will accept them
 # but we want the most recent main commit to be the live one.
@@ -71,6 +87,18 @@ jobs:
       - name: Build site (Vite + MDX)
         run: npm run build:site
 
+      - name: Build MediaWiki export
+        env:
+          MEDIAWIKI_BUILD: ${{ inputs.mediawiki_build || '' }}
+        run: npm run build:mediawiki
+
+      - name: Upload MediaWiki export artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mediawiki-export
+          path: mediawiki/output
+          retention-days: 7
+
       - name: Smoke checks
         run: |
           # Cloudflare Pages: ≤20,000 files per deployment, ≤25 MB per file.
@@ -86,6 +114,15 @@ jobs:
             echo "$OVERSIZE"
             exit 1
           fi
+
+      - name: Publish next MediaWiki shard
+        env:
+          MEDIAWIKI_USERNAME: ${{ secrets.MEDIAWIKI_USERNAME }}
+          MEDIAWIKI_PASSWORD: ${{ secrets.MEDIAWIKI_PASSWORD }}
+          MEDIAWIKI_BUILD: ${{ inputs.mediawiki_build || '' }}
+          MEDIAWIKI_SHARD: ${{ inputs.mediawiki_shard || '' }}
+          MEDIAWIKI_MAX_SHARDS: ${{ inputs.mediawiki_max_shards || '1' }}
+        run: npm run publish:mediawiki
 
       - name: Deploy to Cloudflare Pages
         uses: cloudflare/wrangler-action@v3

@@ -5,16 +5,19 @@
   "type": "module",
   "workspaces": [
     "build",
+    "mediawiki",
     "site"
   ],
   "scripts": {
     "build:data": "npm run build -w build && node build/dist/index.js",
     "build:site": "npm run build -w site",
-    "build:all": "npm run build:data && npm run build:site",
+    "build:all": "npm run build:data && npm run build:site && npm run build:mediawiki",
     "dev": "npm run dev -w site",
     "preview": "npm run preview -w site",
     "clean": "rm -rf site/dist site/public/data site/public/icons site/public/builds.json build/dist",
-    "item-sets:editor": "node scripts/item-set-editor.mjs"
+    "item-sets:editor": "node scripts/item-set-editor.mjs",
+    "build:mediawiki": "npm run build -w mediawiki && node mediawiki/dist/index.js",
+    "publish:mediawiki": "npm run build -w mediawiki && node mediawiki/dist/publish.js"
   },
   "engines": {
     "node": ">=20"

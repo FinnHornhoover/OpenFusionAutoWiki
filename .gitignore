@@ -5,6 +5,8 @@ node_modules/
 dist/
 build/dist/
 site/dist/
+mediawiki/dist/
+mediawiki/output/
 
 # generated wiki data (produced by build pipeline)
 site/public/data/
