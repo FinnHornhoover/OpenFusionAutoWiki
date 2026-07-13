@@ -139,12 +139,151 @@ function pageTitle(
   );
 }
 
+class ProgressBar {
+  private current = 0;
+  private label = "starting";
+  private lastRender = 0;
+  private nextLog = 0;
+  private readonly startedAt = Date.now();
+  private readonly logInterval: number;
+
+  constructor(private readonly total: number) {
+    this.logInterval = Math.max(1, Math.ceil(total / 100));
+    this.render(true);
+  }
+
+  setLabel(label: string) {
+    this.label = label;
+  }
+
+  tick() {
+    this.current++;
+    this.render(false);
+  }
+
+  finish() {
+    this.current = this.total;
+    this.render(true);
+    if (process.stdout.isTTY) process.stdout.write("\n");
+  }
+
+  private render(force: boolean) {
+    const now = Date.now();
+    if (process.stdout.isTTY) {
+      if (!force && now - this.lastRender < 100) return;
+      this.lastRender = now;
+      const ratio = this.total > 0 ? this.current / this.total : 1;
+      const width = 30;
+      const filled = Math.min(width, Math.round(ratio * width));
+      const bar = "#".repeat(filled) + "-".repeat(width - filled);
+      const percent = (ratio * 100).toFixed(1).padStart(5);
+      const elapsed = Math.round((now - this.startedAt) / 1000);
+      process.stdout.write(
+        "\r[" +
+          bar +
+          "] " +
+          percent +
+          "% " +
+          this.current.toLocaleString() +
+          "/" +
+          this.total.toLocaleString() +
+          " pages | " +
+          this.label +
+          " | " +
+          elapsed +
+          "s",
+      );
+      return;
+    }
+
+    if (!force && this.current < this.nextLog) return;
+    const percent = this.total > 0 ? (this.current / this.total) * 100 : 100;
+    console.log(
+      "MediaWiki build " +
+        percent.toFixed(1) +
+        "% (" +
+        this.current.toLocaleString() +
+        "/" +
+        this.total.toLocaleString() +
+        " pages) - " +
+        this.label,
+    );
+    this.nextLog = this.current + this.logInterval;
+  }
+}
+
+async function countPages(builds: BuildEntry[]) {
+  let total = 0;
+  for (const build of builds) {
+    if (
+      process.env.MEDIAWIKI_BUILD &&
+      process.env.MEDIAWIKI_BUILD !== build.slug
+    ) {
+      continue;
+    }
+
+    const indexDir = join(dataRoot, build.slug, "index");
+    const files = (await readdir(indexDir)).filter((file) =>
+      file.endsWith(".json"),
+    );
+    for (const file of files) {
+      total++;
+      if (file === "player-stats.json") continue;
+
+      const routes = await readJson<Record<string, Obj>>(
+        join(dataRoot, build.slug, "routes", file),
+      );
+      total += Object.entries(routes).filter(
+        ([segment, target]) => segment === target.canonical,
+      ).length;
+    }
+  }
+  return total;
+}
+
+class ManifestWriter {
+  private pages: ManifestPage[] = [];
+  private shards: ExportManifest["shards"] = [];
+  private totalPages = 0;
+
+  constructor(private readonly progress: ProgressBar) {}
+
+  async add(page: ManifestPage) {
+    this.pages.push(page);
+    this.totalPages++;
+    this.progress.tick();
+    if (this.pages.length >= config.shardSize) await this.flush();
+  }
+
+  async finish() {
+    await this.flush();
+    return { pageCount: this.totalPages, shards: this.shards };
+  }
+
+  private async flush() {
+    if (!this.pages.length) return;
+
+    const shardPages = this.pages;
+    this.pages = [];
+    const id = String(this.shards.length).padStart(6, "0");
+    const path = join("shards", id + ".json");
+    await mkdir(join(outRoot, "shards"), { recursive: true });
+    await writeFile(join(outRoot, path), JSON.stringify(shardPages));
+    this.shards.push({
+      id,
+      hash: digest(shardPages.map((page) => page.hash).join("")),
+      path,
+      pageCount: shardPages.length,
+    });
+  }
+}
+
 async function addPage(
   title: string,
   build: string,
   type: string,
   body: string,
-  pages: ManifestPage[],
+  writer: ManifestWriter,
   pageMedia: string[] = [],
 ) {
   const path = join("pages", build, type, digest(title).slice(0, 24) + ".wiki");
@@ -155,7 +294,7 @@ async function addPage(
       /^== ([^=\n]+) ==\n<!-- OFAW:([^:>]+):v\d+ -->\n([\s\S]*?)(?=^== [^=\n]+ ==\n|(?![\s\S]))/gm,
     ),
   ].map((m) => ({ heading: m[1], key: m[2], hash: digest(m[3]) }));
-  pages.push({
+  await writer.add({
     title,
     path,
     hash: digest(body),
@@ -171,7 +310,9 @@ async function main() {
   const builds = await readJson<BuildEntry[]>(
     join(root, "site/public/builds.json"),
   );
-  const pages: ManifestPage[] = [];
+  console.log("Counting MediaWiki pages...");
+  const progress = new ProgressBar(await countPages(builds));
+  const writer = new ManifestWriter(progress);
 
   for (const build of builds) {
     if (
@@ -179,6 +320,8 @@ async function main() {
       process.env.MEDIAWIKI_BUILD !== build.slug
     )
       continue;
+
+    progress.setLabel(build.displayName);
     const dir = join(dataRoot, build.slug, "index");
     const files = (await readdir(dir)).filter((file) => file.endsWith(".json"));
 
@@ -256,7 +399,7 @@ async function main() {
             build.displayName,
             typeNames[type],
           ]),
-          pages,
+          writer,
         );
         continue;
       }
@@ -285,7 +428,7 @@ async function main() {
           typeNames[type],
           "OpenFusion AutoWiki indexes",
         ]),
-        pages,
+        writer,
       );
       for (const [segment, target] of Object.entries(map)) {
         if (segment !== target.canonical) continue;
@@ -301,7 +444,7 @@ async function main() {
               typeNames[type],
               "Disambiguation pages",
             ]),
-            pages,
+            writer,
             pageMedia,
           );
           continue;
@@ -333,33 +476,20 @@ async function main() {
           build.slug,
           type,
           renderEntity(type, entity, link, config, cats, generatedMaps),
-          pages,
+          writer,
           pageMedia,
         );
       }
     }
     chunkCache.clear();
   }
-  const shards = [];
-  const shardDir = join(outRoot, "shards");
-  await mkdir(shardDir, { recursive: true });
-  for (let i = 0; i < pages.length; i += config.shardSize) {
-    const shardPages = pages.slice(i, i + config.shardSize),
-      id = String(i / config.shardSize).padStart(6, "0"),
-      path = join("shards", id + ".json");
-    await writeFile(join(outRoot, path), JSON.stringify(shardPages));
-    shards.push({
-      id,
-      hash: digest(shardPages.map((page) => page.hash).join("")),
-      path,
-      pageCount: shardPages.length,
-    });
-  }
+  const output = await writer.finish();
+  progress.finish();
   const manifest: ExportManifest = {
     schemaVersion: config.schemaVersion,
     generatedAt: new Date().toISOString(),
-    pageCount: pages.length,
-    shards,
+    pageCount: output.pageCount,
+    shards: output.shards,
     media: [...media.values()],
   };
   await writeFile(
@@ -368,9 +498,9 @@ async function main() {
   );
   console.log(
     "MediaWiki export: " +
-      pages.length +
+      output.pageCount +
       " pages, " +
-      shards.length +
+      output.shards.length +
       " shards",
   );
 }

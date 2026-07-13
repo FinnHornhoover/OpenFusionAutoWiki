@@ -64,6 +64,7 @@ Publishing recognizes these controls:
 | `MEDIAWIKI_BUILD` | Generates only one build slug; unset generates every build. |
 | `MEDIAWIKI_SHARD` | Publishes one explicit shard ID. |
 | `MEDIAWIKI_MAX_SHARDS` | Number of shards selected per run; the workflow uses `1`. |
+| `MEDIAWIKI_MAX_PAGES` | Limits pages processed from each selected shard; useful for live test batches. |
 | `MEDIAWIKI_EDIT_DELAY_MS` | Delay between edits; defaults to 1,500 ms. |
 | `GITHUB_RUN_NUMBER` | Selects the next shard when no explicit shard is supplied. |
 

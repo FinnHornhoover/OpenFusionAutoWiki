@@ -214,7 +214,9 @@ const mediaByName = new Map(
 const checkedMedia = new Set<string>();
 
 for (const shard of shards) {
-  const shardPages = JSON.parse(await readFile(join(out, shard.path), "utf8"));
+  const shardPages = JSON.parse(
+    await readFile(join(out, shard.path), "utf8"),
+  ).slice(0, Number(process.env.MEDIAWIKI_MAX_PAGES || Infinity));
   const mediaNames = new Set<string>(
     shardPages.flatMap((page: any) => page.media),
   );

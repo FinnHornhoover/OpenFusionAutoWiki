@@ -8,6 +8,8 @@ import sharp from "sharp";
 import type { Obj } from "./render.js";
 import type { ExportManifest } from "./types.js";
 
+sharp.cache(false);
+
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const baseMapPath = join(root, "site/public/minimap/all.png");
 const mediaDir = join(root, "mediawiki/output/media");
@@ -185,7 +187,7 @@ async function renderMap(
     .extract(crop)
     .resize(OUTPUT_SIZE, OUTPUT_SIZE)
     .composite(composites)
-    .png({ compressionLevel: 9, palette: true })
+    .png({ compressionLevel: 6 })
     .toFile(outputPath);
 
   const result: GeneratedMap = {
