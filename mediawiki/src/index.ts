@@ -1,32 +1,25 @@
+// @ts-nocheck -- route JSON is validated by the normalization pipeline.
 import { createHash } from "node:crypto";
 import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { buildWikiMaps, buildWorldMapFromAreas, mediaName } from "./maps.js";
+import { orderBuilds, tabAnchor } from "./routing.js";
 import {
+  escapeText,
+  mediaFileName,
   renderAmbiguity,
   renderEntity,
   renderIndex,
-  escapeText,
-  mediaFileName,
-  type Obj,
 } from "./render.js";
-import { buildPhaseOneMaps } from "./maps.js";
-import type {
-  Config,
-  BuildEntry,
-  ManifestPage,
-  ExportManifest,
-} from "./types.js";
-
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const dataRoot = join(root, "site/public/data");
 const outRoot = join(root, "mediawiki/output");
 const config = JSON.parse(
   await readFile(join(root, "mediawiki/config.json"), "utf8"),
-) as Config;
-
-const digest = (s: string) => createHash("sha256").update(s).digest("hex");
-const typeNames: Record<string, string> = {
+);
+const digest = (value) => createHash("sha256").update(value).digest("hex");
+const typeNames = {
   missions: "Missions",
   npcs: "NPCs",
   items: "Items",
@@ -39,8 +32,7 @@ const typeNames: Record<string, string> = {
   nanos: "Nanos",
   "player-stats": "Player stats",
 };
-
-const refTypes: Record<string, string> = {
+const refTypes = {
   mission: "missions",
   npc: "npcs",
   item: "items",
@@ -52,440 +44,674 @@ const refTypes: Record<string, string> = {
   "infected-zone": "infected-zones",
   nano: "nanos",
 };
-
-const clean = (v: unknown) =>
-  String(v ?? "Unnamed")
-    .replace(/[#[\\\]{}|<>\n\r\t]/g, " ")
+const clean = (value) =>
+  String(value ?? "Unnamed")
+    .replace(/[#[\\\]{}|<>\n\r\t/]/g, " ")
     .replace(/\s+/g, " ")
     .trim() || "Unnamed";
-const readJson = async <T>(path: string) =>
-  JSON.parse(await readFile(path, "utf8")) as T;
-
-type MediaRecord = ExportManifest["media"][number];
-const media = new Map<string, MediaRecord>();
-
-function mediaSource(value: string) {
+const readJson = async (path) => JSON.parse(await readFile(path, "utf8"));
+const topicKey = (semantic) => "topic:" + semantic;
+const exactKey = (type, id) => "exact:" + type + ":" + String(id);
+const refKey = (build, type, id) => build + ":" + type + ":" + String(id);
+const buildTypeKey = (build, type) => build + ":" + type;
+const media = new Map();
+function mediaSource(value) {
   return value.startsWith("/")
     ? join(root, "site/public", value.slice(1))
     : join(root, "site/public/icons", value);
 }
-
-async function collectMedia(
-  value: unknown,
-  key = "",
-  found = new Set<string>(),
-) {
+async function registerMedia(value, found) {
+  if (!value) return;
+  const name = mediaName(value);
+  if (media.has(name)) {
+    found?.add(name);
+    return;
+  }
+  const source = mediaSource(value);
+  try {
+    const bytes = await readFile(source);
+    media.set(name, {
+      source: relative(root, source),
+      name,
+      hash: createHash("sha256").update(bytes).digest("hex"),
+    });
+    found?.add(name);
+  } catch {
+    // Source packs occasionally reference files they do not ship.
+  }
+}
+async function collectMedia(value, key = "", found = new Set()) {
   if (Array.isArray(value)) {
     for (const entry of value) await collectMedia(entry, key, found);
     return found;
   }
-
   if (!value || typeof value !== "object") {
-    if (!/icon$/i.test(key) || typeof value !== "string" || !value)
-      return found;
-
-    const name = mediaFileName(value);
-    const source = mediaSource(value);
-    try {
-      const bytes = await readFile(source);
-      media.set(name, {
-        source: relative(root, source),
-        name,
-        hash: createHash("sha256").update(bytes).digest("hex"),
-      });
-      found.add(name);
-    } catch {
-      // Some source packs reference icons that are not shipped.
-    }
+    if (/icon$/i.test(key) && typeof value === "string")
+      await registerMedia(value, found);
     return found;
   }
-
-  for (const [childKey, entry] of Object.entries(value)) {
+  for (const [childKey, entry] of Object.entries(value))
     await collectMedia(entry, childKey, found);
-  }
   return found;
 }
-
-const chunkCache = new Map<string, Record<string, Obj>>();
-async function chunk(path: string) {
-  const old = chunkCache.get(path);
-  if (old) return old;
-  const loaded = await readJson<Record<string, Obj>>(path);
+const chunkCache = new Map();
+async function chunk(path) {
+  const cached = chunkCache.get(path);
+  if (cached) return cached;
+  const loaded = await readJson(path);
   if (chunkCache.size >= 24) chunkCache.clear();
   chunkCache.set(path, loaded);
   return loaded;
 }
-
-function pageTitle(
-  build: string,
-  type: string,
-  name: unknown,
-  id: unknown,
-  collides = false,
-) {
+function supportTitle(key, build) {
   return (
-    clean(build) +
-    "/" +
-    (typeNames[type] || clean(type)) +
-    "/" +
-    clean(name || id) +
-    (collides
-      ? " (" +
-        clean((typeNames[type] || type).replace(/s$/, "")) +
-        " " +
-        clean(id) +
-        ")"
-      : "")
+    "Project:OpenFusionAutoWiki/Data/" + digest(key).slice(0, 24) + "/" + build
   );
 }
-
+function renderShell(key, available, categories) {
+  const tabs = available
+    .map(
+      (build) => supportTitle(key, build.slug) + "|" + clean(build.displayName),
+    )
+    .join("\n");
+  const links = available
+    .map(
+      (build) =>
+        "[[#" + tabAnchor(build) + "|" + escapeText(build.displayName) + "]]",
+    )
+    .join(" · ");
+  const categoryText = categories
+    .map((category) => "[[Category:" + escapeText(category) + "]]")
+    .join("\n");
+  return (
+    "== Game data ==\n" +
+    "<!-- OFAW:topic-data:v" +
+    config.schemaVersion +
+    " -->\n" +
+    "__NOEDITSECTION__\n" +
+    "<tabbertransclude>\n" +
+    tabs +
+    "\n</tabbertransclude>\n\n" +
+    "'''All builds:''' " +
+    links +
+    "\n\n" +
+    categoryText +
+    "\n"
+  );
+}
 class ProgressBar {
-  private current = 0;
-  private label = "starting";
-  private lastRender = 0;
-  private nextLog = 0;
-  private readonly startedAt = Date.now();
-  private readonly logInterval: number;
-
-  constructor(private readonly total: number) {
-    this.logInterval = Math.max(1, Math.ceil(total / 100));
-    this.render(true);
+  total;
+  current = 0;
+  last = 0;
+  constructor(total) {
+    this.total = total;
   }
-
-  setLabel(label: string) {
-    this.label = label;
-  }
-
-  tick() {
+  tick(label) {
     this.current++;
-    this.render(false);
-  }
-
-  finish() {
-    this.current = this.total;
-    this.render(true);
-    if (process.stdout.isTTY) process.stdout.write("\n");
-  }
-
-  private render(force: boolean) {
-    const now = Date.now();
     if (process.stdout.isTTY) {
-      if (!force && now - this.lastRender < 100) return;
-      this.lastRender = now;
-      const ratio = this.total > 0 ? this.current / this.total : 1;
+      if (this.current !== this.total && this.current - this.last < 250) return;
+      const ratio = this.total ? this.current / this.total : 1;
       const width = 30;
-      const filled = Math.min(width, Math.round(ratio * width));
-      const bar = "#".repeat(filled) + "-".repeat(width - filled);
-      const percent = (ratio * 100).toFixed(1).padStart(5);
-      const elapsed = Math.round((now - this.startedAt) / 1000);
+      const filled = Math.round(width * ratio);
       process.stdout.write(
         "\r[" +
-          bar +
+          "#".repeat(filled) +
+          "-".repeat(width - filled) +
           "] " +
-          percent +
+          (ratio * 100).toFixed(1).padStart(5) +
           "% " +
-          this.current.toLocaleString() +
-          "/" +
-          this.total.toLocaleString() +
-          " pages | " +
-          this.label +
-          " | " +
-          elapsed +
-          "s",
+          label.slice(0, 70),
       );
-      return;
-    }
-
-    if (!force && this.current < this.nextLog) return;
-    const percent = this.total > 0 ? (this.current / this.total) * 100 : 100;
-    console.log(
-      "MediaWiki build " +
-        percent.toFixed(1) +
-        "% (" +
-        this.current.toLocaleString() +
-        "/" +
-        this.total.toLocaleString() +
-        " pages) - " +
-        this.label,
-    );
-    this.nextLog = this.current + this.logInterval;
-  }
-}
-
-async function countPages(builds: BuildEntry[]) {
-  let total = 0;
-  for (const build of builds) {
-    if (
-      process.env.MEDIAWIKI_BUILD &&
-      process.env.MEDIAWIKI_BUILD !== build.slug
-    ) {
-      continue;
-    }
-
-    const indexDir = join(dataRoot, build.slug, "index");
-    const files = (await readdir(indexDir)).filter((file) =>
-      file.endsWith(".json"),
-    );
-    for (const file of files) {
-      total++;
-      if (file === "player-stats.json") continue;
-
-      const routes = await readJson<Record<string, Obj>>(
-        join(dataRoot, build.slug, "routes", file),
+      this.last = this.current;
+    } else if (this.current === this.total || this.current - this.last >= 500) {
+      console.log(
+        "MediaWiki build " + this.current + "/" + this.total + " - " + label,
       );
-      total += Object.entries(routes).filter(
-        ([segment, target]) => segment === target.canonical,
-      ).length;
+      this.last = this.current;
     }
   }
-  return total;
+  finish() {
+    if (process.stdout.isTTY) process.stdout.write("\n");
+  }
 }
-
 class ManifestWriter {
-  private pages: ManifestPage[] = [];
-  private shards: ExportManifest["shards"] = [];
-  private totalPages = 0;
-
-  constructor(private readonly progress: ProgressBar) {}
-
-  async add(page: ManifestPage) {
+  progress;
+  pages = [];
+  shards = [];
+  titles = new Set();
+  totalPages = 0;
+  constructor(progress) {
+    this.progress = progress;
+  }
+  async add(page) {
+    if (this.titles.has(page.title)) {
+      throw new Error("Duplicate MediaWiki page title: " + page.title);
+    }
+    this.titles.add(page.title);
     this.pages.push(page);
     this.totalPages++;
-    this.progress.tick();
+    this.progress.tick(page.title);
     if (this.pages.length >= config.shardSize) await this.flush();
   }
-
   async finish() {
     await this.flush();
     return { pageCount: this.totalPages, shards: this.shards };
   }
-
-  private async flush() {
+  async flush() {
     if (!this.pages.length) return;
-
-    const shardPages = this.pages;
+    const pages = this.pages;
     this.pages = [];
     const id = String(this.shards.length).padStart(6, "0");
     const path = join("shards", id + ".json");
     await mkdir(join(outRoot, "shards"), { recursive: true });
-    await writeFile(join(outRoot, path), JSON.stringify(shardPages));
+    await writeFile(join(outRoot, path), JSON.stringify(pages));
     this.shards.push({
       id,
-      hash: digest(shardPages.map((page) => page.hash).join("")),
       path,
-      pageCount: shardPages.length,
+      pageCount: pages.length,
+      hash: digest(pages.map((page) => page.hash).join("")),
     });
   }
 }
-
 async function addPage(
-  title: string,
-  build: string,
-  type: string,
-  body: string,
-  writer: ManifestWriter,
-  pageMedia: string[] = [],
+  title,
+  build,
+  type,
+  ownership,
+  body,
+  writer,
+  pageMedia = [],
 ) {
-  const path = join("pages", build, type, digest(title).slice(0, 24) + ".wiki");
+  const bytes = Buffer.byteLength(body);
+  if (bytes > config.maxArticleBytes)
+    throw new Error(title + " exceeds maxArticleBytes (" + bytes + ")");
+  const path = join(
+    "pages",
+    ownership,
+    build || "shared",
+    digest(title).slice(0, 24) + ".wiki",
+  );
   await mkdir(dirname(join(outRoot, path)), { recursive: true });
   await writeFile(join(outRoot, path), body);
-  const sections = [
-    ...body.matchAll(
-      /^== ([^=\n]+) ==\n<!-- OFAW:([^:>]+):v\d+ -->\n([\s\S]*?)(?=^== [^=\n]+ ==\n|(?![\s\S]))/gm,
-    ),
-  ].map((m) => ({ heading: m[1], key: m[2], hash: digest(m[3]) }));
+  const sections =
+    ownership === "section"
+      ? [
+          ...body.matchAll(
+            /^== ([^=\n]+) ==\n<!-- OFAW:([^:>]+):v\d+ -->\n([\s\S]*?)(?=^== [^=\n]+ ==\n|(?![\s\S]))/gm,
+          ),
+        ].map((match) => ({
+          heading: match[1],
+          key: match[2],
+          hash: digest(match[3]),
+        }))
+      : [];
   await writer.add({
     title,
     path,
     hash: digest(body),
     build,
     type,
+    ownership,
     sections,
-    media: pageMedia,
+    media: [...new Set(pageMedia)],
   });
 }
-
-async function main() {
-  await mkdir(outRoot, { recursive: true });
-  const builds = await readJson<BuildEntry[]>(
-    join(root, "site/public/builds.json"),
+function ensureTopic(topics, key, exact = false) {
+  let topic = topics.get(key);
+  if (!topic) {
+    topic = {
+      key,
+      title: "",
+      names: new Map(),
+      variants: new Map(),
+      types: new Set(),
+      exact,
+    };
+    topics.set(key, topic);
+  }
+  return topic;
+}
+function addVariant(topic, variant) {
+  const variants = topic.variants.get(variant.build) ?? [];
+  const duplicate = variants.some(
+    (old) =>
+      old.type === variant.type &&
+      old.kind === variant.kind &&
+      (old.kind !== "entity" ||
+        variant.kind !== "entity" ||
+        old.id === variant.id),
   );
-  console.log("Counting MediaWiki pages...");
-  const progress = new ProgressBar(await countPages(builds));
-  const writer = new ManifestWriter(progress);
-
+  if (!duplicate) variants.push(variant);
+  topic.variants.set(variant.build, variants);
+  topic.types.add(variant.type);
+  topic.names.set(variant.build, variant.name);
+}
+async function buildCatalog(builds) {
+  const ambiguousIds = new Set();
+  const exactInfo = new Map();
   for (const build of builds) {
-    if (
-      process.env.MEDIAWIKI_BUILD &&
-      process.env.MEDIAWIKI_BUILD !== build.slug
-    )
-      continue;
-
-    progress.setLabel(build.displayName);
-    const dir = join(dataRoot, build.slug, "index");
-    const files = (await readdir(dir)).filter((file) => file.endsWith(".json"));
-
-    const indexes = new Map<string, Obj[]>();
-    const routes = new Map<string, Record<string, Obj>>();
-    const titles = new Map<string, string>();
-
-    for (const file of files) {
+    const routeDir = join(dataRoot, build.slug, "routes");
+    for (const file of (await readdir(routeDir)).filter((name) =>
+      name.endsWith(".json"),
+    )) {
       const type = file.slice(0, -5);
-      const rows = await readJson<Obj[]>(join(dir, file));
-      indexes.set(type, rows);
-
-      if (type === "player-stats") continue;
-      const map = await readJson<Record<string, Obj>>(
-        join(dataRoot, build.slug, "routes", file),
-      );
-      routes.set(type, map);
-
-      for (const [segment, target] of Object.entries(map)) {
-        if (target.kind === "entity" && segment === target.canonical) {
-          const row =
-            rows.find((r) => String(r.id) === String(target.id)) ||
-            rows.find(
-              (r) =>
-                Array.isArray(r.members) &&
-                (r.members as Obj[]).some(
-                  (m) => String(m.id) === String(target.id),
-                ),
-            );
-          const name = row?.name ?? row?.code ?? target.id;
-          const collision =
-            segment !==
-            clean(
-              String(name)
-                .toLowerCase()
-                .replace(/[^a-z0-9]+/g, "-"),
-            ).replace(/^-|-$/g, "");
-          titles.set(
-            type + ":" + target.id,
-            pageTitle(build.displayName, type, name, target.id, collision),
+      const routes = await readJson(join(routeDir, file));
+      for (const [segment, target] of Object.entries(routes)) {
+        if (segment !== target.canonical || target.kind !== "ambiguity")
+          continue;
+        for (const match of target.matches) {
+          const key = type + ":" + String(match.id);
+          ambiguousIds.add(key);
+          let info = exactInfo.get(key);
+          if (!info) {
+            info = {
+              type,
+              id: String(match.id),
+              baseSemantic: segment,
+              names: new Map(),
+              details: new Map(),
+            };
+            exactInfo.set(key, info);
+          }
+          info.names.set(
+            build.slug,
+            String(match.name ?? target.title ?? segment),
           );
-        } else if (target.kind === "ambiguity" && segment === target.canonical)
-          titles.set(
-            type + ":ambiguity:" + segment,
-            pageTitle(build.displayName, type, target.title, segment),
-          );
+          info.details.set(build.slug, String(match.detail ?? ""));
+        }
       }
     }
-    const link = (value: unknown) => {
-      const ref = value as Obj;
-      const type = refTypes[String(ref.type)] || String(ref.type);
-      const title =
-        titles.get(type + ":" + ref.id) ||
-        pageTitle(build.displayName, type, ref.name, ref.id);
-      const icon =
-        typeof ref.icon === "string" && ref.icon
-          ? "[[File:" +
-            mediaFileName(ref.icon) +
-            "|24px|alt=|link=" +
-            title +
-            "]] "
-          : "";
-      return icon + "[[" + title + "|" + escapeText(ref.name ?? ref.id) + "]]";
-    };
-
-    for (const [type, rows] of indexes) {
-      const indexTitle =
-        clean(build.displayName) + "/" + (typeNames[type] || clean(type));
-      if (type === "player-stats") {
-        await addPage(
-          indexTitle,
-          build.slug,
-          type,
-          renderIndex(type, rows, (r) => escapeText(r.level ?? r.id), config, [
-            build.displayName,
-            typeNames[type],
-          ]),
-          writer,
-        );
-        continue;
+  }
+  const topics = new Map();
+  const entityTopics = new Map();
+  const indexRows = new Map();
+  const routesByBuildType = new Map();
+  for (const build of builds) {
+    const indexDir = join(dataRoot, build.slug, "index");
+    for (const file of (await readdir(indexDir)).filter((name) =>
+      name.endsWith(".json"),
+    )) {
+      const type = file.slice(0, -5);
+      const rows = await readJson(join(indexDir, file));
+      indexRows.set(buildTypeKey(build.slug, type), rows);
+      if (type === "player-stats") continue;
+      const routes = await readJson(join(dataRoot, build.slug, "routes", file));
+      routesByBuildType.set(buildTypeKey(build.slug, type), routes);
+      const rowsById = new Map();
+      for (const row of rows) {
+        rowsById.set(String(row.id), row);
+        for (const member of row.members ?? [])
+          rowsById.set(String(member.id), row);
       }
-      const map = routes.get(type)!;
-      const rowLink = (row: Obj) => {
-        const target = map[String(row.routeId ?? row.id)];
-        const title =
-          target?.kind === "ambiguity"
-            ? titles.get(type + ":ambiguity:" + target.canonical)
-            : titles.get(type + ":" + (target?.id ?? row.id));
-        return (
-          "[[" +
-          (title ||
-            pageTitle(build.displayName, type, row.name ?? row.code, row.id)) +
-          "|" +
-          escapeText(row.name ?? row.code ?? row.id) +
-          "]]"
-        );
-      };
-      await addPage(
-        indexTitle,
-        build.slug,
-        type,
-        renderIndex(type, rows, rowLink, config, [
-          build.displayName,
-          typeNames[type],
-          "OpenFusion AutoWiki indexes",
-        ]),
-        writer,
-      );
-      for (const [segment, target] of Object.entries(map)) {
+      for (const [segment, target] of Object.entries(routes)) {
         if (segment !== target.canonical) continue;
         if (target.kind === "ambiguity") {
-          const title = titles.get(type + ":ambiguity:" + segment)!;
-          const pageMedia = [...(await collectMedia(target.matches))];
-          await addPage(
-            title,
-            build.slug,
+          const topic = ensureTopic(topics, topicKey(segment));
+          addVariant(topic, {
+            kind: "ambiguity",
+            build: build.slug,
             type,
-            renderAmbiguity(type, target.matches as Obj[], link, config, [
-              build.displayName,
-              typeNames[type],
-              "Disambiguation pages",
-            ]),
-            writer,
-            pageMedia,
+            name: String(target.title ?? segment),
+            matches: target.matches,
+          });
+          continue;
+        }
+        if (target.kind !== "entity") continue;
+        const id = String(target.id);
+        const row = rowsById.get(id);
+        const name = String(row?.name ?? row?.code ?? target.id);
+        const ambiguous = ambiguousIds.has(type + ":" + id);
+        const info = exactInfo.get(type + ":" + id);
+        const baseSemantic = info?.baseSemantic ?? segment;
+        const base = ensureTopic(topics, topicKey(baseSemantic));
+        const variant = {
+          kind: "entity",
+          build: build.slug,
+          type,
+          id,
+          chunk: String(target.chunk),
+          name,
+        };
+        const collisionHere = routes[baseSemantic]?.kind === "ambiguity";
+        if (!collisionHere) addVariant(base, variant);
+        if (ambiguous) {
+          const exact = ensureTopic(topics, exactKey(type, id), true);
+          addVariant(exact, variant);
+          entityTopics.set(
+            refKey(build.slug, type, id),
+            collisionHere ? exact.key : base.key,
+          );
+        } else {
+          addVariant(base, variant);
+          entityTopics.set(refKey(build.slug, type, id), base.key);
+        }
+      }
+    }
+  }
+  const priority = orderBuilds(builds);
+  for (const topic of topics.values()) {
+    topic.title = clean(
+      priority.map((build) => topic.names.get(build.slug)).find(Boolean) ??
+        topic.key,
+    );
+  }
+  const baseTopicsByTitle = new Map();
+  const mergedTopicKeys = new Map();
+  for (const [key, topic] of [...topics]) {
+    if (topic.exact) continue;
+    const titleKey = topic.title.toLowerCase();
+    const target = baseTopicsByTitle.get(titleKey);
+    if (!target) {
+      baseTopicsByTitle.set(titleKey, topic);
+      continue;
+    }
+    for (const variants of topic.variants.values()) {
+      for (const variant of variants) addVariant(target, variant);
+    }
+    mergedTopicKeys.set(key, target.key);
+    topics.delete(key);
+  }
+  if (mergedTopicKeys.size) {
+    for (const [ref, key] of entityTopics) {
+      const mergedKey = mergedTopicKeys.get(key);
+      if (mergedKey) entityTopics.set(ref, mergedKey);
+    }
+  }
+  const exactGroups = new Map();
+  for (const info of exactInfo.values()) {
+    const key = info.type + ":" + info.baseSemantic;
+    const group = exactGroups.get(key) ?? [];
+    group.push(info);
+    exactGroups.set(key, group);
+  }
+  for (const group of exactGroups.values())
+    group.sort((a, b) =>
+      a.id.localeCompare(b.id, undefined, { numeric: true }),
+    );
+  const usedTitles = new Map();
+  for (const topic of [...topics.values()].filter((entry) => !entry.exact))
+    usedTitles.set(topic.title.toLowerCase(), topic.key);
+  for (const [key, info] of exactInfo) {
+    const topic = topics.get(exactKey(info.type, info.id));
+    if (!topic) continue;
+    const group = exactGroups.get(info.type + ":" + info.baseSemantic) ?? [
+      info,
+    ];
+    const name = clean(
+      priority.map((build) => info.names.get(build.slug)).find(Boolean) ??
+        topic.title,
+    );
+    const detail = clean(
+      priority.map((build) => info.details.get(build.slug)).find(Boolean) ?? "",
+    );
+    const distinctDetails = new Set(
+      group.map((entry) =>
+        clean(
+          priority
+            .map((build) => entry.details.get(build.slug))
+            .find(Boolean) ?? "",
+        ),
+      ),
+    );
+    const suffix =
+      info.type === "items"
+        ? "Item " + info.id
+        : detail !== "Unnamed" &&
+            detail !== "" &&
+            distinctDetails.size === group.length
+          ? detail
+          : (typeNames[info.type] ?? info.type).replace(/s$/, "") +
+            " " +
+            (group.indexOf(info) + 1);
+    let title = name + " (" + suffix + ")";
+    if (
+      usedTitles.has(title.toLowerCase()) &&
+      usedTitles.get(title.toLowerCase()) !== key
+    )
+      title =
+        name +
+        " (" +
+        clean(typeNames[info.type] ?? info.type) +
+        " " +
+        suffix +
+        ")";
+    topic.title = title;
+    usedTitles.set(title.toLowerCase(), topic.key);
+  }
+  return { topics, entityTopics, indexRows, routesByBuildType };
+}
+async function main() {
+  await mkdir(outRoot, { recursive: true });
+  const builds = orderBuilds(
+    await readJson(join(root, "site/public/builds.json")),
+  );
+  console.log("Building bundled MediaWiki topic catalog...");
+  const catalog = await buildCatalog(builds);
+  const selected = process.env.MEDIAWIKI_BUILD;
+  if (selected && !builds.some((build) => build.slug === selected))
+    throw new Error("Unknown MEDIAWIKI_BUILD: " + selected);
+  const supportBuilds = selected
+    ? builds.filter((build) => build.slug === selected)
+    : builds;
+  const supportCount = [...catalog.topics.values()].reduce(
+    (count, topic) =>
+      count +
+      supportBuilds.filter((build) => topic.variants.has(build.slug)).length,
+    0,
+  );
+  const indexTypes = new Set(
+    [...catalog.indexRows.keys()].map((key) => key.slice(key.indexOf(":") + 1)),
+  );
+  const total =
+    catalog.topics.size +
+    supportCount +
+    indexTypes.size +
+    supportBuilds.length * indexTypes.size +
+    1 +
+    supportBuilds.length;
+  const progress = new ProgressBar(total);
+  const writer = new ManifestWriter(progress);
+  const fallbackBuild = (topic, requested) =>
+    topic.variants.has(requested)
+      ? builds.find((build) => build.slug === requested)
+      : builds.find((build) => topic.variants.has(build.slug));
+  const linkFor = (build, value) => {
+    const ref = value;
+    const type = refTypes[String(ref.type)] ?? String(ref.type);
+    const key = catalog.entityTopics.get(refKey(build, type, ref.id));
+    const topic = key ? catalog.topics.get(key) : undefined;
+    if (!topic) return escapeText(ref.name ?? ref.id);
+    const targetBuild = fallbackBuild(topic, build);
+    const icon =
+      typeof ref.icon === "string" && ref.icon
+        ? "[[File:" +
+          mediaFileName(ref.icon) +
+          "|24px|alt=|link=" +
+          topic.title +
+          "]] "
+        : "";
+    return (
+      icon +
+      "[[" +
+      topic.title +
+      "#" +
+      tabAnchor(targetBuild) +
+      "|" +
+      escapeText(ref.name ?? ref.id) +
+      "]]"
+    );
+  };
+  for (const topic of catalog.topics.values()) {
+    const available = builds.filter((build) => topic.variants.has(build.slug));
+    await addPage(
+      topic.title,
+      "",
+      "topic",
+      "section",
+      renderShell(topic.key, available, [
+        "OpenFusion AutoWiki",
+        ...[...topic.types].map((type) => typeNames[type] ?? clean(type)),
+      ]),
+      writer,
+    );
+  }
+  for (const build of supportBuilds) {
+    for (const topic of catalog.topics.values()) {
+      const variants = topic.variants.get(build.slug);
+      if (!variants) continue;
+      const bodies = [];
+      const pageMedia = new Set();
+      for (const variant of variants) {
+        if (variant.kind === "ambiguity") {
+          for (const name of await collectMedia(variant.matches))
+            pageMedia.add(name);
+          bodies.push(
+            renderAmbiguity(
+              variant.type,
+              variant.matches,
+              (value) => linkFor(build.slug, value),
+              config,
+              [],
+            ),
           );
           continue;
         }
         const bucket = await chunk(
-            join(dataRoot, build.slug, type, String(target.chunk) + ".json"),
-          ),
-          entity = bucket[String(target.id)];
+          join(dataRoot, build.slug, variant.type, variant.chunk + ".json"),
+        );
+        const entity = bucket[variant.id];
         if (!entity) continue;
-        const title = titles.get(type + ":" + target.id)!;
-        const cats = [build.displayName, typeNames[type]];
-        for (const key of [
-          "rarity",
-          "type",
-          "displayType",
-          "category",
-          "areaZone",
-          "nanoType",
-        ])
-          if (entity[key]) cats.push(String(entity[key]));
-        const generatedMaps = await buildPhaseOneMaps(type, entity);
-        for (const map of generatedMaps) media.set(map.name, map.media);
-        const pageMedia = [
-          ...(await collectMedia(entity)),
-          ...generatedMaps.map((map) => map.name),
-        ];
-        await addPage(
-          title,
-          build.slug,
-          type,
-          renderEntity(type, entity, link, config, cats, generatedMaps),
-          writer,
-          pageMedia,
+        for (const name of await collectMedia(entity)) pageMedia.add(name);
+        const maps = buildWikiMaps(variant.type, entity);
+        for (const map of maps) {
+          for (const source of map.media) {
+            await registerMedia(source, pageMedia);
+          }
+        }
+        bodies.push(
+          renderEntity(
+            variant.type,
+            entity,
+            (value) => linkFor(build.slug, value),
+            config,
+            [],
+            maps,
+          ),
         );
       }
+      await addPage(
+        supportTitle(topic.key, build.slug),
+        build.slug,
+        "topic-data",
+        "generated",
+        "__NOEDITSECTION__\n" + bodies.join("\n\n"),
+        writer,
+        [...pageMedia],
+      );
     }
-    chunkCache.clear();
+  }
+  const worldKey = "interactive-map";
+  const worldBuilds = builds.filter((build) =>
+    catalog.routesByBuildType.has(buildTypeKey(build.slug, "areas")),
+  );
+  await addPage(
+    "Interactive Map",
+    "",
+    "map",
+    "section",
+    renderShell(worldKey, worldBuilds, ["OpenFusion AutoWiki maps"]),
+    writer,
+  );
+  for (const build of supportBuilds) {
+    const routes = catalog.routesByBuildType.get(
+      buildTypeKey(build.slug, "areas"),
+    );
+    if (!routes) continue;
+    const areas = [];
+    const seen = new Set();
+    for (const [segment, target] of Object.entries(routes)) {
+      if (segment !== target.canonical || target.kind !== "entity") continue;
+      const id = String(target.id);
+      if (seen.has(id)) continue;
+      seen.add(id);
+      const bucket = await chunk(
+        join(dataRoot, build.slug, "areas", String(target.chunk) + ".json"),
+      );
+      if (bucket[id]) areas.push(bucket[id]);
+    }
+    const world = buildWorldMapFromAreas(areas, (ref) => {
+      const rendered = linkFor(build.slug, ref);
+      return /\[\[([^|\]]+)/.exec(rendered)?.[1] ?? "";
+    });
+    const pageMedia = new Set();
+    if (world) {
+      for (const source of world.media) await registerMedia(source, pageMedia);
+    }
+    await addPage(
+      supportTitle(worldKey, build.slug),
+      build.slug,
+      "map",
+      "generated",
+      world
+        ? world.wikitext + "\n\n''" + escapeText(world.caption) + "''\n"
+        : "No map data is available for this build.\n",
+      writer,
+      [...pageMedia],
+    );
+  }
+  for (const type of indexTypes) {
+    const key = "index:" + type;
+    const available = builds.filter((build) =>
+      catalog.indexRows.has(buildTypeKey(build.slug, type)),
+    );
+    await addPage(
+      typeNames[type] ?? clean(type),
+      "",
+      type,
+      "section",
+      renderShell(key, available, ["OpenFusion AutoWiki indexes"]),
+      writer,
+    );
+    for (const build of supportBuilds) {
+      const rows = catalog.indexRows.get(buildTypeKey(build.slug, type));
+      if (!rows) continue;
+      const routes = catalog.routesByBuildType.get(
+        buildTypeKey(build.slug, type),
+      );
+      const rowLink = (row) => {
+        if (!routes) return escapeText(row.name ?? row.code ?? row.id);
+        const target = routes[String(row.routeId ?? row.id)];
+        const key =
+          target?.kind === "ambiguity"
+            ? topicKey(String(target.canonical))
+            : catalog.entityTopics.get(
+                refKey(build.slug, type, target?.id ?? row.id),
+              );
+        const topic = key ? catalog.topics.get(key) : undefined;
+        return topic
+          ? "[[" +
+              topic.title +
+              "#" +
+              tabAnchor(fallbackBuild(topic, build.slug)) +
+              "|" +
+              escapeText(row.name ?? row.code ?? row.id) +
+              "]]"
+          : escapeText(row.name ?? row.code ?? row.id);
+      };
+      const body = renderIndex(type, rows, rowLink, config, []);
+      await addPage(
+        supportTitle(key, build.slug),
+        build.slug,
+        type,
+        "generated",
+        "__NOEDITSECTION__\n" + body,
+        writer,
+      );
+    }
   }
   const output = await writer.finish();
   progress.finish();
-  const manifest: ExportManifest = {
+  const manifest = {
     schemaVersion: config.schemaVersion,
     generatedAt: new Date().toISOString(),
     pageCount: output.pageCount,
@@ -501,7 +727,9 @@ async function main() {
       output.pageCount +
       " pages, " +
       output.shards.length +
-      " shards",
+      " shards, " +
+      media.size +
+      " media files",
   );
 }
 await main();

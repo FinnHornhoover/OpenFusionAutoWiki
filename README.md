@@ -26,14 +26,16 @@ FFWIKI_BASE_URL=https://openfusion-auto-wiki.pages.dev
 
 Configure these in **Settings > Secrets and variables > Actions** before enabling deployment:
 
-| Secret | Used for |
-| --- | --- |
-| `CLOUDFLARE_API_TOKEN` | Deploying `site/dist` to Cloudflare Pages. |
-| `CLOUDFLARE_ACCOUNT_ID` | Selecting the Cloudflare account that owns the Pages project. |
-| `MEDIAWIKI_USERNAME` | Logging in to `fusionfall.wiki/api.php`. A dedicated bot account or BotPassword username is recommended. |
-| `MEDIAWIKI_PASSWORD` | Password or BotPassword paired with `MEDIAWIKI_USERNAME`. |
+| Secret                  | Used for                                                                                                 |
+| ----------------------- | -------------------------------------------------------------------------------------------------------- |
+| `CLOUDFLARE_API_TOKEN`  | Deploying `site/dist` to Cloudflare Pages.                                                               |
+| `CLOUDFLARE_ACCOUNT_ID` | Selecting the Cloudflare account that owns the Pages project.                                            |
+| `MEDIAWIKI_USERNAME`    | Logging in to `fusionfall.wiki/api.php`. A dedicated bot account or BotPassword username is recommended. |
+| `MEDIAWIKI_PASSWORD`    | Password or BotPassword paired with `MEDIAWIKI_USERNAME`.                                                |
 
 The MediaWiki account needs permission to read, create, and edit the target pages, and to upload files. `GITHUB_TOKEN` is supplied automatically by GitHub Actions and is used to resolve the latest FFInfoPacks release.
+
+The wiki must retain its existing Maps and TabberNeue extensions. Generated pages require no gadget, Common.js, custom CSS, or additional extension.
 
 The optional `FFWIKI_BASE_URL` repository variable controls absolute sitemap URLs. It defaults to `https://openfusion-auto-wiki.pages.dev`.
 
@@ -44,11 +46,11 @@ The shared normalization stage writes chunked JSON and route maps to `site/publi
 1. `npm run build:site` compiles the React/MDX application into `site/dist/`.
 2. `npm run build:mediawiki` renders MediaWiki wikitext into `mediawiki/output/pages/`.
 
-The MediaWiki export contains a small root `manifest.json` and bounded 500-page manifests under `mediawiki/output/shards/`. Splitting the manifest prevents Node string and heap limits on the roughly 590,000-page full export.
+The MediaWiki export contains one visible article per semantic topic. Same-name entity types and all available builds are bundled under the unprefixed title. Each article contains a small TabberNeue manifest; full build bodies load on demand from bot-owned `Project:OpenFusionAutoWiki/Data/...` support pages.
 
-Referenced icons and generated Phase 1 maps are registered in each page shard. Area pages include location and monster maps; instance and Infected Zone pages include warp maps. The publisher uploads missing files before editing the pages that use them and leaves existing wiki files untouched.
+The root `manifest.json` points to bounded 500-page manifests under `mediawiki/output/shards/`. Pages declare `section` or `generated` ownership. Publishing merges OFAW sections into visible articles while replacing generated support pages wholesale.
 
-Generated wiki sections contain `OFAW` ownership markers. Publishing replaces only sections carrying those markers and appends missing generated sections, preserving general text and all unowned sections.
+Maps use the installed Maps extension. The publisher uploads the world map and referenced icons once; pages embed normalized marker coordinates and route lines. `Interactive Map` shows the world, while entity pages use focused interactive views.
 
 For local export testing:
 
@@ -59,14 +61,14 @@ MEDIAWIKI_SHARD=000000 npm run publish:mediawiki
 
 Publishing recognizes these controls:
 
-| Variable | Behavior |
-| --- | --- |
-| `MEDIAWIKI_BUILD` | Generates only one build slug; unset generates every build. |
-| `MEDIAWIKI_SHARD` | Publishes one explicit shard ID. |
-| `MEDIAWIKI_MAX_SHARDS` | Number of shards selected per run; the workflow uses `1`. |
-| `MEDIAWIKI_MAX_PAGES` | Limits pages processed from each selected shard; useful for live test batches. |
-| `MEDIAWIKI_EDIT_DELAY_MS` | Delay between edits; defaults to 1,500 ms. |
-| `GITHUB_RUN_NUMBER` | Selects the next shard when no explicit shard is supplied. |
+| Variable                  | Behavior                                                                                                                  |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `MEDIAWIKI_BUILD`         | Generates support bodies for one build while retaining complete bundled article shells; unset generates every build body. |
+| `MEDIAWIKI_SHARD`         | Publishes one explicit shard ID.                                                                                          |
+| `MEDIAWIKI_MAX_SHARDS`    | Number of shards selected per run; the workflow uses `1`.                                                                 |
+| `MEDIAWIKI_MAX_PAGES`     | Limits pages processed from each selected shard; useful for live test batches.                                            |
+| `MEDIAWIKI_EDIT_DELAY_MS` | Delay between edits; defaults to 1,500 ms.                                                                                |
+| `GITHUB_RUN_NUMBER`       | Selects the next shard when no explicit shard is supplied.                                                                |
 
 MediaWiki endpoint, shard size, schema version, edit summary, and template settings live in `mediawiki/config.json`.
 
@@ -111,8 +113,8 @@ mediawiki/              MediaWiki renderer, publisher, and configuration
   src/
     index.ts            wikitext export + shard manifests
     render.ts           type-specific links, lists, tables, and figures
-    maps.ts             static minimap crops and marker compositing
-    publish.ts          section-preserving MediaWiki API publisher
+    maps.ts             Maps-extension image layers, markers, and routes
+    publish.ts          ownership-aware MediaWiki API publisher
   output/               generated pages and manifests (gitignored)
 site/                   Vite + React + MDX
   public/               static assets + generated data (gitignored)

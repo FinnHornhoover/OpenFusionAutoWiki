@@ -6,13 +6,11 @@
   "scripts": {
     "build": "tsc",
     "generate": "node dist/index.js",
-    "publish": "node dist/publish.js"
+    "publish": "node dist/publish.js",
+    "test": "npm run build && node --test dist/*.test.js"
   },
   "devDependencies": {
     "@types/node": "^22.7.4",
     "typescript": "^5.6.3"
-  },
-  "dependencies": {
-    "sharp": "^0.35.3"
   }
 }

@@ -341,7 +341,7 @@ export function renderEntity(
   link: Linker,
   c: Config,
   categories: string[],
-  maps: Array<{ name: string; caption: string }> = [],
+  maps: Array<{ wikitext: string; caption: string }> = [],
 ) {
   if (type !== "items") e = stripIds(e, false) as Obj;
 
@@ -377,27 +377,13 @@ export function renderEntity(
   if (maps.length) {
     const body =
       maps.length === 1
-        ? "[[File:" +
-          maps[0].name +
-          "|thumb|center|768px|alt=" +
-          escapeText(maps[0].caption) +
-          "|" +
-          escapeText(maps[0].caption) +
-          "]]"
-        : '<gallery mode="packed" widths="360" heights="360">\n' +
-          maps
+        ? maps[0].wikitext + "\n\n''" + escapeText(maps[0].caption) + "''"
+        : maps
             .map(
-              (map) =>
-                "File:" +
-                map.name +
-                "|" +
-                escapeText(map.caption) +
-                "|alt=" +
-                escapeText(map.caption),
+              (map) => map.wikitext + "\n\n''" + escapeText(map.caption) + "''",
             )
-            .join("\n") +
-          "\n</gallery>";
-    out.splice(1, 0, section(type, "maps", "Maps", body, c));
+            .join("\n\n");
+    out.unshift(section(type, "maps", "Maps", body, c));
   }
 
   if (out.length)

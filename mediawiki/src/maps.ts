@@ -1,29 +1,19 @@
-import { createHash } from "node:crypto";
-import { mkdir, readFile } from "node:fs/promises";
-import { dirname, join, relative, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
-
-import sharp from "sharp";
-
 import type { Obj } from "./render.js";
-import type { ExportManifest } from "./types.js";
 
-sharp.cache(false);
-
-const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
-const baseMapPath = join(root, "site/public/minimap/all.png");
-const mediaDir = join(root, "mediawiki/output/media");
-
-const MINIMAP_SIZE = 2048;
 const WORLD_SIZE = 51200 * 16;
-const PX_PER_GAME_UNIT = MINIMAP_SIZE / WORLD_SIZE;
-const OUTPUT_SIZE = 768;
-const MARKER_SIZE = 28;
+const BASE_MAP = "/minimap/all.png";
 
 interface Point {
   x: number;
   y: number;
   icon: string;
+  title?: string;
+  link?: string;
+}
+
+interface Line {
+  points: Array<{ x: number; y: number }>;
+  title?: string;
 }
 
 interface Bounds {
@@ -33,39 +23,46 @@ interface Bounds {
   height: number;
 }
 
-export interface GeneratedMap {
-  name: string;
+export interface WikiMap {
   caption: string;
-  media: ExportManifest["media"][number];
+  wikitext: string;
+  media: string[];
 }
 
-const generated = new Map<string, GeneratedMap>();
-const iconBuffers = new Map<string, Buffer>();
+const finite = (value: unknown) => {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
+};
 
-function worldToPx(x: number, y: number) {
-  return { x: x * PX_PER_GAME_UNIT, y: MINIMAP_SIZE - y * PX_PER_GAME_UNIT };
+function coordinate(x: number, y: number) {
+  const latitude = (y / WORLD_SIZE) * 180 - 90;
+  const longitude = (x / WORLD_SIZE) * 360 - 180;
+  return latitude.toFixed(7) + ", " + longitude.toFixed(7);
 }
 
-function iconPath(icon: string) {
-  return icon.startsWith("/")
-    ? join(root, "site/public", icon.slice(1))
-    : join(root, "site/public/icons", icon);
+function mapText(value: unknown) {
+  return String(value ?? "")
+    .replace(/[~;\n\r]/g, " ")
+    .replace(/\|/g, "&#124;")
+    .trim();
 }
 
-async function markerBuffer(icon: string) {
-  const existing = iconBuffers.get(icon);
-  if (existing) return existing;
-
-  const buffer = await sharp(iconPath(icon))
-    .resize(MARKER_SIZE, MARKER_SIZE, { fit: "contain" })
-    .png()
-    .toBuffer();
-  iconBuffers.set(icon, buffer);
-  return buffer;
+function markerPoints(entry: Obj) {
+  if (Array.isArray(entry.points) && entry.points.length) {
+    return (entry.points as Obj[])
+      .map((point) => ({ x: finite(point.x), y: finite(point.y) }))
+      .filter(
+        (point): point is { x: number; y: number } =>
+          point.x !== null && point.y !== null,
+      );
+  }
+  const x = finite(entry.x);
+  const y = finite(entry.y);
+  return x === null || y === null ? [] : [{ x, y }];
 }
 
-function transportIcon(moveType: string) {
-  const value = moveType.toLowerCase();
+function transportIcon(moveType: unknown) {
+  const value = String(moveType ?? "").toLowerCase();
   if (value.includes("scamper")) return "/minimap/mapicons/scamper_npc.png";
   if (value.includes("monkey"))
     return "/minimap/mapicons/monkey_skyway_npc.png";
@@ -74,20 +71,8 @@ function transportIcon(moveType: string) {
   return "/minimap/mapicons/location_npc.png";
 }
 
-function markerPoints(entry: Obj): Array<{ x: number; y: number }> {
-  if (Array.isArray(entry.points) && entry.points.length) {
-    return (entry.points as Obj[]).map((point) => ({
-      x: Number(point.x),
-      y: Number(point.y),
-    }));
-  }
-  return [{ x: Number(entry.x), y: Number(entry.y) }];
-}
-
 function validPoint(point: Point) {
   return (
-    Number.isFinite(point.x) &&
-    Number.isFinite(point.y) &&
     point.x >= 0 &&
     point.y >= 0 &&
     point.x <= WORLD_SIZE &&
@@ -96,193 +81,176 @@ function validPoint(point: Point) {
   );
 }
 
-function cropFor(bounds: Bounds | undefined, points: Point[]) {
-  let minX: number;
-  let maxX: number;
-  let minY: number;
-  let maxY: number;
+export const mediaName = (path: string) =>
+  "OFAW-" + path.replace(/^\/+/, "").replaceAll("/", "-");
 
-  if (bounds && bounds.width > 0 && bounds.height > 0) {
-    minX = bounds.x;
-    maxX = bounds.x + bounds.width;
-    minY = bounds.y;
-    maxY = bounds.y + bounds.height;
-  } else {
-    minX = Math.min(...points.map((point) => point.x));
-    maxX = Math.max(...points.map((point) => point.x));
-    minY = Math.min(...points.map((point) => point.y));
-    maxY = Math.max(...points.map((point) => point.y));
-  }
-
-  const center = worldToPx((minX + maxX) / 2, (minY + maxY) / 2);
-  const widthPx = Math.max((maxX - minX) * PX_PER_GAME_UNIT, 96);
-  const heightPx = Math.max((maxY - minY) * PX_PER_GAME_UNIT, 96);
-  const size = Math.min(
-    MINIMAP_SIZE,
-    Math.ceil(Math.max(widthPx, heightPx) * 1.25),
-  );
-  const left = Math.max(
-    0,
-    Math.min(MINIMAP_SIZE - size, Math.round(center.x - size / 2)),
-  );
-  const top = Math.max(
-    0,
-    Math.min(MINIMAP_SIZE - size, Math.round(center.y - size / 2)),
-  );
-
-  return { left, top, width: size, height: size };
-}
-
-async function renderMap(
-  kind: string,
+function renderMap(
   caption: string,
   points: Point[],
+  lines: Line[] = [],
   bounds?: Bounds,
-): Promise<GeneratedMap | null> {
-  const filtered = points.filter(validPoint);
-  if (!filtered.length) return null;
-
-  const uniquePoints = [
+): WikiMap | null {
+  const unique = [
     ...new Map(
-      filtered.map((point) => [
-        [point.x, point.y, point.icon].join(":"),
-        point,
-      ]),
+      points
+        .filter(validPoint)
+        .map((point) => [
+          [point.x, point.y, point.icon, point.title, point.link].join(":"),
+          point,
+        ]),
     ).values(),
   ];
-  const crop = cropFor(bounds, uniquePoints);
-  const spec = JSON.stringify({ kind, crop, points: uniquePoints });
-  const hash = createHash("sha256").update(spec).digest("hex");
-  const cached = generated.get(hash);
-  if (cached) return { ...cached, caption };
+  const validLines = lines.filter((line) => line.points.length >= 2);
+  if (!unique.length && !validLines.length) return null;
 
-  const name = "OFAW-map-" + hash.slice(0, 24) + ".png";
-  const outputPath = join(mediaDir, name);
-  const scale = OUTPUT_SIZE / crop.width;
-  const composites = [];
-
-  for (const point of uniquePoints) {
-    try {
-      const position = worldToPx(point.x, point.y);
-      const left = Math.round(
-        (position.x - crop.left) * scale - MARKER_SIZE / 2,
+  const markerText = unique
+    .map((point) => {
+      const link = point.link ? "[[" + point.link + "|View article]]" : "";
+      return (
+        coordinate(point.x, point.y) +
+        "~" +
+        mapText(point.title) +
+        "~" +
+        link +
+        "~File:" +
+        mediaName(point.icon)
       );
-      const top = Math.round((position.y - crop.top) * scale - MARKER_SIZE / 2);
-      if (
-        left < -MARKER_SIZE ||
-        top < -MARKER_SIZE ||
-        left > OUTPUT_SIZE ||
-        top > OUTPUT_SIZE
-      ) {
-        continue;
-      }
-      composites.push({ input: await markerBuffer(point.icon), left, top });
-    } catch {
-      // Ignore source-pack marker paths that do not exist.
-    }
+    })
+    .join(";\n");
+  const lineText = validLines
+    .map(
+      (line) =>
+        line.points.map((point) => coordinate(point.x, point.y)).join(":") +
+        "~" +
+        mapText(line.title) +
+        "~~#4b83b8~0.8~3",
+    )
+    .join(";\n");
+
+  let center = "";
+  let zoom = "";
+  if (bounds && bounds.width > 0 && bounds.height > 0) {
+    center = coordinate(
+      bounds.x + bounds.width / 2,
+      bounds.y + bounds.height / 2,
+    );
+    const extent = Math.max(bounds.width, bounds.height);
+    zoom = String(
+      Math.max(1, Math.min(8, Math.floor(Math.log2(WORLD_SIZE / extent)))),
+    );
   }
 
-  await mkdir(mediaDir, { recursive: true });
-  const bytes = await sharp(baseMapPath)
-    .extract(crop)
-    .resize(OUTPUT_SIZE, OUTPUT_SIZE)
-    .composite(composites)
-    .png({ compressionLevel: 6 })
-    .toFile(outputPath);
+  const parameters = [
+    markerText,
+    "|service=leaflet",
+    "|image layers=File:" + mediaName(BASE_MAP),
+    "|width=100%",
+    "|height=620px",
+    "|fullscreen=yes",
+    "|scrollwheelzoom=yes",
+    "|cluster=no",
+    center ? "|centre=" + center : "",
+    zoom ? "|zoom=" + zoom : "",
+    lineText ? "|lines=" + lineText : "",
+  ].filter(Boolean);
 
-  const result: GeneratedMap = {
-    name,
+  return {
     caption,
-    media: {
-      source: relative(root, outputPath),
-      name,
-      hash:
-        bytes.size > 0
-          ? createHash("sha256")
-              .update(await readFile(outputPath))
-              .digest("hex")
-          : hash,
-    },
+    wikitext: "{{#display_map:\n" + parameters.join("\n") + "\n}}",
+    media: [
+      BASE_MAP,
+      ...new Set(unique.map((point) => point.icon).filter(Boolean)),
+    ],
   };
-  generated.set(hash, result);
-  return result;
+}
+
+function entries(entity: Obj, key: string) {
+  return (entity[key] as Obj[] | undefined) ?? [];
+}
+
+function pointFor(entry: Obj, defaultIcon: string): Point[] {
+  const ref = entry.ref as Obj | undefined;
+  return markerPoints(entry).map((point) => ({
+    ...point,
+    icon: String(entry.mapIcon ?? entry.icon ?? defaultIcon),
+    title: String(ref?.name ?? entry.name ?? "Location"),
+  }));
 }
 
 function areaOverview(entity: Obj) {
   const points: Point[] = [];
-
   for (const key of ["npcs", "vendors"]) {
-    for (const entry of (entity[key] as Obj[] | undefined) ?? []) {
-      if (entry.showOnMap === false) continue;
-      for (const point of markerPoints(entry)) {
-        points.push({ ...point, icon: String(entry.mapIcon ?? "") });
-      }
+    for (const entry of entries(entity, key)) {
+      if (entry.showOnMap !== false)
+        points.push(...pointFor(entry, "/minimap/mapicons/location_npc.png"));
     }
   }
-
-  for (const egg of (entity.eggs as Obj[] | undefined) ?? []) {
-    points.push({
-      x: Number(egg.x),
-      y: Number(egg.y),
-      icon: "/minimap/mapicons/world_egg_shiny_npc.png",
-    });
-  }
-
-  for (const route of (entity.transportation as Obj[] | undefined) ?? []) {
-    for (const stop of (route.stops as Obj[] | undefined) ?? []) {
-      if (!stop.isHere) continue;
-      points.push({
-        x: Number(stop.x),
-        y: Number(stop.y),
-        icon: transportIcon(String(route.moveType ?? "")),
-      });
+  for (const egg of entries(entity, "eggs"))
+    points.push(...pointFor(egg, "/minimap/mapicons/world_egg_shiny_npc.png"));
+  for (const route of entries(entity, "transportation")) {
+    for (const stop of entries(route, "stops")) {
+      if (stop.isHere)
+        points.push(...pointFor(stop, transportIcon(route.moveType)));
     }
   }
-
-  for (const warp of (entity.instanceWarps as Obj[] | undefined) ?? []) {
+  for (const warp of entries(entity, "instanceWarps")) {
     const location = warp.entryLocation as Obj | undefined;
-    if (!location) continue;
-    points.push({
-      x: Number(location.x),
-      y: Number(location.y),
-      icon: "/minimap/mapicons/warp_npc.png",
-    });
+    if (location)
+      points.push(...pointFor(location, "/minimap/mapicons/warp_npc.png"));
   }
-
   return points;
 }
 
-function areaMonsters(entity: Obj) {
-  const points: Point[] = [];
-  for (const entry of (entity.mobs as Obj[] | undefined) ?? []) {
-    for (const point of markerPoints(entry)) {
-      points.push({ ...point, icon: String(entry.mapIcon ?? "") });
-    }
+function areaLines(entity: Obj) {
+  const lines: Line[] = [];
+  for (const route of entries(entity, "transportation")) {
+    const points = ((route.routePoints as Obj[] | undefined) ?? [])
+      .map((point) => ({ x: finite(point.x), y: finite(point.y) }))
+      .filter(
+        (point): point is { x: number; y: number } =>
+          point.x !== null && point.y !== null,
+      );
+    if (points.length >= 2)
+      lines.push({
+        points,
+        title: String(route.name ?? route.moveType ?? "Route"),
+      });
   }
-  return points;
+  return lines;
 }
 
 function warpPoints(entity: Obj) {
   const points: Point[] = [];
   for (const key of ["entryWarps", "exitWarps"]) {
-    for (const warp of (entity[key] as Obj[] | undefined) ?? []) {
+    for (const warp of entries(entity, key)) {
       for (const locationKey of ["entryLocation", "exitLocation"]) {
         const location = warp[locationKey] as Obj | undefined;
-        if (!location) continue;
-        points.push({
-          x: Number(location.x),
-          y: Number(location.y),
-          icon: "/minimap/mapicons/warp_npc.png",
-        });
+        if (location)
+          points.push(...pointFor(location, "/minimap/mapicons/warp_npc.png"));
       }
     }
   }
   return points;
 }
 
-export async function buildPhaseOneMaps(type: string, entity: Obj) {
-  const maps: GeneratedMap[] = [];
+function locationPoints(entity: Obj) {
+  const points: Point[] = [];
+  const fallback = String(
+    entity.mapIcon ?? entity.icon ?? "/minimap/mapicons/location_npc.png",
+  );
+  for (const location of entries(entity, "locations"))
+    points.push(...pointFor(location, fallback));
+  for (const group of entries(entity, "locationGroups")) {
+    const icon = String(group.mapIcon ?? fallback);
+    points.push(...pointFor(group, icon));
+    for (const location of entries(group, "locations"))
+      points.push(...pointFor(location, icon));
+  }
+  return points;
+}
 
+export function buildWikiMaps(type: string, entity: Obj) {
+  const maps: WikiMap[] = [];
   if (type === "areas") {
     const bounds = {
       x: Number(entity.x),
@@ -290,29 +258,66 @@ export async function buildPhaseOneMaps(type: string, entity: Obj) {
       width: Number(entity.width),
       height: Number(entity.height),
     };
-    const overview = await renderMap(
-      "area-overview",
+    const overview = renderMap(
       String(entity.name) + " locations",
       areaOverview(entity),
+      areaLines(entity),
       bounds,
     );
-    const monsters = await renderMap(
-      "area-monsters",
+    const monsters = renderMap(
       String(entity.name) + " monsters",
-      areaMonsters(entity),
+      entries(entity, "mobs").flatMap((entry) =>
+        pointFor(entry, "/minimap/mapicons/mob_npc.png"),
+      ),
+      [],
       bounds,
     );
     if (overview) maps.push(overview);
     if (monsters) maps.push(monsters);
-  }
-
-  if (type === "instances" || type === "infected-zones") {
-    const caption =
-      String(entity.name) +
-      (type === "instances" ? " entrances and exits" : " warps");
-    const map = await renderMap(type + "-warps", caption, warpPoints(entity));
+  } else if (type === "instances" || type === "infected-zones") {
+    const map = renderMap(
+      String(entity.name) + " entrances and exits",
+      warpPoints(entity),
+    );
+    if (map) maps.push(map);
+  } else if (type === "npcs" || type === "monsters") {
+    const map = renderMap(
+      String(entity.name) + " locations",
+      locationPoints(entity),
+    );
     if (map) maps.push(map);
   }
-
   return maps;
+}
+
+export function buildWorldMapFromAreas(
+  areas: Obj[],
+  link: (ref: Obj) => string,
+) {
+  const points: Point[] = [];
+  const lines: Line[] = [];
+  for (const area of areas) {
+    const x = finite(area.x);
+    const y = finite(area.y);
+    const width = finite(area.width);
+    const height = finite(area.height);
+    if (x !== null && y !== null && width !== null && height !== null) {
+      const name = String(area.name ?? area.fullName ?? "Area");
+      points.push({
+        x: x + width / 2,
+        y: y + height / 2,
+        icon: "/minimap/mapicons/world_icon.png",
+        title: name,
+        link: link({ type: "area", id: area.id, name }),
+      });
+    }
+    points.push(...areaOverview(area));
+    points.push(
+      ...entries(area, "mobs").flatMap((entry) =>
+        pointFor(entry, "/minimap/mapicons/mob_npc.png"),
+      ),
+    );
+    lines.push(...areaLines(area));
+  }
+  return renderMap("FusionFall world map", points, lines);
 }

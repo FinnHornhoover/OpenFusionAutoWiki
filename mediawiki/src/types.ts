@@ -11,7 +11,11 @@ export interface Config {
 export interface BuildEntry {
   slug: string;
   displayName: string;
+  date: string;
+  fixed: boolean;
 }
+
+export type PageOwnership = "section" | "generated";
 
 export interface ManifestPage {
   title: string;
@@ -19,6 +23,7 @@ export interface ManifestPage {
   hash: string;
   build: string;
   type: string;
+  ownership: PageOwnership;
   sections: Array<{ key: string; heading: string; hash: string }>;
   media: string[];
 }

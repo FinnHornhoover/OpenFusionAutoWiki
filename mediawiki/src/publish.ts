@@ -253,7 +253,8 @@ for (const shard of shards) {
       const old = page.missing
         ? ""
         : page.revisions?.[0]?.slots?.main?.content || "";
-      const next = merge(old, generated);
+      const next =
+        p.ownership === "generated" ? generated : merge(old, generated);
       if (next === old) {
         unchanged++;
         continue;
