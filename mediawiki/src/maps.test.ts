@@ -30,7 +30,13 @@ test("area maps use an image layer, uploaded icons, crop centre, and routes", ()
     ],
   });
   assert.equal(maps.length, 1);
-  assert.match(maps[0].wikitext, /image layers=File:OFAW-minimap-all\.png/);
+  assert.match(maps[0].wikitext, /image layer=File:OFAW-minimap-all\.png/);
+  assert.match(maps[0].wikitext, /25\.6347656, 13\.4277344~Test NPC/);
+  assert.match(maps[0].wikitext, /\|centre=27\.5390625, 15\.3320313/);
+  assert.match(
+    maps[0].wikitext,
+    /\|lines=24\.4140625, 12\.2070313:26\.8554688, 14\.6484375/,
+  );
   assert.match(
     maps[0].wikitext,
     /File:OFAW-minimap-mapicons-location_npc\.png/,

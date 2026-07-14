@@ -35,8 +35,8 @@ const finite = (value: unknown) => {
 };
 
 function coordinate(x: number, y: number) {
-  const latitude = (y / WORLD_SIZE) * 180 - 90;
-  const longitude = (x / WORLD_SIZE) * 360 - 180;
+  const latitude = (y / WORLD_SIZE) * 100;
+  const longitude = (x / WORLD_SIZE) * 100;
   return latitude.toFixed(7) + ", " + longitude.toFixed(7);
 }
 
@@ -143,7 +143,7 @@ function renderMap(
   const parameters = [
     markerText,
     "|service=leaflet",
-    "|image layers=File:" + mediaName(BASE_MAP),
+    "|image layer=File:" + mediaName(BASE_MAP),
     "|width=100%",
     "|height=620px",
     "|fullscreen=yes",
