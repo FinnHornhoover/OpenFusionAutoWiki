@@ -13,13 +13,22 @@ on:
         description: Optional shard ID to publish (for example, 000000)
         required: false
         type: string
-      mediawiki_max_shards:
-        description: Number of shards to publish when no shard ID is supplied
+      mediawiki_start_shard:
+        description: Optional zero-based starting shard for a manual batch
         required: false
-        default: '1'
+        type: string
+      mediawiki_max_shards:
+        description: Consecutive shards to publish, or all
+        required: false
+        default: "10"
+        type: string
+      mediawiki_edit_concurrency:
+        description: Concurrent page edits, capped at 16
+        required: false
+        default: "8"
         type: string
   schedule:
-    - cron: '17 3 * * *'
+    - cron: "17 3 * * *"
 
 # Don't deploy two runs in parallel — Cloudflare Pages will accept them
 # but we want the most recent main commit to be the live one.
@@ -45,8 +54,8 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'npm'
+          node-version: "20"
+          cache: "npm"
 
       - name: Install workspace deps
         run: npm ci
@@ -115,13 +124,15 @@ jobs:
             exit 1
           fi
 
-      - name: Publish next MediaWiki shard
+      - name: Publish MediaWiki pages
         env:
           MEDIAWIKI_USERNAME: ${{ secrets.MEDIAWIKI_USERNAME }}
           MEDIAWIKI_PASSWORD: ${{ secrets.MEDIAWIKI_PASSWORD }}
           MEDIAWIKI_BUILD: ${{ inputs.mediawiki_build || '' }}
           MEDIAWIKI_SHARD: ${{ inputs.mediawiki_shard || '' }}
-          MEDIAWIKI_MAX_SHARDS: ${{ inputs.mediawiki_max_shards || '1' }}
+          MEDIAWIKI_START_SHARD: ${{ inputs.mediawiki_start_shard || '' }}
+          MEDIAWIKI_MAX_SHARDS: ${{ inputs.mediawiki_max_shards || '10' }}
+          MEDIAWIKI_EDIT_CONCURRENCY: ${{ inputs.mediawiki_edit_concurrency || '8' }}
         run: npm run publish:mediawiki
 
       - name: Deploy to Cloudflare Pages

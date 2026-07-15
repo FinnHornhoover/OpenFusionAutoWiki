@@ -26,14 +26,14 @@ FFWIKI_BASE_URL=https://openfusion-auto-wiki.pages.dev
 
 Configure these in **Settings > Secrets and variables > Actions** before enabling deployment:
 
-| Secret                  | Used for                                                                                                 |
-| ----------------------- | -------------------------------------------------------------------------------------------------------- |
-| `CLOUDFLARE_API_TOKEN`  | Deploying `site/dist` to Cloudflare Pages.                                                               |
-| `CLOUDFLARE_ACCOUNT_ID` | Selecting the Cloudflare account that owns the Pages project.                                            |
-| `MEDIAWIKI_USERNAME`    | Logging in to `fusionfall.wiki/api.php`. A dedicated bot account or BotPassword username is recommended. |
-| `MEDIAWIKI_PASSWORD`    | Password or BotPassword paired with `MEDIAWIKI_USERNAME`.                                                |
+| Secret                  | Used for                                                                      |
+| ----------------------- | ----------------------------------------------------------------------------- |
+| `CLOUDFLARE_API_TOKEN`  | Deploying `site/dist` to Cloudflare Pages.                                    |
+| `CLOUDFLARE_ACCOUNT_ID` | Selecting the Cloudflare account that owns the Pages project.                 |
+| `MEDIAWIKI_USERNAME`    | Logging in to `fusionfall.wiki/api.php`. Use the dedicated publisher account. |
+| `MEDIAWIKI_PASSWORD`    | Password for the dedicated publisher account.                                 |
 
-The MediaWiki account needs permission to read, create, and edit the target pages, and to upload files. `GITHUB_TOKEN` is supplied automatically by GitHub Actions and is used to resolve the latest FFInfoPacks release.
+The MediaWiki account needs `read`, `edit`, `createpage`, `upload`, and `apihighlimits` rights. `GITHUB_TOKEN` is supplied automatically by GitHub Actions and is used to resolve the latest FFInfoPacks release.
 
 The wiki must retain its existing Maps and TabberNeue extensions. Generated pages require no gadget, Common.js, custom CSS, or additional extension.
 
@@ -48,7 +48,7 @@ The shared normalization stage writes chunked JSON and route maps to `site/publi
 
 The MediaWiki export contains one visible article per semantic topic. Same-name entity types and all available builds are bundled under the unprefixed title. Each article contains a small TabberNeue manifest; full build bodies load on demand from bot-owned `Project:OpenFusionAutoWiki/Data/...` support pages.
 
-The root `manifest.json` points to bounded 500-page manifests under `mediawiki/output/shards/`. Pages declare `section` or `generated` ownership. Publishing merges OFAW sections into visible articles while replacing generated support pages wholesale.
+The root `manifest.json` points to bounded 500-page manifests under `mediawiki/output/shards/`. Pages declare `section` or `generated` ownership. The publisher batch-reads current revisions, merges OFAW sections into visible articles, replaces generated support pages wholesale, and skips unchanged text. Changed pages are written through concurrent `action=edit` requests using `baserevid` or `createonly` conflict protection. Referenced media is uploaded separately with bounded concurrency and chunking for large files.
 
 Maps use the installed Maps extension. The publisher uploads the world map and referenced icons once; pages embed normalized marker coordinates and route lines. `Interactive Map` shows the world, while entity pages use focused interactive views.
 
@@ -56,19 +56,28 @@ For local export testing:
 
 ```bash
 MEDIAWIKI_BUILD=retrobution npm run build:mediawiki
-MEDIAWIKI_SHARD=000000 npm run publish:mediawiki
+MEDIAWIKI_SHARD=000000 MEDIAWIKI_MAX_PAGES=10 npm run publish:mediawiki
+
+# Publish every shard in the generated Retrobution manifest.
+MEDIAWIKI_MAX_SHARDS=all npm run publish:mediawiki
 ```
 
 Publishing recognizes these controls:
 
-| Variable                  | Behavior                                                                                                                  |
-| ------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| `MEDIAWIKI_BUILD`         | Generates support bodies for one build while retaining complete bundled article shells; unset generates every build body. |
-| `MEDIAWIKI_SHARD`         | Publishes one explicit shard ID.                                                                                          |
-| `MEDIAWIKI_MAX_SHARDS`    | Number of shards selected per run; the workflow uses `1`.                                                                 |
-| `MEDIAWIKI_MAX_PAGES`     | Limits pages processed from each selected shard; useful for live test batches.                                            |
-| `MEDIAWIKI_EDIT_DELAY_MS` | Delay between edits; defaults to 1,500 ms.                                                                                |
-| `GITHUB_RUN_NUMBER`       | Selects the next shard when no explicit shard is supplied.                                                                |
+| Variable                                 | Behavior                                                                                                                  |
+| ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `MEDIAWIKI_BUILD`                        | Generates support bodies for one build while retaining complete bundled article shells; unset generates every build body. |
+| `MEDIAWIKI_SHARD`                        | Publishes one explicit shard ID.                                                                                          |
+| `MEDIAWIKI_START_SHARD`                  | Zero-based first shard for a manual consecutive batch.                                                                    |
+| `MEDIAWIKI_MAX_SHARDS`                   | Consecutive shards to publish; defaults to `10` and accepts `all`.                                                        |
+| `MEDIAWIKI_MAX_PAGES`                    | Limits pages read from each selected shard; useful for live test batches.                                                 |
+| `MEDIAWIKI_EDIT_CONCURRENCY`             | Concurrent page edit workers; defaults to `8` and is capped at `16`.                                                      |
+| `MEDIAWIKI_PAGE_QUERY_BATCH_SIZE`        | Titles read per query; defaults to and is capped at `500`.                                                                |
+| `MEDIAWIKI_MEDIA_DELAY_MS`               | Delay between missing media uploads; defaults to 250 ms.                                                                  |
+| `MEDIAWIKI_MEDIA_CONCURRENCY`            | Concurrent missing-media upload workers; defaults to `4` and is capped at `16`.                                           |
+| `MEDIAWIKI_UPLOAD_CHUNK_BYTES`           | Chunk size for large media uploads; defaults to 512 KiB.                                                                  |
+| `MEDIAWIKI_UPLOAD_CHUNK_THRESHOLD_BYTES` | Files larger than this use chunked upload; defaults to 1 MiB.                                                             |
+| `GITHUB_RUN_NUMBER`                      | Advances scheduled publishing by one `MEDIAWIKI_MAX_SHARDS` group.                                                        |
 
 MediaWiki endpoint, shard size, schema version, edit summary, and template settings live in `mediawiki/config.json`.
 
@@ -80,12 +89,12 @@ The workflow at [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) r
 2. Downloads and normalizes all game builds.
 3. Builds the React site and MediaWiki export.
 4. Retains the MediaWiki output as a seven-day workflow artifact.
-5. Publishes one MediaWiki shard using the configured credentials.
+5. Publishes ten MediaWiki shards through conflict-safe concurrent edits using the configured credentials.
 6. Deploys `site/dist` to Cloudflare Pages.
 
-The shard defaults from `GITHUB_RUN_NUMBER`, so successive workflow runs advance through the export. Set `MEDIAWIKI_SHARD` locally to publish or retry a specific shard.
+The shard group defaults from `GITHUB_RUN_NUMBER`, so successive workflow runs advance without overlap. Set `MEDIAWIKI_SHARD` to publish or retry one shard, or set `MEDIAWIKI_START_SHARD` for a manual consecutive batch.
 
-From the GitHub Actions **Run workflow** dialog, you can optionally choose a single `mediawiki_build`, an explicit `mediawiki_shard`, and `mediawiki_max_shards`. Leaving them blank performs the normal full export and advances from `GITHUB_RUN_NUMBER`.
+From the GitHub Actions **Run workflow** dialog, you can optionally choose a single `mediawiki_build`, an explicit `mediawiki_shard`, a starting shard, the shard count, and the page edit concurrency. Leaving them blank performs the normal full export and advances from `GITHUB_RUN_NUMBER`.
 
 ### Cloudflare Pages config files
 
