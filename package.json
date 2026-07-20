@@ -17,7 +17,15 @@
     "clean": "rm -rf site/dist site/public/data site/public/icons site/public/builds.json build/dist",
     "item-sets:editor": "node scripts/item-set-editor.mjs",
     "build:mediawiki": "npm run build -w mediawiki && node mediawiki/dist/index.js",
-    "publish:mediawiki": "npm run build -w mediawiki && node mediawiki/dist/publish.js"
+    "publish:mediawiki": "npm run build -w mediawiki && node mediawiki/dist/publish.js",
+    "prepare:mediawiki": "npm run build -w mediawiki && node mediawiki/dist/prepare.js",
+    "package:mediawiki": "bash mediawiki/local/package-release.sh",
+    "mediawiki:local": "docker compose -f docker-compose.mediawiki.yml up -d --build mediawiki",
+    "mediawiki:local:down": "docker compose -f docker-compose.mediawiki.yml down",
+    "mediawiki:local:reset": "docker compose -f docker-compose.mediawiki.yml down --volumes",
+    "mediawiki:snapshot": "bash mediawiki/local/snapshot-host.sh",
+    "mediawiki:restore": "docker compose -f docker-compose.mediawiki.yml exec mediawiki ofaw-mediawiki-restore",
+    "mediawiki:publish-local": "bash mediawiki/local/publish-local.sh"
   },
   "engines": {
     "node": ">=20"

@@ -1,37 +1,12 @@
-name: Deploy to Cloudflare Pages
+name: Deploy site and build MediaWiki release
 
 on:
   push:
     branches: [main]
   workflow_dispatch:
-    inputs:
-      mediawiki_build:
-        description: Optional build slug to export (for example, retrobution)
-        required: false
-        type: string
-      mediawiki_shard:
-        description: Optional shard ID to publish (for example, 000000)
-        required: false
-        type: string
-      mediawiki_start_shard:
-        description: Optional zero-based starting shard for a manual batch
-        required: false
-        type: string
-      mediawiki_max_shards:
-        description: Consecutive shards to publish, or all
-        required: false
-        default: "10"
-        type: string
-      mediawiki_edit_concurrency:
-        description: Concurrent page edits, capped at 16
-        required: false
-        default: "8"
-        type: string
   schedule:
     - cron: "17 3 * * *"
 
-# Don't deploy two runs in parallel — Cloudflare Pages will accept them
-# but we want the most recent main commit to be the live one.
 concurrency:
   group: cf-pages-deploy
   cancel-in-progress: false
@@ -40,13 +15,10 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write
       deployments: write
     env:
-      # The sitemap emits absolute URLs; default to the *.pages.dev project URL.
-      # Override via a repo variable when pointing a custom domain.
       FFWIKI_BASE_URL: ${{ vars.FFWIKI_BASE_URL || 'https://openfusion-auto-wiki.pages.dev' }}
-      # Authenticated GitHub API requests get a 15K/hr rate limit instead of 60/hr.
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     steps:
@@ -60,8 +32,6 @@ jobs:
       - name: Install workspace deps
         run: npm ci
 
-      # Always target the latest FFInfoPacks release. Resolving the tag up
-      # front lets the cache key rev when upstream ships a new release.
       - name: Resolve latest FFInfoPacks tag
         id: ffinfo
         run: |
@@ -75,15 +45,12 @@ jobs:
           echo "FFInfoPacks latest: $TAG"
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
 
-      # Cache the 1.6 GB of FFInfoPacks ZIPs so cold-cache runs are the
-      # exception, not the rule. Cache key changes when upstream releases.
       - name: Cache FFInfoPacks ZIPs
         uses: actions/cache@v4
         with:
           path: .cache/ffinfo
           key: ffinfo-${{ steps.ffinfo.outputs.tag }}-v1
 
-      # Per-build icon dedup output — invalidates with the ZIPs above.
       - name: Cache icon dedup maps
         uses: actions/cache@v4
         with:
@@ -97,20 +64,42 @@ jobs:
         run: npm run build:site
 
       - name: Build MediaWiki export
-        env:
-          MEDIAWIKI_BUILD: ${{ inputs.mediawiki_build || '' }}
         run: npm run build:mediawiki
 
-      - name: Upload MediaWiki export artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: mediawiki-export
-          path: mediawiki/output
-          retention-days: 7
+      - name: Package MediaWiki server release
+        run: |
+          npm run package:mediawiki
+          shopt -s nullglob
+          FILES=(
+            mediawiki/openfusion-autowiki-mediawiki.tar.gz
+            mediawiki/openfusion-autowiki-mediawiki.tar.gz.part-*
+          )
+          sha256sum "${FILES[@]}" \
+            > mediawiki/openfusion-autowiki-mediawiki.tar.gz.sha256
+
+      - name: Publish MediaWiki release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          FFINFO_TAG: ${{ steps.ffinfo.outputs.tag }}
+        run: |
+          SAFE_FFINFO_TAG=$(printf '%s' "$FFINFO_TAG" | tr -c 'A-Za-z0-9._-' '-')
+          TAG="mediawiki-${SAFE_FFINFO_TAG}-${GITHUB_SHA::12}"
+          shopt -s nullglob
+          ASSETS=(
+            mediawiki/openfusion-autowiki-mediawiki.tar.gz
+            mediawiki/openfusion-autowiki-mediawiki.tar.gz.part-*
+            mediawiki/openfusion-autowiki-mediawiki.tar.gz.sha256
+          )
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release delete "$TAG" --yes --cleanup-tag
+          fi
+          gh release create "$TAG" "${ASSETS[@]}" \
+            --title "OpenFusionAutoWiki MediaWiki ${FFINFO_TAG}" \
+            --notes "Server-side MediaWiki import generated from ${GITHUB_SHA}." \
+            --latest
 
       - name: Smoke checks
         run: |
-          # Cloudflare Pages: ≤20,000 files per deployment, ≤25 MB per file.
           FILE_COUNT=$(find site/dist -type f | wc -l)
           echo "site/dist file count: $FILE_COUNT"
           if [ "$FILE_COUNT" -ge 20000 ]; then
@@ -123,17 +112,6 @@ jobs:
             echo "$OVERSIZE"
             exit 1
           fi
-
-      - name: Publish MediaWiki pages
-        env:
-          MEDIAWIKI_USERNAME: ${{ secrets.MEDIAWIKI_USERNAME }}
-          MEDIAWIKI_PASSWORD: ${{ secrets.MEDIAWIKI_PASSWORD }}
-          MEDIAWIKI_BUILD: ${{ inputs.mediawiki_build || '' }}
-          MEDIAWIKI_SHARD: ${{ inputs.mediawiki_shard || '' }}
-          MEDIAWIKI_START_SHARD: ${{ inputs.mediawiki_start_shard || '' }}
-          MEDIAWIKI_MAX_SHARDS: ${{ inputs.mediawiki_max_shards || '10' }}
-          MEDIAWIKI_EDIT_CONCURRENCY: ${{ inputs.mediawiki_edit_concurrency || '8' }}
-        run: npm run publish:mediawiki
 
       - name: Deploy to Cloudflare Pages
         uses: cloudflare/wrangler-action@v3

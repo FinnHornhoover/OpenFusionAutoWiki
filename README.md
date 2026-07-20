@@ -26,75 +26,131 @@ FFWIKI_BASE_URL=https://openfusion-auto-wiki.pages.dev
 
 Configure these in **Settings > Secrets and variables > Actions** before enabling deployment:
 
-| Secret                  | Used for                                                                      |
-| ----------------------- | ----------------------------------------------------------------------------- |
-| `CLOUDFLARE_API_TOKEN`  | Deploying `site/dist` to Cloudflare Pages.                                    |
-| `CLOUDFLARE_ACCOUNT_ID` | Selecting the Cloudflare account that owns the Pages project.                 |
-| `MEDIAWIKI_USERNAME`    | Logging in to `fusionfall.wiki/api.php`. Use the dedicated publisher account. |
-| `MEDIAWIKI_PASSWORD`    | Password for the dedicated publisher account.                                 |
+| Secret                  | Used for                                   |
+| ----------------------- | ------------------------------------------ |
+| `CLOUDFLARE_API_TOKEN`  | Deploying `site/dist` to Cloudflare Pages. |
+| `CLOUDFLARE_ACCOUNT_ID` | Selecting the owning Cloudflare account.   |
 
-The MediaWiki account needs `read`, `edit`, `createpage`, `upload`, and `apihighlimits` rights. `GITHUB_TOKEN` is supplied automatically by GitHub Actions and is used to resolve the latest FFInfoPacks release.
+`GITHUB_TOKEN` is supplied automatically. The workflow uses it to resolve FFInfoPacks and publish the generated MediaWiki server archive as a GitHub Release. MediaWiki credentials are not stored in GitHub Actions because releases are installed from the wiki server, not uploaded through the public API.
 
-The wiki must retain its existing Maps and TabberNeue extensions. Generated pages require no gadget, Common.js, custom CSS, or additional extension.
-
-The optional `FFWIKI_BASE_URL` repository variable controls absolute sitemap URLs. It defaults to `https://openfusion-auto-wiki.pages.dev`.
+The wiki must retain its existing Maps and TabberNeue extensions. Generated pages require no gadget, Common.js, custom CSS, or additional extension. The optional `FFWIKI_BASE_URL` repository variable controls absolute sitemap URLs and defaults to `https://openfusion-auto-wiki.pages.dev`.
 
 ## Build and publishing pipeline
 
 The shared normalization stage writes chunked JSON and route maps to `site/public/`. Two consumers then run:
 
 1. `npm run build:site` compiles the React/MDX application into `site/dist/`.
-2. `npm run build:mediawiki` renders MediaWiki wikitext into `mediawiki/output/pages/`.
+2. `npm run build:mediawiki` renders MediaWiki wikitext, shard manifests, and bundled media into `mediawiki/output/`.
 
 The MediaWiki export contains one visible article per semantic topic. Same-name entity types and all available builds are bundled under the unprefixed title. Each article contains a small TabberNeue manifest; full build bodies load on demand from bot-owned `Project:OpenFusionAutoWiki/Data/...` support pages.
 
-The root `manifest.json` points to bounded 500-page manifests under `mediawiki/output/shards/`. Pages declare `section` or `generated` ownership. The publisher batch-reads current revisions, merges OFAW sections into visible articles, replaces generated support pages wholesale, and skips unchanged text. Changed pages are written through concurrent `action=edit` requests using `baserevid` or `createonly` conflict protection. Referenced media is uploaded separately with bounded concurrency and chunking for large files.
+Pages declare `section` or `generated` ownership. Before installation, `prepare:mediawiki` batch-reads current revisions and merges repository-owned sections into visible articles while retaining ordinary wiki prose. Generated support pages are replaced wholesale. It compares the previously installed manifest to the release, strips obsolete owned sections, and schedules stale pages for deletion only when they contain no user prose. Partial shard runs never perform stale-page cleanup.
 
-Maps use the installed Maps extension. The publisher uploads the world map and referenced icons once; pages embed normalized marker coordinates and route lines. `Interactive Map` shows the world, while entity pages use focused interactive views.
+Changed revisions are written to bounded gzip XML dumps. The server installer feeds these local files to `maintenance/run.php importDump --no-updates`, imports changed media with `importImages`, performs link/search/job maintenance once, and commits the new installed manifest only after every step succeeds. The public `action=edit` publisher remains available for small remote repairs but is not used by the release workflow.
 
-For local export testing:
+Maps use the installed Maps extension. The release contains the world map and referenced icons; pages embed normalized marker coordinates and route lines. `Interactive Map` shows the world, while entity pages use focused interactive views.
 
-```bash
-MEDIAWIKI_BUILD=retrobution npm run build:mediawiki
-MEDIAWIKI_SHARD=000000 MEDIAWIKI_MAX_PAGES=10 npm run publish:mediawiki
+Useful controls:
 
-# Publish every shard in the generated Retrobution manifest.
-MEDIAWIKI_MAX_SHARDS=all npm run publish:mediawiki
-```
-
-Publishing recognizes these controls:
-
-| Variable                                 | Behavior                                                                                                                  |
-| ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| `MEDIAWIKI_BUILD`                        | Generates support bodies for one build while retaining complete bundled article shells; unset generates every build body. |
-| `MEDIAWIKI_SHARD`                        | Publishes one explicit shard ID.                                                                                          |
-| `MEDIAWIKI_START_SHARD`                  | Zero-based first shard for a manual consecutive batch.                                                                    |
-| `MEDIAWIKI_MAX_SHARDS`                   | Consecutive shards to publish; defaults to `10` and accepts `all`.                                                        |
-| `MEDIAWIKI_MAX_PAGES`                    | Limits pages read from each selected shard; useful for live test batches.                                                 |
-| `MEDIAWIKI_EDIT_CONCURRENCY`             | Concurrent page edit workers; defaults to `8` and is capped at `16`.                                                      |
-| `MEDIAWIKI_PAGE_QUERY_BATCH_SIZE`        | Titles read per query; defaults to and is capped at `500`.                                                                |
-| `MEDIAWIKI_MEDIA_DELAY_MS`               | Delay between missing media uploads; defaults to 250 ms.                                                                  |
-| `MEDIAWIKI_MEDIA_CONCURRENCY`            | Concurrent missing-media upload workers; defaults to `4` and is capped at `16`.                                           |
-| `MEDIAWIKI_UPLOAD_CHUNK_BYTES`           | Chunk size for large media uploads; defaults to 512 KiB.                                                                  |
-| `MEDIAWIKI_UPLOAD_CHUNK_THRESHOLD_BYTES` | Files larger than this use chunked upload; defaults to 1 MiB.                                                             |
-| `GITHUB_RUN_NUMBER`                      | Advances scheduled publishing by one `MEDIAWIKI_MAX_SHARDS` group.                                                        |
+| Variable                          | Behavior                                                                            |
+| --------------------------------- | ----------------------------------------------------------------------------------- |
+| `MEDIAWIKI_BUILD`                 | Generates support bodies for one build; unset generates all builds.                 |
+| `MEDIAWIKI_SHARD`                 | Prepares one explicit shard and disables stale cleanup.                             |
+| `MEDIAWIKI_START_SHARD`           | Zero-based first shard for a partial installation.                                  |
+| `MEDIAWIKI_MAX_SHARDS`            | Consecutive shards to prepare; local bulk installation defaults to `all`.           |
+| `MEDIAWIKI_MAX_PAGES`             | Limits pages from each selected shard for tests.                                    |
+| `MEDIAWIKI_PAGE_QUERY_BATCH_SIZE` | Current-page query size; defaults to 500 when authenticated and 50 anonymously.     |
+| `MEDIAWIKI_DUMP_PAGES`            | Maximum revisions per local XML dump; defaults to 5,000.                            |
+| `MEDIAWIKI_DUMP_BYTES`            | Approximate uncompressed text limit per dump; defaults to 64 MiB.                   |
+| `MEDIAWIKI_IMPORT_WORK`           | Directory for prepared dumps and the installation plan.                             |
+| `MEDIAWIKI_STATE_DIR`             | Persistent directory containing the installed release manifest.                     |
+| `MEDIAWIKI_SKIP_MEDIA`            | Set to `1` only for focused page tests; skipped media is not recorded as installed. |
+| `MEDIAWIKI_SKIP_FINALIZE`         | Set to `1` only for focused tests to defer derived-data maintenance.                |
 
 MediaWiki endpoint, shard size, schema version, edit summary, and template settings live in `mediawiki/config.json`.
 
+### Local MediaWiki
+
+The local stack mirrors MediaWiki 1.43, MariaDB 11.8, Maps 10.3, and TabberNeue 2.7. Start it at `http://127.0.0.1:8081`:
+
+```bash
+npm run mediawiki:local
+```
+
+The default login is `LocalAdmin` / `local-admin-password`. Build and install a complete export through the server-side maintenance path:
+
+```bash
+npm run build:mediawiki
+MEDIAWIKI_USERNAME=LocalAdmin \
+MEDIAWIKI_PASSWORD=local-admin-password \
+MEDIAWIKI_MAX_SHARDS=all \
+npm run mediawiki:publish-local
+```
+
+For a focused renderer test without global maintenance:
+
+```bash
+MEDIAWIKI_USERNAME=LocalAdmin \
+MEDIAWIKI_PASSWORD=local-admin-password \
+MEDIAWIKI_SHARD=000000 \
+MEDIAWIKI_MAX_PAGES=10 \
+MEDIAWIKI_SKIP_MEDIA=1 \
+MEDIAWIKI_SKIP_FINALIZE=1 \
+npm run mediawiki:publish-local
+```
+
+To clone `fusionfall.wiki`, the snapshot command sources the ignored `make_env.sh` by default. Set `OFAW_ENV_FILE` to use another environment file:
+
+```bash
+npm run mediawiki:snapshot
+npm run mediawiki:local:reset
+npm run mediawiki:local
+npm run mediawiki:restore
+```
+
+`mediawiki:restore` imports snapshot XML and images with maintenance commands, then rebuilds derived data. Stop with `npm run mediawiki:local:down`; `npm run mediawiki:local:reset` removes local database, configuration, and upload volumes but leaves the release state and `.cache/fusionfall-wiki/` snapshots.
+
+### Wiki server installation
+
+The deployment workflow publishes `openfusion-autowiki-mediawiki.tar.gz` and its SHA-256 file on the latest GitHub Release. On the wiki host, use a persistent state directory and a temporary work directory:
+
+```bash
+gh release download --repo FinnHornhoover/OpenFusionAutoWiki \
+  --pattern 'openfusion-autowiki-mediawiki.tar.gz*'
+sha256sum -c openfusion-autowiki-mediawiki.tar.gz.sha256
+if compgen -G 'openfusion-autowiki-mediawiki.tar.gz.part-*' > /dev/null; then
+  cat openfusion-autowiki-mediawiki.tar.gz.part-* > openfusion-autowiki-mediawiki.tar.gz
+fi
+mkdir -p /srv/ofaw/release /srv/ofaw/work /srv/ofaw/state
+tar -xzf openfusion-autowiki-mediawiki.tar.gz -C /srv/ofaw/release
+
+export MEDIAWIKI_RELEASE_DIR=/srv/ofaw/release/mediawiki/output
+export MEDIAWIKI_CONFIG=/srv/ofaw/release/mediawiki/config.json
+export MEDIAWIKI_IMPORT_WORK=/srv/ofaw/work
+export MEDIAWIKI_STATE_DIR=/srv/ofaw/state
+export MEDIAWIKI_API_URL=http://127.0.0.1/api.php
+export MEDIAWIKI_USERNAME=OpenFusionAutoWiki
+export MEDIAWIKI_PASSWORD='...'
+node /srv/ofaw/release/mediawiki/dist/prepare.js
+
+MEDIAWIKI_ROOT=/var/www/html \
+MEDIAWIKI_ADMIN_USER=OpenFusionAutoWiki \
+bash /srv/ofaw/release/mediawiki/local/install-release.sh \
+  "$MEDIAWIKI_RELEASE_DIR" "$MEDIAWIKI_IMPORT_WORK" "$MEDIAWIKI_STATE_DIR"
+```
+
+The credentials are used only for batched reads needed to preserve existing prose. Bulk page and media writes occur locally through MediaWiki maintenance commands and do not pass through Cloudflare or PHP upload limits. Keep `/srv/ofaw/state` across resets when reconciling releases; remove it only when deliberately establishing a new baseline.
+
 ## Deployment
 
-The workflow at [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) runs on pushes to `main`, manual dispatches, and the daily continuation schedule. It:
+The workflow at [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) runs on pushes to `main`, manual dispatches, and daily. It:
 
 1. Resolves and caches the latest FFInfoPacks release.
-2. Downloads and normalizes all game builds.
-3. Builds the React site and MediaWiki export.
-4. Retains the MediaWiki output as a seven-day workflow artifact.
-5. Publishes ten MediaWiki shards through conflict-safe concurrent edits using the configured credentials.
+2. Downloads and normalizes every game build.
+3. Builds the React site and self-contained MediaWiki export.
+4. Packages and checksums a compressed MediaWiki server release.
+5. Creates or refreshes the corresponding GitHub Release.
 6. Deploys `site/dist` to Cloudflare Pages.
-
-The shard group defaults from `GITHUB_RUN_NUMBER`, so successive workflow runs advance without overlap. Set `MEDIAWIKI_SHARD` to publish or retry one shard, or set `MEDIAWIKI_START_SHARD` for a manual consecutive batch.
-
-From the GitHub Actions **Run workflow** dialog, you can optionally choose a single `mediawiki_build`, an explicit `mediawiki_shard`, a starting shard, the shard count, and the page edit concurrency. Leaving them blank performs the normal full export and advances from `GITHUB_RUN_NUMBER`.
 
 ### Cloudflare Pages config files
 
@@ -119,6 +175,7 @@ build/                  TypeScript normalization pipeline
     normalize/          one file per entity type
     chunk.ts            chunked per-entity emission
 mediawiki/              MediaWiki renderer, publisher, and configuration
+  local/                local MediaWiki image, snapshot, and restore tooling
   src/
     index.ts            wikitext export + shard manifests
     render.ts           type-specific links, lists, tables, and figures

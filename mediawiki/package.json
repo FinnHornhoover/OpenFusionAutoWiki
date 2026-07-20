@@ -7,6 +7,7 @@
     "build": "tsc",
     "generate": "node dist/index.js",
     "publish": "node dist/publish.js",
+    "prepare": "node dist/prepare.js",
     "test": "npm run build && node --test dist/*.test.js"
   },
   "devDependencies": {

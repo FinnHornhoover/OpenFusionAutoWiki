@@ -1,0 +1,59 @@
+services:
+  mediawiki:
+    build:
+      context: .
+      dockerfile: mediawiki/local/Dockerfile
+    image: openfusion-auto-wiki-mediawiki:local
+    depends_on:
+      database:
+        condition: service_healthy
+    environment:
+      MEDIAWIKI_DB_HOST: database
+      MEDIAWIKI_DB_NAME: ${MEDIAWIKI_DB_NAME:-fusionfall_local}
+      MEDIAWIKI_DB_USER: ${MEDIAWIKI_DB_USER:-fusionfall}
+      MEDIAWIKI_DB_PASSWORD: ${MEDIAWIKI_DB_PASSWORD:-local-wiki-password}
+      MEDIAWIKI_SERVER: http://127.0.0.1:${MEDIAWIKI_PORT:-8081}
+      MEDIAWIKI_ADMIN_USER: ${MEDIAWIKI_ADMIN_USER:-LocalAdmin}
+      MEDIAWIKI_ADMIN_PASSWORD: ${MEDIAWIKI_ADMIN_PASSWORD:-local-admin-password}
+    ports:
+      - "127.0.0.1:${MEDIAWIKI_PORT:-8081}:80"
+    volumes:
+      - mediawiki_config:/var/www/html/local-config
+      - mediawiki_images:/var/www/html/images
+      - ./.cache/fusionfall-wiki:/snapshot:ro
+      - ./mediawiki/output:/ofaw-release:ro
+      - ./.cache/mediawiki-import:/ofaw-work
+      - ./.cache/mediawiki-state:/ofaw-state
+
+  database:
+    image: mariadb:11.8
+    environment:
+      MARIADB_DATABASE: ${MEDIAWIKI_DB_NAME:-fusionfall_local}
+      MARIADB_USER: ${MEDIAWIKI_DB_USER:-fusionfall}
+      MARIADB_PASSWORD: ${MEDIAWIKI_DB_PASSWORD:-local-wiki-password}
+      MARIADB_ROOT_PASSWORD: ${MEDIAWIKI_DB_ROOT_PASSWORD:-local-root-password}
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+    volumes:
+      - mediawiki_database:/var/lib/mysql
+
+  snapshot:
+    build:
+      context: .
+      dockerfile: mediawiki/local/snapshot.Dockerfile
+    profiles: ["tools"]
+    environment:
+      MEDIAWIKI_API_URL: ${MEDIAWIKI_API_URL:-https://fusionfall.wiki/api.php}
+      MEDIAWIKI_USERNAME: ${MEDIAWIKI_USERNAME:-}
+      MEDIAWIKI_PASSWORD: ${MEDIAWIKI_PASSWORD:-}
+      MEDIAWIKI_SNAPSHOT_DELAY: ${MEDIAWIKI_SNAPSHOT_DELAY:-0.25}
+    volumes:
+      - ./.cache/fusionfall-wiki:/snapshot
+
+volumes:
+  mediawiki_config:
+  mediawiki_database:
+  mediawiki_images:

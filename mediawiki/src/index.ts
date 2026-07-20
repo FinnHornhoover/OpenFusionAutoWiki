@@ -1,6 +1,13 @@
 // @ts-nocheck -- route JSON is validated by the normalization pipeline.
 import { createHash } from "node:crypto";
-import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
+import {
+  copyFile,
+  mkdir,
+  readFile,
+  readdir,
+  rm,
+  writeFile,
+} from "node:fs/promises";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { buildWikiMaps, buildWorldMapFromAreas, mediaName } from "./maps.js";
@@ -70,8 +77,11 @@ async function registerMedia(value, found) {
   const source = mediaSource(value);
   try {
     const bytes = await readFile(source);
+    const bundled = join(outRoot, "media", name);
+    await mkdir(dirname(bundled), { recursive: true });
+    await copyFile(source, bundled);
     media.set(name, {
-      source: relative(root, source),
+      source: relative(root, bundled),
       name,
       hash: createHash("sha256").update(bytes).digest("hex"),
     });
@@ -482,6 +492,11 @@ async function buildCatalog(builds) {
 }
 async function main() {
   await mkdir(outRoot, { recursive: true });
+  await Promise.all(
+    (await readdir(outRoot)).map((entry) =>
+      rm(join(outRoot, entry), { recursive: true, force: true }),
+    ),
+  );
   const builds = orderBuilds(
     await readJson(join(root, "site/public/builds.json")),
   );

@@ -1,0 +1,6 @@
+{
+  "require": {
+    "mediawiki/maps": "10.3.0",
+    "starcitizentools/tabber-neue": "2.7.4"
+  }
+}

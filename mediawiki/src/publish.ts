@@ -3,6 +3,8 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { buildEditParams, isEditConflict, mergeContinuedPage } from "./edit.js";
+import { importBatches, renderImportXml, type ImportPage } from "./import.js";
+import { mergeOwnedSections, pageTextEqual } from "./merge.js";
 import type { ExportManifest, ManifestPage } from "./types.js";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
@@ -10,6 +12,7 @@ const out = join(root, "mediawiki/output");
 const cfg = JSON.parse(
   await readFile(join(root, "mediawiki/config.json"), "utf8"),
 );
+const apiUrl = process.env.MEDIAWIKI_API_URL ?? cfg.apiUrl;
 
 const username = process.env.MEDIAWIKI_USERNAME;
 const password = process.env.MEDIAWIKI_PASSWORD;
@@ -43,6 +46,15 @@ const uploadChunkBytes = numberFromEnv(
 const uploadChunkThreshold = numberFromEnv(
   "MEDIAWIKI_UPLOAD_CHUNK_THRESHOLD_BYTES",
   1024 * 1024,
+);
+const publishMode = process.env.MEDIAWIKI_PUBLISH_MODE ?? "edit";
+if (publishMode !== "edit" && publishMode !== "import") {
+  throw new Error("MEDIAWIKI_PUBLISH_MODE must be edit or import");
+}
+const importBatchPages = numberFromEnv("MEDIAWIKI_IMPORT_BATCH_PAGES", 100);
+const importBatchBytes = numberFromEnv(
+  "MEDIAWIKI_IMPORT_BATCH_BYTES",
+  8 * 1024 * 1024,
 );
 
 class PublishProgress {
@@ -146,7 +158,7 @@ async function apiOnce(params: Record<string, string>, post = false) {
     formatversion: "2",
   });
   return jsonResponse(
-    await fetch(post ? cfg.apiUrl : cfg.apiUrl + "?" + body.toString(), {
+    await fetch(post ? apiUrl : apiUrl + "?" + body.toString(), {
       method: post ? "POST" : "GET",
       headers: {
         "content-type": "application/x-www-form-urlencoded",
@@ -193,34 +205,44 @@ async function retry<T>(
 const api = (params: Record<string, string>, post = false) =>
   retry("API request", () => apiOnce(params, post));
 
-let token = (await api({ action: "query", meta: "tokens", type: "login" }))
-  .query.tokens.logintoken;
-const login = await api(
-  {
-    action: "login",
-    lgname: username,
-    lgpassword: password,
-    lgtoken: token,
-  },
-  true,
-);
-if (login.login.result !== "Success") {
-  throw new Error(
-    "Login failed: " +
-      login.login.result +
-      (login.login.reason ? " - " + login.login.reason : ""),
+let token = "";
+async function authenticate() {
+  cookies.clear();
+  const loginToken = (
+    await api({ action: "query", meta: "tokens", type: "login" })
+  ).query.tokens.logintoken;
+  const login = await api(
+    {
+      action: "login",
+      lgname: username!,
+      lgpassword: password!,
+      lgtoken: loginToken,
+    },
+    true,
   );
+  if (login.login.result !== "Success") {
+    throw new Error(
+      "Login failed: " +
+        login.login.result +
+        (login.login.reason ? " - " + login.login.reason : ""),
+    );
+  }
+  const capability = await api({
+    action: "query",
+    meta: "tokens|userinfo",
+    type: "csrf",
+    uiprop: "rights",
+  });
+  token = capability.query.tokens.csrftoken;
+  return new Set<string>(capability.query.userinfo.rights);
 }
 
-const capability = await api({
-  action: "query",
-  meta: "tokens|userinfo",
-  type: "csrf",
-  uiprop: "rights",
-});
-token = capability.query.tokens.csrftoken;
-const rights = new Set<string>(capability.query.userinfo.rights);
-for (const right of ["read", "edit", "createpage", "upload", "apihighlimits"]) {
+const rights = await authenticate();
+const requiredRights = ["read", "upload", "apihighlimits"];
+requiredRights.push(
+  ...(publishMode === "import" ? ["import"] : ["edit", "createpage"]),
+);
+for (const right of requiredRights) {
   if (!rights.has(right))
     throw new Error(
       "The authenticated MediaWiki account lacks " + right + " permission",
@@ -258,7 +280,7 @@ async function waitForUpload(initial: any, name: string) {
 async function postUploadForm(form: FormData) {
   return (
     await jsonResponse(
-      await fetch(cfg.apiUrl, {
+      await fetch(apiUrl, {
         method: "POST",
         headers: {
           accept: "application/json",
@@ -269,6 +291,49 @@ async function postUploadForm(form: FormData) {
       }),
     )
   ).upload;
+}
+
+async function importPages(pages: ImportPage[]) {
+  const freshCapability = await api({
+    action: "query",
+    meta: "tokens|userinfo",
+    type: "csrf",
+  });
+  if (freshCapability.query.userinfo.anon) {
+    await authenticate();
+  } else {
+    token = freshCapability.query.tokens.csrftoken;
+  }
+  const xml = renderImportXml(pages, {
+    username: username!,
+    summary: cfg.editSummary,
+    timestamp: new Date().toISOString(),
+  });
+  const form = new FormData();
+  form.set("action", "import");
+  form.set("format", "json");
+  form.set("formatversion", "2");
+  form.set("assignknownusers", "1");
+  form.set("interwikiprefix", "ofaw");
+  form.set("summary", cfg.editSummary);
+  form.set("token", token);
+  form.set("xml", new Blob([xml], { type: "application/xml" }), "ofaw.xml");
+  const result = await retry("XML import", async () =>
+    jsonResponse(
+      await fetch(apiUrl, {
+        method: "POST",
+        headers: {
+          accept: "application/json",
+          "user-agent": "OpenFusionAutoWiki/2.0 mass importer",
+          cookie: cookieHeader(),
+        },
+        body: form,
+      }),
+    ),
+  );
+  if (!Array.isArray(result.import)) {
+    throw new Error("Unexpected import response: " + JSON.stringify(result));
+  }
 }
 
 async function uploadOnce(record: { source: string; name: string }) {
@@ -429,36 +494,6 @@ async function existingMedia(names: string[]) {
   return existing;
 }
 
-function sections(text: string) {
-  return [
-    ...text.matchAll(
-      /^== ([^=\n]+) ==\n<!-- OFAW:([^:>]+):v\d+ -->\n[\s\S]*?(?=^== [^=\n]+ ==\n|(?![\s\S]))/gm,
-    ),
-  ].map((match) => ({ key: match[2], text: match[0].trimEnd() }));
-}
-
-function merge(oldText: string, generated: string) {
-  let result = oldText
-    .trimEnd()
-    .replace(
-      /^== [^=\n]+ ==\n<!-- OFAW:[^:>\n]*classification:v\d+ -->\n[\s\S]*?(?=^== [^=\n]+ ==\n|(?![\s\S]))/gm,
-      "",
-    )
-    .trimEnd();
-  for (const section of sections(generated)) {
-    const expression = new RegExp(
-      "^== [^=\\n]+ ==\\n<!-- OFAW:" +
-        section.key +
-        ":v\\d+ -->\\n[\\s\\S]*?(?=^== [^=\n]+ ==\n|(?![\s\S]))",
-      "m",
-    );
-    result = expression.test(result)
-      ? result.replace(expression, section.text + "\n")
-      : result + (result ? "\n\n" : "") + section.text;
-  }
-  return result.trimEnd() + "\n";
-}
-
 let edited = 0;
 let unchanged = 0;
 let failed = 0;
@@ -578,8 +613,10 @@ async function publishPage(record: ManifestPage, initialRemote: any) {
       ? ""
       : String(revision?.slots?.main?.content ?? "");
     const nextText =
-      record.ownership === "generated" ? generated : merge(oldText, generated);
-    if (nextText === oldText) {
+      record.ownership === "generated"
+        ? generated
+        : mergeOwnedSections(oldText, generated);
+    if (pageTextEqual(nextText, oldText)) {
       unchanged++;
       progress.tick("Unchanged page: " + record.title);
       return;
@@ -604,6 +641,38 @@ async function publishPage(record: ManifestPage, initialRemote: any) {
   }
 }
 
+async function prepareImportPage(
+  record: ManifestPage,
+  remote: any,
+): Promise<ImportPage | undefined> {
+  if (!remote) {
+    failed++;
+    if (process.stdout.isTTY) process.stdout.write("\r\x1b[2K");
+    console.error(record.title, "MediaWiki query omitted this title");
+    progress.tick("Failed page query: " + record.title);
+    return;
+  }
+  const generated = await readFile(join(out, record.path), "utf8");
+  const revision = remote.revisions?.[0];
+  const oldText = remote.missing
+    ? ""
+    : String(revision?.slots?.main?.content ?? "");
+  const nextText =
+    record.ownership === "generated"
+      ? generated
+      : mergeOwnedSections(oldText, generated);
+  if (pageTextEqual(nextText, oldText)) {
+    unchanged++;
+    progress.tick("Unchanged page: " + record.title);
+    return;
+  }
+  return {
+    title: String(remote.title),
+    namespace: Number(remote.ns ?? 0),
+    text: nextText,
+  };
+}
+
 for (
   let offset = 0;
   offset < selectedPages.length;
@@ -611,6 +680,35 @@ for (
 ) {
   const records = selectedPages.slice(offset, offset + pageQueryBatchSize);
   const current = await queryCurrentPages(records);
+  if (publishMode === "import") {
+    const prepared = (
+      await Promise.all(
+        records.map((record) =>
+          prepareImportPage(record, current.get(record.title)),
+        ),
+      )
+    ).filter((page): page is ImportPage => page !== undefined);
+    for (const pages of importBatches(
+      prepared,
+      importBatchPages,
+      importBatchBytes,
+    )) {
+      try {
+        await importPages(pages);
+        edited += pages.length;
+        for (const page of pages) progress.tick("Imported page: " + page.title);
+      } catch (error) {
+        failed += pages.length;
+        if (process.stdout.isTTY) process.stdout.write("\r\x1b[2K");
+        console.error(
+          "Import batch " + pages[0]!.title + " ... " + pages.at(-1)!.title,
+          error,
+        );
+        for (const page of pages) progress.tick("Failed page: " + page.title);
+      }
+    }
+    continue;
+  }
   let pageCursor = 0;
   async function pageWorker() {
     while (pageCursor < records.length) {
@@ -637,5 +735,8 @@ console.log({
   mediaConcurrency,
   editConcurrency,
   pageQueryBatchSize,
+  publishMode,
+  importBatchPages,
+  importBatchBytes,
 });
 if (failed) process.exitCode = 1;
