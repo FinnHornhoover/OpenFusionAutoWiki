@@ -272,12 +272,6 @@ export default function RacingScoreSurface({ data }: Props) {
 
   return (
     <figure className="racing-score-surface racing-score-map">
-      <div className="racing-score-toolbar" aria-label="Graph controls">
-        <button type="button" onClick={() => setView((current) => zoomView(current, 1.2))} aria-label="Zoom in">+</button>
-        <button type="button" onClick={() => setView((current) => zoomView(current, 1 / 1.2))} aria-label="Zoom out">−</button>
-        <button type="button" onClick={() => setView(INITIAL_VIEW)}>Reset view</button>
-        <span>Drag to pan · Scroll to zoom</span>
-      </div>
       <div className="racing-score-viewport">
         <svg
           ref={svgRef}
@@ -385,7 +379,6 @@ export default function RacingScoreSurface({ data }: Props) {
           )}
         </svg>
       </div>
-      <div className="racing-score-probe-key">Hover over the map to inspect pods, elapsed time, and score.</div>
       <figcaption className="racing-score-legend">
         {([
           [5, '5-star', RANK_COLORS.gold],
