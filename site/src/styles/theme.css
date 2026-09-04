@@ -1218,6 +1218,127 @@ details.dropdown > .dropdown-body {
 .iz-calculator-results {
   margin-bottom: 0;
 }
+.racing-score-surface {
+  width: min(100%, 760px);
+  margin: 0;
+}
+.racing-score-toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+.racing-score-toolbar button {
+  min-width: 2rem;
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-subtle);
+  color: var(--color-text);
+  font: inherit;
+  cursor: pointer;
+}
+.racing-score-toolbar button:hover {
+  border-color: var(--color-accent);
+  background: var(--color-bg-elevated);
+}
+.racing-score-toolbar span {
+  color: var(--color-text-muted);
+  font-size: 0.8rem;
+}
+.racing-score-viewport {
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-subtle);
+}
+.racing-score-surface svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+.racing-score-surface svg:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: -2px;
+}
+.racing-score-surface svg.is-pan { cursor: move; }
+.racing-score-surface .racing-score-legend {
+  margin-top: var(--space-3);
+}
+.racing-score-bands polygon {
+  stroke-width: 1;
+  stroke-linejoin: round;
+}
+.racing-score-map-grid polygon {
+  fill: none;
+  stroke: var(--color-text);
+  stroke-width: 1.5;
+}
+.racing-score-map-grid line {
+  stroke: color-mix(in srgb, var(--color-text) 24%, transparent);
+  stroke-width: 1;
+}
+.racing-score-axes line {
+  stroke: var(--color-text);
+  stroke-width: 1.5;
+}
+.racing-score-axes text {
+  fill: var(--color-text-muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.racing-score-axes .racing-score-axis-label {
+  fill: var(--color-text);
+  font-size: 14px;
+  font-weight: 700;
+}
+.racing-score-probe {
+  pointer-events: none;
+}
+.racing-score-probe > circle {
+  stroke: #17202a;
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+}
+.racing-score-probe rect {
+  fill: var(--color-bg-elevated);
+  stroke: var(--color-border);
+  stroke-width: 1;
+}
+.racing-score-probe text {
+  fill: var(--color-text);
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.racing-score-probe-key {
+  margin-top: var(--space-2);
+  color: var(--color-text-muted);
+  font-size: 0.8rem;
+}
+.racing-score-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+  justify-content: center;
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+}
+.racing-score-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+.racing-score-legend i {
+  width: 0.8rem;
+  height: 0.8rem;
+  border: 1px solid color-mix(in srgb, #17202a 45%, transparent);
+  border-radius: 2px;
+}
 .infected-zone-card {
   display: flex;
   flex-direction: column;

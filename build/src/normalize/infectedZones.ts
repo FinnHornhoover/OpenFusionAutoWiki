@@ -83,6 +83,7 @@ interface RawInfectedZone {
   ScoreFunction?: string;
   FMRewardFunction?: string;
   StarsToItemRewards?: Record<string, RawRankReward>;
+  RankScores?: number[] | Record<string, number>;
 }
 
 
@@ -210,6 +211,19 @@ function normalizeRankRewards(
     .sort((a, b) => b.stars - a.stars);
 }
 
+function normalizeRankScores(
+  raw: number[] | Record<string, number> | undefined,
+  maxScore: number,
+  rewards: Record<string, RawRankReward> | undefined,
+): number[] {
+  const advertised = Array.isArray(raw) ? raw : Object.values(raw ?? {});
+  const ratios = [0.8, 0.7, 0.5, 0.3, 0.29];
+  return [5, 4, 3, 2, 1].map((stars, index) => {
+    const score = Number(advertised[index] ?? rewards?.[String(stars)]?.RankScore);
+    return Number.isFinite(score) && score > 0 ? score : Math.floor(maxScore * ratios[index]);
+  });
+}
+
 function normalizeInfectedZone(raw: RawInfectedZone, iconMap: IconMap, missionLevels: Map<number, number>, crateDropsByItemId: Map<number, CrateDrop[]>): InfectedZone {
   const id = raw.ID ?? 0;
   const entryWarps = Object.values(raw.EntryWarps ?? {})
@@ -239,6 +253,7 @@ function normalizeInfectedZone(raw: RawInfectedZone, iconMap: IconMap, missionLe
     entryWarps,
     exitWarps: entryWarps.filter((w) => w.exitLocation),
     rankRewards: normalizeRankRewards(raw.StarsToItemRewards, iconMap, crateDropsByItemId),
+    rankScores: normalizeRankScores(raw.RankScores, maxScore, raw.StarsToItemRewards),
   };
 }
 

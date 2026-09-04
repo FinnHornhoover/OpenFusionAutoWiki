@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 
+import { racingScore } from '../data/racingScore';
 import type { InfectedZone } from '../data/types';
 
 interface Props {
@@ -42,7 +43,7 @@ export default function InfectedZoneCalculator({ data }: Props) {
       - (data.timeFactor * safeElapsed) / maxTime
       + data.scaleFactor,
     ));
-    const score = data.maxScore > 0 ? Math.min(rawScore, data.maxScore) : rawScore;
+    const score = racingScore(data, safePods, safeElapsed);
     const baseFm = Math.trunc((1 + Math.exp(data.scaleFactor - 1) * data.podFactor * safePods) / maxPods);
     return {
       pods: safePods,

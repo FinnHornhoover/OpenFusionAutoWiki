@@ -5,6 +5,7 @@ import Icon from '../components/Icon';
 import InfectedZoneCalculator from '../components/InfectedZoneCalculator';
 import InlineMeta from '../components/InlineMeta';
 import MapSpot from '../components/MapSpot';
+import RacingScoreSurface from '../components/RacingScoreSurface';
 import { warpIcon } from '../data/mapMarkers';
 
 # {props.data.name}
@@ -35,6 +36,10 @@ import { warpIcon } from '../data/mapMarkers';
 
 <Dropdown summary="Score and FM calculator" open>
   <InfectedZoneCalculator data={props.data} />
+</Dropdown>
+
+<Dropdown summary="Racing score map" open>
+  <RacingScoreSurface data={props.data} />
 </Dropdown>
 
 {props.data.firstEntryLocation && (

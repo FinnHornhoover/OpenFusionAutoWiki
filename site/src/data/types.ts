@@ -535,6 +535,7 @@ export interface InfectedZone {
   entryWarps: InstanceWarp[];
   exitWarps: InstanceWarp[];
   rankRewards: InfectedZoneRankReward[];
+  rankScores: number[];
 }
 
 export interface InfectedZoneIndexEntry {
