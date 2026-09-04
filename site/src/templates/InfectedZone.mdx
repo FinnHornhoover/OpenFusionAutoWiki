@@ -5,6 +5,7 @@ import Icon from '../components/Icon';
 import InfectedZoneCalculator from '../components/InfectedZoneCalculator';
 import InlineMeta from '../components/InlineMeta';
 import MapSpot from '../components/MapSpot';
+import RacingDropOptimizer from '../components/RacingDropOptimizer';
 import RacingScoreSurface from '../components/RacingScoreSurface';
 import { warpIcon } from '../data/mapMarkers';
 
@@ -37,6 +38,12 @@ import { warpIcon } from '../data/mapMarkers';
 <Dropdown summary="Score and FM calculator" open>
   <InfectedZoneCalculator data={props.data} />
 </Dropdown>
+
+{props.data.rankRewards.some((reward) => reward.crateDrops.length > 0) && (
+  <Dropdown summary="Drop-time optimizer" open>
+    <RacingDropOptimizer data={props.data} />
+  </Dropdown>
+)}
 
 <Dropdown summary="Racing score map" open>
   <RacingScoreSurface data={props.data} />
