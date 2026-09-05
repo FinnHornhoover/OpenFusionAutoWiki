@@ -298,6 +298,7 @@ export type ItemSource =
   | ({
       kind: 'racing';
       npc: Ref | null;
+      infectedZone: Ref | null;
       instanceName: string;
       areaZone: string;
       requiredScore: number;

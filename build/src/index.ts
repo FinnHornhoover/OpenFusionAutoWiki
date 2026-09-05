@@ -124,7 +124,8 @@ async function main(): Promise<void> {
     totalInstanceChunks += ins.chunks;
     totalInfectedInstances += ins.infected;
 
-    const it = await normalizeItems(d.path, slug, iconMap, instanceNames, playerPrices);
+    const buildPlayerPrices = slug === 'retrobution' ? playerPrices : new Map<string, number>();
+    const it = await normalizeItems(d.path, slug, iconMap, instanceNames, buildPlayerPrices);
     totalItems += it.count;
     totalItemChunks += it.chunks;
     totalItemSources += it.sourceCount;

@@ -244,7 +244,7 @@ export type ItemSource =
   | ({ kind: 'mission-crate'; mission: Ref; npc: Ref | null; areaZone: string; selectionNeeded: boolean } & DropChance)
   | { kind: 'vendor'; npc: Ref; price: number; areaZone: string }
   | ({ kind: 'egg'; eggId: string; eggName: string; eggComment: string; areaZone: string; areaId: string; instanceID: number; instanceName: string; x: number; y: number; z: number } & DropChance)
-  | ({ kind: 'racing'; npc: Ref | null; instanceName: string; areaZone: string; requiredScore: number; requiredStars: number } & DropChance)
+  | ({ kind: 'racing'; npc: Ref | null; infectedZone: Ref | null; instanceName: string; areaZone: string; requiredScore: number; requiredStars: number } & DropChance)
   | { kind: 'code'; code: string; ref: Ref }
   | ({ kind: 'event'; eventId: number; eventName: string } & DropChance);
 

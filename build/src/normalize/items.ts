@@ -87,6 +87,7 @@ interface RawEggSource {
   Z?: number;
 }
 interface RawRacingSource {
+  InstanceID?: number;
   AreaZone?: string;
   InstanceName?: string;
   NPCTypeID?: number;
@@ -309,9 +310,13 @@ function normalizeSource(
     }
     case 'Racing': {
       const r = s as RawRacingSource;
+      const infectedZoneId = r.InstanceID ?? 0;
       return {
         kind: 'racing',
         npc: npcRef(r.NPCTypeID ?? 0, r.NPCName ?? '', r.NPCIcon ?? '', iconMap),
+        infectedZone: infectedZoneId > 0
+          ? { type: 'infected-zone', id: infectedZoneId, name: r.InstanceName || 'Infected Zone #' + infectedZoneId }
+          : null,
         instanceName: r.InstanceName ?? '',
         areaZone: r.AreaZone ?? '',
         requiredScore: r.RequiredScore ?? 0,
@@ -346,7 +351,7 @@ function sourceDedupKey(s: ItemSource): string {
     case 'mission-crate': return `mission-crate:${s.mission.id}:${s.npc?.id ?? 0}:${s.boyOdds}:${s.girlOdds}`;
     case 'vendor': return `vendor:${s.npc.id}:${s.areaZone}`;
     case 'egg': return `egg:${s.eggId}:${s.eggName}:${s.areaZone}:${s.boyOdds}:${s.girlOdds}`;
-    case 'racing': return `racing:${s.npc?.id ?? 0}:${s.areaZone}:${s.requiredScore}`;
+    case 'racing': return `racing:${s.infectedZone?.id ?? 0}:${s.areaZone}:${s.requiredScore}`;
     case 'code': return `code:${s.code}`;
     case 'event': return `event:${s.eventId}:${s.boyOdds}:${s.girlOdds}`;
   }

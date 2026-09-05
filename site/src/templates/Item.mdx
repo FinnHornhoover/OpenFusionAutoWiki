@@ -203,7 +203,7 @@ import SimilarItems from '../components/SimilarItems';
                   if (s.kind === 'racing') {
                     return (
                       <li key={i}>
-                        {s.npc ? <EntityLink entity={s.npc} withIcon={false} /> : <strong>Race</strong>}
+                        {s.infectedZone ? <EntityLink entity={s.infectedZone} withIcon={false} /> : <strong>{s.instanceName || 'Race'}</strong>}
                         <InlineMeta leading>
                           {s.instanceName && <span>{s.instanceName}</span>}
                           {s.requiredScore > 0 && <span>score {s.requiredScore.toLocaleString()}+</span>}

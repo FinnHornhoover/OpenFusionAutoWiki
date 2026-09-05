@@ -1,6 +1,9 @@
 name: Deploy to Cloudflare Pages
 
 on:
+  schedule:
+    # Run every 24 hours at 01:00 UTC
+    - cron: '0 1 * * *'
   push:
     branches: [main]
   workflow_dispatch:
