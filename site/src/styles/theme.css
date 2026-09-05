@@ -1227,20 +1227,20 @@ details.dropdown > .dropdown-body {
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   background: var(--color-bg-subtle);
+  touch-action: none;
+  cursor: grab;
+  user-select: none;
 }
 .racing-score-surface svg {
   display: block;
   width: 100%;
   height: auto;
-  cursor: grab;
-  touch-action: none;
-  user-select: none;
 }
-.racing-score-surface svg:focus-visible {
+.racing-score-viewport:focus-visible {
   outline: 2px solid var(--color-accent);
   outline-offset: -2px;
 }
-.racing-score-surface svg.is-pan { cursor: move; }
+.racing-score-viewport.is-pan { cursor: move; }
 .racing-score-surface .racing-score-legend {
   margin-top: var(--space-3);
 }
