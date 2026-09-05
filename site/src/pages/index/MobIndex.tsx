@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 
 import EntityIndexSkeleton from '../../components/EntityIndexSkeleton';
+import InfiniteScroll from '../../components/InfiniteScroll';
 import Icon from '../../components/Icon';
 import IndexFilterDropdown from '../../components/IndexFilterDropdown';
 import type { MobIndexEntry } from '../../data/types';
@@ -88,9 +89,8 @@ export default function MobIndex({ build, rows, loading }: Props) {
     });
   }, [rows, q, activeTab, activeLevels, hideOutOfGame]);
 
-  const start = page * PAGE_SIZE;
-  const pageRows = filtered.slice(start, start + PAGE_SIZE);
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const renderedRows = filtered.slice(0, (page + 1) * PAGE_SIZE);
+  const hasMore = renderedRows.length < filtered.length;
 
   function updateParam(name: string, value: string | null) {
     setPage(0);
@@ -182,7 +182,7 @@ export default function MobIndex({ build, rows, loading }: Props) {
                 </tr>
               </thead>
               <tbody>
-                {pageRows.map((r) => (
+                {renderedRows.map((r) => (
                   <tr key={r.id} className={r.inGame ? undefined : 'entity-index-row-muted'}>
                     <td>
                       <div className="entity-index-name">
@@ -200,13 +200,12 @@ export default function MobIndex({ build, rows, loading }: Props) {
               </tbody>
             </table>
           </div>
-          {totalPages > 1 && (
-            <nav className="pager" aria-label="Pagination">
-              <button onClick={() => setPage(Math.max(0, page - 1))} disabled={page === 0}>‹ Prev</button>
-              <span className="muted">Page {page + 1} / {totalPages}</span>
-              <button onClick={() => setPage(Math.min(totalPages - 1, page + 1))} disabled={page >= totalPages - 1}>Next ›</button>
-            </nav>
-          )}
+          <InfiniteScroll
+            hasMore={hasMore}
+            shown={renderedRows.length}
+            total={filtered.length}
+            onLoadMore={() => setPage((current) => current + 1)}
+          />
         </>
       )}
     </>
