@@ -473,12 +473,6 @@ details.dropdown > .dropdown-body {
     linear-gradient(to right, rgba(0, 0, 0, 0.36), rgba(0, 0, 0, 0)) left center / 1.25rem 100% no-repeat scroll,
     linear-gradient(to left, rgba(0, 0, 0, 0.36), rgba(0, 0, 0, 0)) right center / 1.25rem 100% no-repeat scroll;
 }
-details.racing-score-dropdown > .dropdown-body {
-  overflow: hidden;
-  overscroll-behavior: contain;
-  touch-action: none;
-  background: none;
-}
 .dropdown-body > .location-table,
 .dropdown-body > table {
   width: 100%;

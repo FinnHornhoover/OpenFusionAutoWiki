@@ -243,6 +243,103 @@ export default function RacingScoreSurface({ data }: Props) {
     return () => viewport.removeEventListener('wheel', handleWheel);
   }, [usable]);
 
+  useEffect(() => {
+    const viewport = viewportRef.current;
+    if (!viewport) return undefined;
+
+    const touchPoints = (touches: TouchList): Point[] => Array.from(touches)
+      .slice(0, 2)
+      .map((touch) => ({ x: touch.clientX, y: touch.clientY }));
+
+    const beginTouchGesture = (touches: TouchList) => {
+      const pointers = touchPoints(touches);
+      if (pointers.length === 0) {
+        gestureRef.current = null;
+        return;
+      }
+      gestureRef.current = {
+        view: viewRef.current,
+        center: pointers.length === 1
+          ? pointers[0]
+          : { x: (pointers[0].x + pointers[1].x) / 2, y: (pointers[0].y + pointers[1].y) / 2 },
+        distance: pointers.length === 2
+          ? Math.hypot(pointers[1].x - pointers[0].x, pointers[1].y - pointers[0].y)
+          : 0,
+      };
+    };
+
+    const handleTouchStart = (event: TouchEvent) => {
+      event.preventDefault();
+      beginTouchGesture(event.touches);
+      setDragging(true);
+      const pointers = touchPoints(event.touches);
+      if (pointers.length === 1) {
+        const bounds = viewport.getBoundingClientRect();
+        updateHover({
+          x: (pointers[0].x - bounds.left) * WIDTH / bounds.width,
+          y: (pointers[0].y - bounds.top) * HEIGHT / bounds.height,
+        });
+      } else {
+        setHoverSample(null);
+      }
+    };
+
+    const handleTouchMove = (event: TouchEvent) => {
+      event.preventDefault();
+      const gesture = gestureRef.current;
+      const pointers = touchPoints(event.touches);
+      if (!gesture || pointers.length === 0) return;
+      const bounds = viewport.getBoundingClientRect();
+      const center = pointers.length === 1
+        ? pointers[0]
+        : { x: (pointers[0].x + pointers[1].x) / 2, y: (pointers[0].y + pointers[1].y) / 2 };
+      const startCenter = {
+        x: (gesture.center.x - bounds.left) * WIDTH / bounds.width,
+        y: (gesture.center.y - bounds.top) * HEIGHT / bounds.height,
+      };
+      const currentCenter = {
+        x: (center.x - bounds.left) * WIDTH / bounds.width,
+        y: (center.y - bounds.top) * HEIGHT / bounds.height,
+      };
+      const distance = pointers.length === 2
+        ? Math.hypot(pointers[1].x - pointers[0].x, pointers[1].y - pointers[0].y)
+        : 0;
+      const zoom = pointers.length === 2 && gesture.distance > 0
+        ? clamp(gesture.view.zoom * distance / gesture.distance, MIN_ZOOM, MAX_ZOOM)
+        : gesture.view.zoom;
+      const zoomRatio = zoom / gesture.view.zoom;
+      const nextView = constrainView({
+        zoom,
+        panX: currentCenter.x - CENTER_X - (startCenter.x - CENTER_X - gesture.view.panX) * zoomRatio,
+        panY: currentCenter.y - CENTER_Y - (startCenter.y - CENTER_Y - gesture.view.panY) * zoomRatio,
+      });
+      viewRef.current = nextView;
+      setView(nextView);
+      if (pointers.length === 1) updateHover(currentCenter, nextView);
+      else setHoverSample(null);
+    };
+
+    const handleTouchEnd = (event: TouchEvent) => {
+      event.preventDefault();
+      if (event.touches.length > 0) beginTouchGesture(event.touches);
+      else {
+        gestureRef.current = null;
+        setDragging(false);
+      }
+    };
+
+    viewport.addEventListener('touchstart', handleTouchStart, { passive: false });
+    viewport.addEventListener('touchmove', handleTouchMove, { passive: false });
+    viewport.addEventListener('touchend', handleTouchEnd, { passive: false });
+    viewport.addEventListener('touchcancel', handleTouchEnd, { passive: false });
+    return () => {
+      viewport.removeEventListener('touchstart', handleTouchStart);
+      viewport.removeEventListener('touchmove', handleTouchMove);
+      viewport.removeEventListener('touchend', handleTouchEnd);
+      viewport.removeEventListener('touchcancel', handleTouchEnd);
+    };
+  }, [data, usable]);
+
   if (!bands) return <p className="muted">Score map unavailable for this build.</p>;
 
   const visiblePodMin = clamp(unproject({ x: PLOT_LEFT, y: CENTER_Y }, view).x, 0, 1) * data.podCount;
@@ -308,6 +405,7 @@ export default function RacingScoreSurface({ data }: Props) {
         tabIndex={0}
         onDoubleClick={() => setView(INITIAL_VIEW)}
         onPointerDown={(event) => {
+          if (event.pointerType === 'touch') return;
           if (event.pointerType === 'mouse' && event.button !== 0) return;
           event.preventDefault();
           event.currentTarget.setPointerCapture(event.pointerId);
@@ -325,6 +423,7 @@ export default function RacingScoreSurface({ data }: Props) {
           }
         }}
         onPointerMove={(event) => {
+          if (event.pointerType === 'touch') return;
           const bounds = event.currentTarget.getBoundingClientRect();
           if (!pointersRef.current.has(event.pointerId)) {
             updateHover({
@@ -367,15 +466,19 @@ export default function RacingScoreSurface({ data }: Props) {
           else if (pointers.length > 1) setHoverSample(null);
         }}
         onPointerUp={(event) => {
+          if (event.pointerType === 'touch') return;
           endPointer(event.pointerId);
         }}
         onPointerCancel={(event) => {
+          if (event.pointerType === 'touch') return;
           endPointer(event.pointerId);
         }}
         onLostPointerCapture={(event) => {
+          if (event.pointerType === 'touch') return;
           endPointer(event.pointerId);
         }}
         onPointerLeave={(event) => {
+          if (event.pointerType === 'touch') return;
           if (!event.currentTarget.hasPointerCapture(event.pointerId)) {
             endPointer(event.pointerId);
             setHoverSample(null);
