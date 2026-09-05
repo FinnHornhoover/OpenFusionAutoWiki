@@ -95,7 +95,7 @@ export default function RacingDropOptimizer({ data }: Props) {
 
   const maxTime = Math.max(1, data.timeLimitSeconds);
   const [selectedKey, setSelectedKey] = useState(() => options[0]?.key ?? '');
-  const [minimumTime, setMinimumTime] = useState(() => Math.min(60, maxTime));
+  const [minimumTime, setMinimumTime] = useState(() => Math.min(150, maxTime));
   const [preferredPodsInput, setPreferredPodsInput] = useState('');
   const [gender, setGender] = useState<'boy' | 'girl'>('boy');
   const safeMinimumTime = clampInteger(minimumTime, 1, maxTime);
@@ -195,7 +195,7 @@ export default function RacingDropOptimizer({ data }: Props) {
             <dd>{result.reward.label}</dd>
             <dt>Pods</dt>
             <dd>{result.pods.toLocaleString()}</dd>
-            <dt>Latest run time</dt>
+            <dt>Run time</dt>
             <dd>{formatDuration(result.elapsed)} (+{formatDuration(result.deadline - result.elapsed)} slack)</dd>
             <dt>Score</dt>
             <dd>{result.score.toLocaleString()}</dd>
