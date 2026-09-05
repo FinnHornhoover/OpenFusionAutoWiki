@@ -82,6 +82,7 @@ interface RawInfectedZone {
   ScaleFactor?: number;
   ScoreFunction?: string;
   FMRewardFunction?: string;
+  RankScores?: number[];
   StarsToItemRewards?: Record<string, RawRankReward>;
 }
 
@@ -212,16 +213,19 @@ function normalizeRankRewards(
 
 function normalizeRankScores(
   maxScore: number,
+  rankScores: number[] | undefined,
   rewards: Record<string, RawRankReward> | undefined,
 ): number[] {
   const ratios = [0.8, 0.7, 0.5, 0.3, 0.29];
 
   return [5, 4, 3, 2, 1].map((stars, index) => {
-    const exact = Number(rewards?.[String(stars)]?.RankScore);
+    const explicit = Number(rankScores?.[index]);
+    if (Number.isFinite(explicit) && explicit > 0) return explicit;
 
-    // Preserve every available reward boundary exactly. Only synthesize a
-    // boundary when StarsToItemRewards does not provide one for this rank.
-    return Number.isFinite(exact) && exact > 0 ? exact : Math.floor(maxScore * ratios[index]);
+    const rewardScore = Number(rewards?.[String(stars)]?.RankScore);
+    if (Number.isFinite(rewardScore) && rewardScore > 0) return rewardScore;
+
+    return Math.floor(maxScore * ratios[index]);
   });
 }
 
@@ -254,7 +258,7 @@ function normalizeInfectedZone(raw: RawInfectedZone, iconMap: IconMap, missionLe
     entryWarps,
     exitWarps: entryWarps.filter((w) => w.exitLocation),
     rankRewards: normalizeRankRewards(raw.StarsToItemRewards, iconMap, crateDropsByItemId),
-    rankScores: normalizeRankScores(maxScore, raw.StarsToItemRewards),
+    rankScores: normalizeRankScores(maxScore, raw.RankScores, raw.StarsToItemRewards),
   };
 }
 

@@ -87,6 +87,7 @@ interface RawEggSource {
   Z?: number;
 }
 interface RawRacingSource {
+  EPID?: number;
   InstanceID?: number;
   AreaZone?: string;
   InstanceName?: string;
@@ -310,7 +311,9 @@ function normalizeSource(
     }
     case 'Racing': {
       const r = s as RawRacingSource;
-      const infectedZoneId = r.InstanceID ?? 0;
+      // New packs distinguish the racing EPID from the underlying map
+      // instance ID. Older packs stored the EPID in InstanceID.
+      const infectedZoneId = r.EPID ?? r.InstanceID ?? 0;
       return {
         kind: 'racing',
         npc: npcRef(r.NPCTypeID ?? 0, r.NPCName ?? '', r.NPCIcon ?? '', iconMap),
