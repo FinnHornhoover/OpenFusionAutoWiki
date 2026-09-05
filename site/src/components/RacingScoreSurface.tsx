@@ -8,11 +8,10 @@ interface Point { x: number; y: number; }
 interface View { zoom: number; panX: number; panY: number; }
 interface RankBand { color: string; points: string; }
 interface HoverSample { pods: number; elapsed: number; score: number; }
-interface DragState {
-  pointerId: number;
-  x: number;
-  y: number;
+interface GestureState {
   view: View;
+  center: Point;
+  distance: number;
 }
 
 const WIDTH = 760;
@@ -173,8 +172,11 @@ export default function RacingScoreSurface({ data }: Props) {
   const [view, setView] = useState<View>(INITIAL_VIEW);
   const [dragging, setDragging] = useState(false);
   const [hoverSample, setHoverSample] = useState<HoverSample | null>(null);
-  const dragRef = useRef<DragState | null>(null);
+  const pointersRef = useRef(new Map<number, Point>());
+  const gestureRef = useRef<GestureState | null>(null);
+  const viewRef = useRef<View>(INITIAL_VIEW);
   const svgRef = useRef<SVGSVGElement | null>(null);
+  viewRef.current = view;
   const usable = data.podCount > 0 && data.timeLimitSeconds > 0 && data.podFactor > 0 && data.timeFactor > 0;
   const thresholds = useMemo(
     () => new Map(data.rankScores.map((score, index) => [5 - index, score])),
@@ -270,6 +272,32 @@ export default function RacingScoreSurface({ data }: Props) {
     setHoverSample({ pods, elapsed, score: racingScoreUncapped(data, pods, elapsed) });
   }
 
+  function beginGesture() {
+    const pointers = [...pointersRef.current.values()].slice(0, 2);
+    if (pointers.length === 0) {
+      gestureRef.current = null;
+      return;
+    }
+    const center = pointers.length === 1
+      ? pointers[0]
+      : { x: (pointers[0].x + pointers[1].x) / 2, y: (pointers[0].y + pointers[1].y) / 2 };
+    gestureRef.current = {
+      view: viewRef.current,
+      center,
+      distance: pointers.length === 2 ? Math.hypot(pointers[1].x - pointers[0].x, pointers[1].y - pointers[0].y) : 0,
+    };
+  }
+
+  function endPointer(pointerId: number) {
+    pointersRef.current.delete(pointerId);
+    if (pointersRef.current.size === 0) {
+      gestureRef.current = null;
+      setDragging(false);
+    } else {
+      beginGesture();
+    }
+  }
+
   return (
     <figure className="racing-score-surface racing-score-map">
       <div className="racing-score-viewport">
@@ -282,40 +310,62 @@ export default function RacingScoreSurface({ data }: Props) {
           tabIndex={0}
           onDoubleClick={() => setView(INITIAL_VIEW)}
           onPointerDown={(event) => {
-            if (event.button !== 0) return;
+            if (event.pointerType === 'mouse' && event.button !== 0) return;
+            event.preventDefault();
             event.currentTarget.setPointerCapture(event.pointerId);
-            dragRef.current = { pointerId: event.pointerId, x: event.clientX, y: event.clientY, view };
+            pointersRef.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
+            beginGesture();
             setDragging(true);
             setHoverSample(null);
           }}
           onPointerMove={(event) => {
             const bounds = event.currentTarget.getBoundingClientRect();
-            const drag = dragRef.current;
-            if (!drag) {
+            if (!pointersRef.current.has(event.pointerId)) {
               updateHover({
                 x: (event.clientX - bounds.left) * WIDTH / bounds.width,
                 y: (event.clientY - bounds.top) * HEIGHT / bounds.height,
               });
               return;
             }
-            if (drag.pointerId !== event.pointerId) return;
-            setView(constrainView({
-              ...drag.view,
-              panX: drag.view.panX + (event.clientX - drag.x) * WIDTH / bounds.width,
-              panY: drag.view.panY + (event.clientY - drag.y) * HEIGHT / bounds.height,
-            }));
+            event.preventDefault();
+            pointersRef.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
+            const gesture = gestureRef.current;
+            if (!gesture) return;
+            const pointers = [...pointersRef.current.values()].slice(0, 2);
+            const center = pointers.length === 1
+              ? pointers[0]
+              : { x: (pointers[0].x + pointers[1].x) / 2, y: (pointers[0].y + pointers[1].y) / 2 };
+            const startCenter = {
+              x: (gesture.center.x - bounds.left) * WIDTH / bounds.width,
+              y: (gesture.center.y - bounds.top) * HEIGHT / bounds.height,
+            };
+            const currentCenter = {
+              x: (center.x - bounds.left) * WIDTH / bounds.width,
+              y: (center.y - bounds.top) * HEIGHT / bounds.height,
+            };
+            const distance = pointers.length === 2
+              ? Math.hypot(pointers[1].x - pointers[0].x, pointers[1].y - pointers[0].y)
+              : 0;
+            const zoom = pointers.length === 2 && gesture.distance > 0
+              ? clamp(gesture.view.zoom * distance / gesture.distance, MIN_ZOOM, MAX_ZOOM)
+              : gesture.view.zoom;
+            const zoomRatio = zoom / gesture.view.zoom;
+            const nextView = constrainView({
+              zoom,
+              panX: currentCenter.x - CENTER_X - (startCenter.x - CENTER_X - gesture.view.panX) * zoomRatio,
+              panY: currentCenter.y - CENTER_Y - (startCenter.y - CENTER_Y - gesture.view.panY) * zoomRatio,
+            });
+            viewRef.current = nextView;
+            setView(nextView);
           }}
           onPointerUp={(event) => {
-            if (dragRef.current?.pointerId !== event.pointerId) return;
-            dragRef.current = null;
-            setDragging(false);
+            endPointer(event.pointerId);
           }}
-          onPointerCancel={() => {
-            dragRef.current = null;
-            setDragging(false);
+          onPointerCancel={(event) => {
+            endPointer(event.pointerId);
           }}
           onPointerLeave={() => {
-            if (!dragRef.current) setHoverSample(null);
+            if (pointersRef.current.size === 0) setHoverSample(null);
           }}
           onKeyDown={(event) => {
             if (event.key === '+' || event.key === '=') setView((current) => zoomView(current, 1.2));

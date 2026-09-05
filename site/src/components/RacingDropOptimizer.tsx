@@ -188,9 +188,8 @@ export default function RacingDropOptimizer({ data }: Props) {
       </div>
       {result ? (
         <>
+          <p>{selected ? <EntityLink entity={selected.ref} /> : null}</p>
           <dl className="stat-grid iz-calculator-results">
-            <dt>Target</dt>
-            <dd>{selected ? <EntityLink entity={selected.ref} /> : null}</dd>
             <dt>Rank</dt>
             <dd>{result.reward.label}</dd>
             <dt>Pods</dt>
