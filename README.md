@@ -11,6 +11,10 @@ npm run dev           # vite dev server on http://localhost:5173
 ```
 
 `build:data` writes to `site/public/`. Re-runs reuse `.cache/` to avoid re-downloading ZIPs.
+It also reads player prices from the price guide when `google-service-account.json`
+exists at the repository root or `GOOGLE_SERVICE_ACCOUNT_JSON` contains the
+service-account JSON (or a path to it). Missing credentials leave prices absent
+without failing the rest of the build.
 
 Optional env vars:
 

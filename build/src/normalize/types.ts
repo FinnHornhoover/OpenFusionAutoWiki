@@ -337,6 +337,7 @@ export interface Item {
 
   buyPrice: number;
   sellPrice: number;
+  playerPrice: number;
   maxStack: number;
 
   tradeable: boolean;

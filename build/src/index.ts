@@ -28,6 +28,7 @@ import { writeSearchIndex } from './normalize/search.js';
 import { writeSitemapAndRobots } from './normalize/sitemap.js';
 import { DATA_OUT } from './paths.js';
 import { log } from './log.js';
+import { fetchPlayerPrices } from './priceGuide.js';
 
 async function writeBuildMeta(slug: string, builtTypes: string[]): Promise<void> {
   const dir = join(DATA_OUT, slug);
@@ -56,6 +57,10 @@ async function main(): Promise<void> {
   log.step('writing manifest');
   const entries = await writeManifest(downloaded);
   log.done(`manifest: ${entries.length} builds → site/public/builds.json`);
+
+  log.step('fetching player price guide');
+  const playerPrices = await fetchPlayerPrices();
+  log.done(`player price guide: ${playerPrices.size.toLocaleString()} named prices`);
 
   log.step('normalizing missions + NPCs + items + monsters');
   let totalMissions = 0;
@@ -119,7 +124,7 @@ async function main(): Promise<void> {
     totalInstanceChunks += ins.chunks;
     totalInfectedInstances += ins.infected;
 
-    const it = await normalizeItems(d.path, slug, iconMap, instanceNames);
+    const it = await normalizeItems(d.path, slug, iconMap, instanceNames, playerPrices);
     totalItems += it.count;
     totalItemChunks += it.chunks;
     totalItemSources += it.sourceCount;

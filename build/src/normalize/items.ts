@@ -12,6 +12,7 @@ import type {
   Ref,
 } from './types.js';
 import type { IconMap } from '../icons.js';
+import { standardizeItemName } from '../priceGuide.js';
 import type { InstanceNameIndex } from './instanceLookup.js';
 
 /** Back-reference: items dropped by a specific mob type, with full drop context. */
@@ -358,6 +359,7 @@ function normalizeItem(
   containingCrates: CrateDrop[],
   iconMap: IconMap,
   instanceNames: InstanceNameIndex,
+  playerPrice: number,
 ): Item {
   const seen = new Set<string>();
   const sources: ItemSource[] = [];
@@ -387,6 +389,7 @@ function normalizeItem(
 
     buyPrice: raw.ItemPrice ?? 0,
     sellPrice: raw.ItemSellPrice ?? 0,
+    playerPrice,
     maxStack: raw.MaxStack ?? 0,
 
     tradeable: raw.Tradeable ?? false,
@@ -442,6 +445,7 @@ export async function normalizeItems(
   slug: string,
   iconMap: IconMap,
   instanceNames: InstanceNameIndex,
+  playerPrices: ReadonlyMap<string, number>,
 ): Promise<{ count: number; chunks: number; sourceCount: number; mobItems: MobItemsMap }> {
   const zip = new AdmZip(zipPath);
   const itemEntry = zip.getEntry('info/item_info.json');
@@ -480,7 +484,8 @@ export async function normalizeItems(
     const sources = sourcesByKey.get(key) ?? [];
     const crateDrops = crateDropsByKey.get(key) ?? [];
     const containingCrates = containingCratesByKey.get(key) ?? [];
-    return normalizeItem(raw, sources, crateDrops, containingCrates, iconMap, instanceNames);
+    const playerPrice = playerPrices.get(standardizeItemName(raw.Name)) ?? 0;
+    return normalizeItem(raw, sources, crateDrops, containingCrates, iconMap, instanceNames, playerPrice);
   });
 
   // Sort: by typeId then itemId for deterministic output.

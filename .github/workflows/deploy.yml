@@ -23,6 +23,8 @@ jobs:
       FFWIKI_BASE_URL: ${{ vars.FFWIKI_BASE_URL || 'https://openfusion-auto-wiki.pages.dev' }}
       # Authenticated GitHub API requests get a 15K/hr rate limit instead of 60/hr.
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # Service-account JSON used to read the player-maintained item price guide.
+      GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
 
     steps:
       - uses: actions/checkout@v4

@@ -26,6 +26,7 @@ import SimilarItems from '../components/SimilarItems';
 )}
 
 <dl className="stat-grid">
+  {props.data.playerPrice > 0 && <><dt>Player Price</dt><dd>{props.data.playerPrice.toLocaleString()} Taros</dd></>}
   {props.data.buyPrice > 0 && <><dt>Buy</dt><dd>{props.data.buyPrice.toLocaleString()} Taros</dd></>}
   {props.data.sellPrice > 0 && <><dt>Sell</dt><dd>{props.data.sellPrice.toLocaleString()} Taros</dd></>}
   {props.data.singleDamage > 0 && <><dt>Damage (single)</dt><dd>{props.data.singleDamage.toLocaleString()}</dd></>}
