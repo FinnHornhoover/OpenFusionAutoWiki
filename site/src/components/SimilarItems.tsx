@@ -103,16 +103,18 @@ export default function SimilarItems({ current }: SimilarItemsProps) {
       uniqueIds.add(item.id);
     };
 
-    const directReason = ruleReason(current);
-    if (currentRow) addToGroup('rule:' + directReason, directReason, false, currentRow);
-    for (const row of rows ?? []) {
-      if (
-        row.id !== current.id &&
-        row.displayType === current.displayType &&
-        row.rarity === current.rarity &&
-        row.contentLevel === current.contentLevel
-      ) {
-        addToGroup('rule:' + directReason, directReason, false, row);
+    if (!GENERAL_TYPES.has(current.type)) {
+      const directReason = ruleReason(current);
+      if (currentRow) addToGroup('rule:' + directReason, directReason, false, currentRow);
+      for (const row of rows ?? []) {
+        if (
+          row.id !== current.id &&
+          row.displayType === current.displayType &&
+          row.rarity === current.rarity &&
+          row.contentLevel === current.contentLevel
+        ) {
+          addToGroup('rule:' + directReason, directReason, false, row);
+        }
       }
     }
 
