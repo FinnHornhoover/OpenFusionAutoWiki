@@ -14,7 +14,7 @@ export default function App() {
   return (
     <div className="app">
       <header className="site-header">
-        <Link to="/" className="brand">FusionFall Wiki</Link>
+        <Link to="/" className="brand"><img src="/assets/FusionFallWiki_simple_tiny.png" alt="FusionFall Wiki Logo" className="logo" width="162" height="64" /></Link>
         <QuickPicks />
         <BuildSwitcher />
         <SearchBar />
