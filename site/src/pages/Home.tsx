@@ -9,12 +9,14 @@ export default function Home() {
 
   return (
     <section className="home-page">
-      <h1>FusionFall Wiki</h1>
-      <p className="muted">
-        Auto-generated reference for every FusionFall game build.
-        <br />
-        Just select a build below or from the above build buttons to get started.
-      </p>
+      <div className="home-header">
+        <img src="/assets/FusionFallWiki_Welcome.png" alt="FusionFall Wiki Logo" className="home-logo" width="60%" height="60%" />
+        <p className="muted">
+          Auto-generated reference for every FusionFall game build.
+          <br />
+          Just select a build below or from the above build buttons to get started.
+        </p>
+      </div>
 
       <h2>Builds</h2>
       {error && (

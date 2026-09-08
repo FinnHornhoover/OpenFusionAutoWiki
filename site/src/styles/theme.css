@@ -2,7 +2,7 @@
   /* Palette — FusionFall-ish (cool blues + warm orange accent) */
   --color-bg: #060b11;
   --color-bg-elevated: #16263a;
-  --color-bg-subtle: #0b0e11;
+  --color-bg-subtle: #000000;
   --color-border: #00f7ff;
   --color-text: #e6eef7;
   --color-text-muted: #8aa0b8;
@@ -144,6 +144,15 @@ pre {
   font-size: 0.875rem;
   text-align: left;
   box-shadow: var(--glow-sm);
+}
+
+.home-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 1rem;
+  margin-top: 2rem;
 }
 
 /* Skeleton loaders */
@@ -1439,6 +1448,8 @@ details.dropdown > .dropdown-body {
   width: 100%;
   border-collapse: collapse;
   margin-top: var(--space-2);
+  background-image: url("../assets/modal-bg-dark.png");
+  background-repeat: repeat;
 }
 .location-table th,
 .location-table td {
@@ -1663,13 +1674,15 @@ details.dropdown > .dropdown-body {
 .similar-items-current .entity-link-name {
   color: var(--color-text);
 }
-.similar-items-muted > .entity-link,
 .similar-items-current.similar-items-muted {
-  background: rgba(141, 152, 170, 0.16);
-  border: 1px solid rgba(141, 152, 170, 0.42);
+  border: 1px solid rgb(255, 0, 34);
 }
-.similar-items-muted > .entity-link:hover {
-  background: rgba(141, 152, 170, 0.22);
+.similar-items-muted .entity-link-name {
+  color: rgb(206, 16, 41);
+}
+.entity-link.similar-items-muted:hover .entity-link-name,
+.similar-items-muted .entity-link:hover .entity-link-name {
+  color: rgb(255, 0, 34);
 }
 
 /* Index controls (search + filters) */
