@@ -13,6 +13,8 @@
   --color-accent-strong: #26e0e0;
   --color-danger: #e63946;
   --color-success: #6ad28a;
+  --color-loader-base: var(--color-bg-subtle);
+  --color-loader-highlight: var(--color-bg-elevated);
 
   /* Typography */
   --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -168,9 +170,9 @@ pre {
   vertical-align: middle;
   background: linear-gradient(
     90deg,
-    var(--color-bg-subtle) 0%,
-    var(--color-bg-elevated) 50%,
-    var(--color-bg-subtle) 100%
+    var(--color-loader-base) 0%,
+    var(--color-loader-highlight) 50%,
+    var(--color-loader-base) 100%
   );
   background-size: 200% 100%;
   border-radius: var(--radius-sm);
