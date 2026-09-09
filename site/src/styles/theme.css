@@ -1641,14 +1641,16 @@ details.dropdown > .dropdown-body {
 .similar-items-grid > span {
   display: flex;
   align-items: stretch;
+  justify-content: center;
 }
 .similar-items-grid .entity-link {
   box-sizing: border-box;
   width: 96px;
   min-width: 0;
   height: 100%;
+  padding-bottom: var(--space-2);
   align-items: flex-start;
-  justify-content: flex-start;
+  justify-content: center;
 }
 .similar-items-grid .entity-link-body {
   flex-direction: column;
