@@ -775,6 +775,13 @@ details.dropdown > .dropdown-body {
   object-fit: contain;
 }
 .icon-empty { background: transparent; }
+.icon-item {
+  background-image: url("/ui/inv_empty.png");
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: contain;
+  border-radius: 0;
+}
 
 /* Entity links */
 .entity-link {
@@ -1648,6 +1655,7 @@ details.dropdown > .dropdown-body {
   width: 96px;
   min-width: 0;
   height: 100%;
+  padding-top: var(--space-2);
   padding-bottom: var(--space-2);
   align-items: flex-start;
   justify-content: center;

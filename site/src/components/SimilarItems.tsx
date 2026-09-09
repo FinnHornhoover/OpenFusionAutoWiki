@@ -163,7 +163,7 @@ export default function SimilarItems({ current }: SimilarItemsProps) {
                       item.id === current.id ? (
                         <span key={item.id} className={['similar-items-current', 'entity-link', item.obtainable ? '' : 'similar-items-muted'].filter(Boolean).join(' ')} aria-current="page">
                           <span className="entity-link-body">
-                            {item.icon ? <Icon src={item.icon} alt={item.name} size={64} /> : null}
+                            {item.icon ? <Icon src={item.icon} alt={item.name} size={64} className="icon-item" /> : null}
                             <span className="entity-link-name">{item.name}</span>
                           </span>
                         </span>

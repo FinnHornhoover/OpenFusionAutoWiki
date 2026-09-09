@@ -316,8 +316,8 @@ export default function ItemIndex({ build, rows, loading }: Props) {
                     <td>
                       <div className="entity-index-name">
                         {r.icon
-                          ? <Icon src={r.icon} alt={r.name} size={64} />
-                          : <span className="icon icon-empty" aria-hidden />}
+                          ? <Icon src={r.icon} alt={r.name} size={64} className="icon-item" />
+                          : <span className="icon icon-empty icon-item" aria-hidden />}
                         <Link className="entity-index-link" to={`/${build}/items/${r.routeId ?? r.id}`}>{r.name}</Link>
                       </div>
                     </td>

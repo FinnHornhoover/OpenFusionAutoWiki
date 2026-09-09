@@ -136,8 +136,8 @@ function SearchOverlay({ build, onClose }: OverlayProps) {
               onMouseEnter={() => setHighlight(i)}
             >
               {r.icon
-                ? <Icon src={r.icon} alt="" size={96} />
-                : <span className="icon icon-empty" aria-hidden style={{ width: 96, height: 96 }} />}
+                ? <Icon src={r.icon} alt="" size={96} className={r.type === 'items' ? 'icon-item' : undefined} />
+                : <span className={['icon', 'icon-empty', r.type === 'items' ? 'icon-item' : ''].filter(Boolean).join(' ')} aria-hidden style={{ width: 96, height: 96 }} />}
               <span className="search-result-name">{r.name}</span>
               <span className="search-result-type">{TYPE_LABEL[r.type]}</span>
             </button>

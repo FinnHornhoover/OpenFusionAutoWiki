@@ -50,7 +50,7 @@ export default function RewardBox({ rewards }: RewardBoxProps) {
         )}
         {items.map((it, i) => (
           <li className="reward-card" key={`${it.ref.id}-${i}`}>
-            {it.ref.icon ? <Icon src={it.ref.icon} alt="" size={48} /> : <span className="icon icon-empty" aria-hidden style={{ width: 48, height: 48 }} />}
+            {it.ref.icon ? <Icon src={it.ref.icon} alt="" size={48} className="icon-item" /> : <span className="icon icon-empty icon-item" aria-hidden style={{ width: 48, height: 48 }} />}
             <span className="reward-card-main">
               <EntityLink entity={it.ref} withIcon={false} />
               <InlineMeta className="reward-card-meta muted">

@@ -11,7 +11,7 @@ import SimilarItems from '../components/SimilarItems';
 # {props.data.name}
 
 <div className="entity-header">
-  {props.data.icon ? <div className="entity-header-icon"><Icon src={props.data.icon} alt={props.data.name} size={192} /></div> : null}
+  {props.data.icon ? <div className="entity-header-icon"><Icon src={props.data.icon} alt={props.data.name} size={192} className="icon-item" /></div> : null}
   <div className="entity-meta muted">
     <span className="badge badge-category">{props.data.type}</span>
     {props.data.displayType && props.data.displayType !== props.data.type && <span className="badge badge-category">{props.data.displayType}</span>}

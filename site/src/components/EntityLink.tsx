@@ -41,7 +41,7 @@ export default function EntityLink({ entity, withIcon = true, iconSize = 96 }: E
 
   const body = (
     <span className="entity-link-body">
-      {withIcon && entity.icon ? <Icon src={entity.icon} alt={entity.name} size={iconSize} /> : null}
+      {withIcon && entity.icon ? <Icon src={entity.icon} alt={entity.name} size={iconSize} className={entity.type === 'item' ? 'icon-item' : undefined} /> : null}
       <span className="entity-link-name">{entity.name}</span>
     </span>
   );

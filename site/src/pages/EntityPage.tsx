@@ -29,7 +29,7 @@ function RouteAmbiguityPage({ build, type, title, matches }: { build: string; ty
       <div className="entity-index-list">
         {matches.map((match) => (
           <Link key={String(match.id)} className="entity-index-row" to={`/${build}/${type}/${match.routeId}`}>
-            {match.icon ? <Icon src={match.icon} alt={match.name} size={48} /> : null}
+            {match.icon ? <Icon src={match.icon} alt={match.name} size={48} className={type === 'items' ? 'icon-item' : undefined} /> : null}
             <span className="entity-index-main">
               <span className="entity-index-link">{match.name}</span>
               {match.detail ? <span className="muted ambiguity-match-detail">{match.detail}</span> : null}
