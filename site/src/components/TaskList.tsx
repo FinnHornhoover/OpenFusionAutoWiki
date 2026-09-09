@@ -284,23 +284,25 @@ function TaskItem({ task, index, startTaskId, endTaskId }: { task: MissionTask; 
           {task.waypointNPC && (
             <tr>
               <th scope="row">{waypointLabel}</th>
-              <td className="task-waypoint-cell">
-                <EntityLink entity={task.waypointNPC} />
-                {task.waypointPoint && (
-                  <span className="task-mapspot">
-                    <MapSpot
-                      x={task.waypointPoint.x}
-                      y={task.waypointPoint.y}
-                      z={task.waypointPoint.z}
-                      size={256}
-                      areaId={task.waypointPoint.areaId}
-                      title={task.waypointPoint.areaZone}
-                      instanceName={task.waypointPoint.instanceName}
-                      instanceID={task.waypointPoint.instanceID}
-                      icon={missionWaypointIcon(task.type, Boolean(task.waypointNPC))}
-                    />
-                  </span>
-                )}
+              <td>
+                <div className="task-waypoint-cell">
+                  <EntityLink entity={task.waypointNPC} />
+                  {task.waypointPoint && (
+                    <span className="task-mapspot">
+                      <MapSpot
+                        x={task.waypointPoint.x}
+                        y={task.waypointPoint.y}
+                        z={task.waypointPoint.z}
+                        size={256}
+                        areaId={task.waypointPoint.areaId}
+                        title={task.waypointPoint.areaZone}
+                        instanceName={task.waypointPoint.instanceName}
+                        instanceID={task.waypointPoint.instanceID}
+                        icon={missionWaypointIcon(task.type, Boolean(task.waypointNPC))}
+                      />
+                    </span>
+                  )}
+                </div>
               </td>
             </tr>
           )}
