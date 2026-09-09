@@ -1,12 +1,7 @@
 import { useMatch, useNavigate } from 'react-router-dom';
+import { BUILD_PRESETS } from '../data/buildPresets';
 import { useManifest } from '../data/useManifest';
 import { useBuildSwitch } from '../data/useBuildSwitch';
-
-const PICKS: Array<{ label: string; slug: string }> = [
-  { label: 'Retrobution', slug: 'retrobution' },
-  { label: 'Public Original', slug: 'beta-20100104-fixed' },
-  { label: 'Public Academy', slug: 'beta-20111013-fixed' },
-];
 
 export default function QuickPicks() {
   const match = useMatch('/:build/*');
@@ -17,7 +12,7 @@ export default function QuickPicks() {
   if (loading || !manifest) return null;
 
   const known = new Set(manifest.map((b) => b.slug));
-  const visible = PICKS.filter((p) => known.has(p.slug));
+  const visible = BUILD_PRESETS.filter((p) => known.has(p.slug));
   if (visible.length === 0) return null;
 
   return (

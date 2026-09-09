@@ -104,11 +104,11 @@ pre {
 
 .site-header {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
-  gap: var(--space-3);
+  gap: var(--space-2);
   min-height: var(--header-h);
-  padding: var(--space-2) var(--space-5);
+  padding: var(--space-1) var(--space-4);
   background: var(--color-bg-elevated);
   background-image: url("/assets/modal-header-bg-dark.png");
   background-repeat: repeat;
@@ -120,13 +120,20 @@ pre {
 }
 
 .brand {
+  flex: 0 0 auto;
   font-weight: 700;
   font-size: 1.1rem;
+  line-height: 0;
   color: var(--color-text);
 }
 .brand:hover {
   color: var(--color-accent);
   text-decoration: none;
+}
+.logo {
+  display: block;
+  width: auto;
+  height: 46px;
 }
 
 .site-main {
@@ -272,7 +279,12 @@ pre {
 }
 .search-trigger-label {
   flex: 1;
+  min-width: 0;
   text-align: left;
+  white-space: nowrap;
+}
+.search-trigger-kbd {
+  flex: 0 0 auto;
   white-space: nowrap;
 }
 .search-trigger-kbd,
@@ -382,7 +394,8 @@ pre {
 .quick-picks {
   display: flex;
   gap: var(--space-2);
-  flex-wrap: wrap;
+  flex: 0 0 auto;
+  flex-wrap: nowrap;
 }
 .quick-pick {
   display: inline-block;
@@ -394,6 +407,7 @@ pre {
   font: inherit;
   font-size: 0.875rem;
   line-height: 1;
+  white-space: nowrap;
   cursor: pointer;
   text-decoration: none;
   transition: background 0.1s, border-color 0.1s, color 0.1s;
@@ -441,24 +455,61 @@ select {
 }
 
 .build-select {
-  min-width: 14rem;
+  flex: 0 1 24rem;
+  min-width: 10rem;
+  min-height: 36px;
+  padding-block: var(--space-1);
   max-width: min(24rem, 100%);
 }
 
-@media (max-width: 580px) {
+@media (max-width: 980px), (max-height: 700px) {
   .site-header {
-    align-items: stretch;
+    min-height: 44px;
+    padding: 3px var(--space-3);
   }
 
-  .build-select,
-  .search-trigger {
-    flex: 1 0 100%;
-    width: 100%;
-    max-width: none;
+  .logo {
+    height: 34px;
+  }
+
+  .quick-picks {
+    display: none;
+  }
+
+  .build-select {
+    flex: 1 1 auto;
+    min-width: 0;
+    width: auto;
+    max-width: 24rem;
   }
 
   .search-trigger {
-    margin-left: 0;
+    flex: 0 0 36px;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+  }
+
+  .search-trigger-label,
+  .search-trigger-kbd {
+    display: none;
+  }
+}
+
+@media (max-width: 380px) {
+  .site-header {
+    padding-inline: var(--space-2);
+  }
+
+  .logo {
+    height: 30px;
+  }
+
+  .search-trigger {
+    flex-basis: 34px;
+    width: 34px;
+    height: 34px;
   }
 }
 select:focus,
