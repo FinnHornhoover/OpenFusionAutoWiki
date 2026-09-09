@@ -424,6 +424,9 @@ pre {
   border-color: var(--color-accent-strong);
   color: #1a1300;
 }
+.quick-pick-label-short {
+  display: none;
+}
 
 /* Forms */
 select,
@@ -473,13 +476,27 @@ select {
   }
 
   .quick-picks {
+    gap: var(--space-1);
+  }
+
+  .quick-pick {
+    min-width: 36px;
+    height: 36px;
+    padding: 0 7px;
+    font-size: 0.8rem;
+  }
+
+  .quick-pick-label-long {
     display: none;
+  }
+
+  .quick-pick-label-short {
+    display: inline;
   }
 
   .build-select {
     flex: 1 1 auto;
-    min-width: 0;
-    width: auto;
+    min-width: 36px;
     max-width: 24rem;
   }
 
@@ -504,6 +521,12 @@ select {
 
   .logo {
     height: 30px;
+  }
+
+  .quick-pick {
+    min-width: 34px;
+    height: 34px;
+    padding-inline: 5px;
   }
 
   .search-trigger {

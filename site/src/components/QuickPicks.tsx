@@ -22,6 +22,7 @@ export default function QuickPicks() {
           key={p.slug}
           type="button"
           className={'quick-pick' + (build === p.slug ? ' active' : '')}
+          aria-label={p.label}
           onClick={() => {
             if (build === p.slug) {
               navigate("/" + p.slug);
@@ -30,7 +31,8 @@ export default function QuickPicks() {
             }
           }}
         >
-          {p.label}
+          <span className="quick-pick-label-long">{p.label}</span>
+          <span className="quick-pick-label-short" aria-hidden>{p.shortLabel}</span>
         </button>
       ))}
     </nav>
