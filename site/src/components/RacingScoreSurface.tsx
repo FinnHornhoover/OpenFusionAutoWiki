@@ -119,6 +119,14 @@ function colorForScore(score: number, thresholds: Map<number, number>): string {
   return RANK_COLORS.zeroStar;
 }
 
+function starsForScore(score: number, thresholds: Map<number, number>): number {
+  for (let stars = 5; stars >= 1; stars -= 1) {
+    const threshold = thresholds.get(stars);
+    if (threshold !== undefined && score >= threshold) return stars;
+  }
+  return 0;
+}
+
 function labelTextColor(score: number, thresholds: Map<number, number>): string {
   const fiveStar = thresholds.get(5);
   const fourStar = thresholds.get(4);
@@ -537,10 +545,10 @@ export default function RacingScoreSurface({ data }: Props) {
           {hoverSample && hoverPoint && (
             <g className="racing-score-probe" transform={`translate(${hoverPoint.x} ${hoverPoint.y})`} aria-hidden="true">
               <circle r="7" fill={colorForScore(hoverSample.score, thresholds)} />
-              <g transform={`${hoverPoint.x > WIDTH - 285 ? 'translate(-282' : 'translate(12'} ${hoverPoint.y < 42 ? '12)' : '-38)'}`}>
-                <rect width="270" height="30" rx="5" style={{ fill: colorForScore(hoverSample.score, thresholds) }} />
-                <text x="135" y="20" textAnchor="middle" style={{ fill: labelTextColor(hoverSample.score, thresholds) }}>
-                  Pods: {hoverSample.pods.toLocaleString()} · Time: {formatSeconds(hoverSample.elapsed)} · Score: {hoverSample.score.toLocaleString()}
+              <g transform={`${hoverPoint.x > WIDTH - 315 ? 'translate(-312' : 'translate(12'} ${hoverPoint.y < 42 ? '12)' : '-38)'}`}>
+                <rect width="300" height="30" rx="5" style={{ fill: colorForScore(hoverSample.score, thresholds) }} />
+                <text x="150" y="20" textAnchor="middle" style={{ fill: labelTextColor(hoverSample.score, thresholds) }}>
+                  Pods: {hoverSample.pods.toLocaleString()} · Time: {formatSeconds(hoverSample.elapsed)} · Score: {hoverSample.score.toLocaleString()} · {starsForScore(hoverSample.score, thresholds)}★
                 </text>
               </g>
             </g>
