@@ -318,7 +318,12 @@ function normalizeSource(
         kind: 'racing',
         npc: npcRef(r.NPCTypeID ?? 0, r.NPCName ?? '', r.NPCIcon ?? '', iconMap),
         infectedZone: infectedZoneId > 0
-          ? { type: 'infected-zone', id: infectedZoneId, name: r.InstanceName || 'Infected Zone #' + infectedZoneId }
+          ? {
+              type: 'infected-zone',
+              id: infectedZoneId,
+              name: r.InstanceName || 'Infected Zone #' + infectedZoneId,
+              icon: '/ui/ep/ep_big_' + String(infectedZoneId).padStart(2, '0') + '.png',
+            }
           : null,
         instanceName: r.InstanceName ?? '',
         areaZone: r.AreaZone ?? '',

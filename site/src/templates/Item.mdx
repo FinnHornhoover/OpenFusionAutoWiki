@@ -203,10 +203,14 @@ import SimilarItems from '../components/SimilarItems';
                   if (s.kind === 'racing') {
                     return (
                       <li key={i}>
-                        {s.infectedZone ? <EntityLink entity={s.infectedZone} withIcon={false} /> : <strong>{s.instanceName || 'Race'}</strong>}
+                        {s.infectedZone ? (
+                          <EntityLink entity={{
+                            ...s.infectedZone,
+                            icon: s.infectedZone.icon || '/ui/ep/ep_big_' + String(s.infectedZone.id).padStart(2, '0') + '.png',
+                          }} />
+                        ) : <strong>{s.instanceName || 'Race'}</strong>}
                         <InlineMeta leading>
-                          {s.instanceName && <span>{s.instanceName}</span>}
-                          {s.requiredScore > 0 && <span>score {s.requiredScore.toLocaleString()}+</span>}
+                          {s.requiredScore > 0 && <span>Score {s.requiredScore.toLocaleString()}+</span>}
                           {s.requiredStars > 0 && <span>{s.requiredStars}★</span>}
                         </InlineMeta>
                       </li>
