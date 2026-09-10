@@ -878,6 +878,18 @@ details.dropdown > .dropdown-body {
   align-items: center;
   gap: var(--space-2);
 }
+.mission-link-text {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 0;
+  line-height: 1.2;
+}
+.mission-link-meta {
+  color: var(--color-text-muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
 .entity-link-name { color: var(--color-link); }
 .entity-link:hover .entity-link-name { color: var(--color-link-hover); }
 .entity-link-unbuilt .entity-link-name {

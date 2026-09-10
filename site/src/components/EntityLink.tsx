@@ -1,7 +1,8 @@
 import { Link, useParams } from 'react-router-dom';
-import type { Ref } from '../data/types';
+import type { MissionIndexEntry, Ref } from '../data/types';
 import { canonicalRoute, useRouteMap } from '../data/routeMap';
 import { useBuildMeta } from '../data/useBuildMeta';
+import { useIndex } from '../data/useIndex';
 import Icon from './Icon';
 
 /** Entity type → URL segment used in routes. */
@@ -35,14 +36,31 @@ export default function EntityLink({ entity, withIcon = true, iconSize = 96 }: E
   const route = entity ? ROUTE_FOR[entity.type] : undefined;
   const isBuilt = Boolean(build) && Boolean(route) && Boolean(meta?.builtTypes?.includes(route!));
   const routes = useRouteMap(isBuilt ? build : undefined, isBuilt ? route : undefined);
+  const { rows: missionRows } = useIndex<MissionIndexEntry>(
+    entity?.type === 'mission' ? build : undefined,
+    entity?.type === 'mission' ? 'missions' : undefined,
+  );
 
   if (!entity || !route) return null;
   const routeId = canonicalRoute(routes, entity.id);
+  const mission = entity.type === 'mission'
+    ? missionRows?.find((row) => String(row.id) === String(entity.id))
+    : undefined;
+  const missionMeta = mission
+    ? [mission.level > 0 ? `Lv${mission.level}` : '', mission.type].filter(Boolean).join(' ')
+    : '';
+  const icon = entity.icon || mission?.displayNPC?.icon || '';
+  const name = <span className="entity-link-name">{entity.name}</span>;
 
   const body = (
     <span className="entity-link-body">
-      {withIcon && entity.icon ? <Icon src={entity.icon} alt={entity.name} size={iconSize} className={entity.type === 'item' ? 'icon-item' : undefined} /> : null}
-      <span className="entity-link-name">{entity.name}</span>
+      {withIcon && icon ? <Icon src={icon} alt={entity.name} size={iconSize} className={entity.type === 'item' ? 'icon-item' : undefined} /> : null}
+      {missionMeta ? (
+        <span className="mission-link-text">
+          <span className="mission-link-meta">{missionMeta}</span>
+          {name}
+        </span>
+      ) : name}
     </span>
   );
 
