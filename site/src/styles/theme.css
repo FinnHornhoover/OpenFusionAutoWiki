@@ -13,8 +13,8 @@
   --color-accent-strong: #26e0e0;
   --color-danger: #e63946;
   --color-success: #6ad28a;
-  --color-loader-base: var(--color-bg-subtle);
-  --color-loader-highlight: var(--color-bg-elevated);
+  --color-loader-base: #00f7ff;
+  --color-loader-highlight: #172436;
 
   /* Typography */
   --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
