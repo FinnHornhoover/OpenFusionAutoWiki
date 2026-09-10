@@ -549,15 +549,15 @@ export default function RacingScoreSurface({ data }: Props) {
       </div>
       <figcaption className="racing-score-legend">
         {([
-          [5, '5-star', RANK_COLORS.gold],
-          [4, '4-star', RANK_COLORS.silver],
-          [3, '3-star', RANK_COLORS.bronze],
-          [2, '2-star', RANK_COLORS.twoStar],
-          [1, '1-star', RANK_COLORS.oneStar],
+          [5, '5★', RANK_COLORS.gold],
+          [4, '4★', RANK_COLORS.silver],
+          [3, '3★', RANK_COLORS.bronze],
+          [2, '2★', RANK_COLORS.twoStar],
+          [1, '1★', RANK_COLORS.oneStar],
         ] as const).map(([stars, label, color]) => thresholds.has(stars) && (
           <span key={stars}><i style={{ background: color }} />{label} ({thresholds.get(stars)!.toLocaleString()}+)</span>
         ))}
-        <span><i style={{ background: RANK_COLORS.zeroStar }} />0-star ({'<'}{thresholds.get(1)!.toLocaleString()})</span>
+        <span><i style={{ background: RANK_COLORS.zeroStar }} />0★ ({'<'}{thresholds.get(1)!.toLocaleString()})</span>
       </figcaption>
     </figure>
   );

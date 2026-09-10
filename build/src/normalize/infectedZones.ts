@@ -149,7 +149,7 @@ function normalizeWarp(raw: RawWarp, iconMap: IconMap, missionLevels: Map<number
 
 function rankLabel(stars: number): string {
   const rank = 6 - stars;
-  return `RANK ${rank} (${stars} star${stars === 1 ? '' : 's'})`;
+  return `RANK ${rank} (${stars}★)`;
 }
 
 function buildCrateDrops(rawCrateItems: RawCrateToItemInfo, iconMap: IconMap): Map<number, CrateDrop[]> {
