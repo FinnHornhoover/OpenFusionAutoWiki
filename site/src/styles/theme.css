@@ -720,6 +720,29 @@ details.dropdown > .dropdown-body {
 .area-map-marker:focus .area-map-marker-tooltip {
   opacity: 1;
 }
+.app-world-map {
+  height: 100dvh;
+}
+.app-world-map .site-header,
+.app-world-map .site-footer {
+  flex-shrink: 0;
+}
+.app-world-map .site-main {
+  display: flex;
+  max-width: none;
+  padding: var(--space-5) 0 0;
+}
+.world-map-page {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+.world-map-page > :not(.world-map-viewport) {
+  flex-shrink: 0;
+  margin-left: var(--space-5);
+  margin-right: var(--space-5);
+}
 .world-map-page h1 {
   margin-top: 0;
 }
@@ -735,11 +758,12 @@ details.dropdown > .dropdown-body {
 }
 .world-map-viewport {
   position: relative;
-  width: min(100%, 78vh, 900px);
-  aspect-ratio: 1;
+  width: 100%;
+  flex: 1;
+  min-height: 160px;
   overflow: hidden;
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
+  border-radius: 0;
   background: var(--color-bg-subtle);
   touch-action: none;
   cursor: grab;

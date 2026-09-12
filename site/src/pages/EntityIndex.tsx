@@ -48,8 +48,8 @@ export default function EntityIndex() {
   if (!supported) {
     return (
       <section>
-        <h1>{heading}</h1>
         <p className="breadcrumb muted">{buildLink}</p>
+        <h1>{heading}</h1>
         <div className="placeholder">
           {heading} aren't normalized yet for this build. Coming in a later phase.
         </div>
@@ -103,8 +103,8 @@ export default function EntityIndex() {
 
   return (
     <section>
-      <h1>{heading}</h1>
       <p className="breadcrumb muted">{buildLink}</p>
+      <h1>{heading}</h1>
       {body}
     </section>
   );

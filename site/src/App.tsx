@@ -1,4 +1,4 @@
-import { Link, Route, Routes } from 'react-router-dom';
+import { Link, Route, Routes, useMatch } from 'react-router-dom';
 import BuildSwitcher from './components/BuildSwitcher';
 import QuickPicks from './components/QuickPicks';
 import SearchBar from './components/SearchBar';
@@ -11,8 +11,9 @@ import PlayerStats from './pages/PlayerStats';
 import WorldMap from './pages/WorldMap';
 
 export default function App() {
+  const isWorldMap = useMatch('/:build/map');
   return (
-    <div className="app">
+    <div className={isWorldMap ? 'app app-world-map' : 'app'}>
       <header className="site-header">
         <Link to="/" className="brand"><img src="/assets/FusionFallWiki_simple_tiny.png" alt="FusionFall Wiki Logo" className="logo" width="162" height="64" /></Link>
         <QuickPicks />
