@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { BUILD_PRESETS } from './buildPresets';
 
 export interface BuildEntry {
   slug: string;
@@ -23,7 +24,16 @@ async function loadManifest(): Promise<BuildEntry[]> {
       return r.json();
     })
     .then((data: BuildEntry[]) => {
-      cache = Array.isArray(data) ? data : [];
+      // Resolve public preset names once for every consumer of the manifest.
+      cache = Array.isArray(data) ? data.map((entry) => {
+        const preset = BUILD_PRESETS.find((preset) => preset.slug === entry.slug);
+        if (!preset || preset.slug === 'retrobution') return entry;
+        return {
+          ...entry,
+          nickname: preset.label,
+          displayName: preset.label + ' -- ' + entry.officialName,
+        };
+      }) : [];
       return cache;
     })
     .finally(() => {

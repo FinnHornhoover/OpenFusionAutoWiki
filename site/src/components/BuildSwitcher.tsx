@@ -1,16 +1,9 @@
 import { useMatch } from 'react-router-dom';
 import { BUILD_PRESETS } from '../data/buildPresets';
-import type { BuildEntry } from '../data/useManifest';
 import { useManifest } from '../data/useManifest';
 import { useBuildSwitch } from '../data/useBuildSwitch';
 
 const PRESET_VALUE_PREFIX = 'preset:';
-
-function optionLabel(entry: BuildEntry): string {
-  if (entry.slug === 'beta-20100104-fixed') return 'Public Original -- ' + entry.officialName;
-  if (entry.slug === 'beta-20111013-fixed') return 'Public Academy -- ' + entry.officialName;
-  return entry.displayName;
-}
 
 export default function BuildSwitcher() {
   // This lives outside the route tree, so read the build from the current URL.
@@ -55,7 +48,7 @@ export default function BuildSwitcher() {
       )}
       <optgroup label="All builds">
         {manifest.map((entry) => (
-          <option key={entry.slug} value={entry.slug}>{optionLabel(entry)}</option>
+          <option key={entry.slug} value={entry.slug}>{entry.displayName}</option>
         ))}
       </optgroup>
     </select>
