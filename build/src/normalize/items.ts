@@ -86,6 +86,10 @@ interface RawEggSource {
   Y?: number;
   Z?: number;
 }
+interface RawCharacterCreationSource {
+  Gender?: string;
+  GenderID?: number;
+}
 interface RawRacingSource {
   EPID?: number;
   InstanceID?: number;
@@ -104,7 +108,7 @@ interface RawEventSource {
 
 interface RawSourceEntry {
   SourceType: string;
-  Source?: RawMobSource | RawMissionSource | RawVendorSource | RawEggSource | RawRacingSource | RawEventSource | { Code?: string };
+  Source?: RawMobSource | RawMissionSource | RawVendorSource | RawEggSource | RawCharacterCreationSource | RawRacingSource | RawEventSource | { Code?: string };
   /** Per-character full-chain probability (mob → crate → rarity → gender). 0 when N/A. */
   SourceBoyProbability?: number;
   SourceBoyOdds?: string;
@@ -309,6 +313,20 @@ function normalizeSource(
         ...chance(entry),
       };
     }
+    case 'CharacterCreation': {
+      const c = s as RawCharacterCreationSource;
+      const genderId = c.GenderID ?? 0;
+      const fallbackGender = genderId === 1
+        ? 'Male'
+        : genderId === 2
+          ? 'Female'
+          : genderId === 0 ? 'Any' : 'Gender ' + genderId;
+      return {
+        kind: 'character-creation',
+        gender: c.Gender?.trim() || fallbackGender,
+        genderId,
+      };
+    }
     case 'Racing': {
       const r = s as RawRacingSource;
       // New packs distinguish the racing EPID from the underlying map
@@ -359,6 +377,7 @@ function sourceDedupKey(s: ItemSource): string {
     case 'mission-crate': return `mission-crate:${s.mission.id}:${s.npc?.id ?? 0}:${s.boyOdds}:${s.girlOdds}`;
     case 'vendor': return `vendor:${s.npc.id}:${s.areaZone}`;
     case 'egg': return `egg:${s.eggId}:${s.eggName}:${s.areaZone}:${s.boyOdds}:${s.girlOdds}`;
+    case 'character-creation': return `character-creation:${s.genderId}`;
     case 'racing': return `racing:${s.infectedZone?.id ?? 0}:${s.areaZone}:${s.requiredScore}`;
     case 'code': return `code:${s.code}`;
     case 'event': return `event:${s.eventId}:${s.boyOdds}:${s.girlOdds}`;

@@ -295,6 +295,11 @@ export type ItemSource =
       y: number;
       z: number;
     } & DropChance)
+  | {
+      kind: 'character-creation';
+      gender: string;
+      genderId: number;
+    }
   | ({
       kind: 'racing';
       npc: Ref | null;

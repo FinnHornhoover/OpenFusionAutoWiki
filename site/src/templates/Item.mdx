@@ -69,6 +69,21 @@ import SimilarItems from '../components/SimilarItems';
       const mb = Math.max(b.boyProbability, b.girlProbability);
       return (mb - ma) || a.mob.name.localeCompare(b.mob.name);
     });
+  const characterCreationSources = props.data.sources
+    .filter((s) => s.kind === 'character-creation')
+    .slice()
+    .sort((a, b) => a.genderId - b.genderId);
+  const characterCreationGenders = [...new Map(
+    characterCreationSources.map((s) => [s.genderId, s.gender]),
+  ).values()];
+  const characterCreationGenderNames = new Set(characterCreationGenders.map((gender) => gender.toLowerCase()));
+  const characterCreationAudience = characterCreationGenderNames.has('any')
+    || (characterCreationGenderNames.has('male') && characterCreationGenderNames.has('female'))
+    ? 'Any characters'
+    : characterCreationGenders.length === 1
+      ? characterCreationGenders[0] + ' characters'
+      : characterCreationGenders.slice(0, -1).join(', ') + ' and '
+        + characterCreationGenders[characterCreationGenders.length - 1] + ' characters';
   const buckets = [
     ['Mission rewards', props.data.sources.filter((s) => s.kind === 'mission' || s.kind === 'mission-crate')],
     ['Sold by', props.data.sources.filter((s) => s.kind === 'vendor')],
@@ -86,6 +101,14 @@ import SimilarItems from '../components/SimilarItems';
   ];
   return (
     <>
+      {characterCreationSources.length > 0 && (
+        <Dropdown summary="Character creation" open>
+          <ul className="ref-list">
+            <li><strong>Available to:</strong> {characterCreationAudience}</li>
+          </ul>
+        </Dropdown>
+      )}
+
       {droppedBy.length > 0 && (
         <Dropdown summary={'Dropped by (' + droppedBy.length + ')'} open={droppedBy.length <= 10}>
           <ul className="ref-list">
