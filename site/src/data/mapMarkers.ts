@@ -145,9 +145,30 @@ export function buildAreaMapMarkers(area: Area, build: string): MapMarker[] {
     });
   });
 
+  // Keep NPC markers available as operators gain transport routes.
+  const operators = new Map<string, MapMarker[]>();
+  for (const marker of markers) {
+    if (marker.kind !== 'npc' && marker.kind !== 'vendor') continue;
+    const points = operators.get(marker.to) ?? [];
+    points.push(marker);
+    operators.set(marker.to, points);
+  }
+
   area.transportation.forEach((t, routeIndex) => {
     const key = routeKey(t);
     t.stops.filter((s) => s.isHere).forEach((s, stopIndex) => {
+      const to = t.startNpc ? refPath(build, t.startNpc) : '/' + build + '/areas/' + area.id;
+      // Only the departure belongs to startNpc; arrivals can share its area.
+      const candidates = s === t.stops[0] ? operators.get(to) ?? [] : [];
+      const operator = candidates.reduce<MapMarker | undefined>((closest, marker) =>
+        !closest || Math.hypot(marker.x - s.x, marker.y - s.y) < Math.hypot(closest.x - s.x, closest.y - s.y)
+          ? marker : closest, undefined);
+      if (operator) {
+        operator.kind = 'transport';
+        operator.routeKey ??= key;
+        operator.routeKeys = [...new Set([...(operator.routeKeys ?? []), key])];
+        return;
+      }
       markers.push({
         id: `transport-${routeIndex}-${stopIndex}`,
         kind: 'transport',
@@ -155,7 +176,7 @@ export function buildAreaMapMarkers(area: Area, build: string): MapMarker[] {
         x: s.x,
         y: s.y,
         icon: transportIcon(t.moveType),
-        to: t.startNpc ? refPath(build, t.startNpc) : `/${build}/areas/${area.id}`,
+        to,
         routeKey: key,
       });
     });
@@ -191,12 +212,12 @@ export function buildWorldMapMarkers(areas: Area[], build: string): MapMarker[] 
     const groupKey = [marker.kind, marker.icon, marker.to, marker.x, marker.y].join(':');
     const existing = grouped.get(groupKey);
     if (existing) {
-      existing.routeKeys = [...new Set([...(existing.routeKeys ?? []), marker.routeKey])];
+      existing.routeKeys = [...new Set([...(existing.routeKeys ?? []), ...(marker.routeKeys ?? [marker.routeKey])])];
       const routeCount = existing.routeKeys.length;
       const baseLabel = existing.label.replace(/ \([0-9]+ routes\)$/, '');
       existing.label = routeCount > 1 ? `${baseLabel} (${routeCount} routes)` : baseLabel;
     } else {
-      const groupedMarker = { ...marker, routeKeys: [marker.routeKey] };
+      const groupedMarker = { ...marker, routeKeys: marker.routeKeys ?? [marker.routeKey] };
       grouped.set(groupKey, groupedMarker);
       out.push(groupedMarker);
     }
