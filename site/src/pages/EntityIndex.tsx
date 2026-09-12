@@ -1,6 +1,7 @@
 import { Link, useParams } from 'react-router-dom';
 
 import ErrorState from '../components/ErrorState';
+import { ENTITY_TITLES } from '../data/entityTitles';
 import type { AreaIndexEntry, CodeIndexEntry, InfectedZoneIndexEntry, InstanceIndexEntry, ItemIndexEntry, ItemSetIndexEntry, MissionIndexEntry, MobIndexEntry, NanoIndexEntry, NpcIndexEntry } from '../data/types';
 import { useBuildEntry } from '../data/useBuildEntry';
 import { useBuildMeta } from '../data/useBuildMeta';
@@ -17,19 +18,6 @@ import MobIndex from './index/MobIndex';
 import NanoIndex from './index/NanoIndex';
 import NpcIndex from './index/NpcIndex';
 
-const TYPE_TITLES: Record<string, string> = {
-  missions: 'Missions',
-  npcs: 'NPCs',
-  monsters: 'Monsters',
-  items: 'Items',
-  'item-sets': 'Item Sets',
-  codes: 'Codes',
-  areas: 'Areas',
-  instances: 'Instances',
-  'infected-zones': 'Infected Zones',
-  nanos: 'Nanos',
-};
-
 export default function EntityIndex() {
   const { build, type } = useParams();
   const entry = useBuildEntry(build);
@@ -41,7 +29,7 @@ export default function EntityIndex() {
   );
 
   const buildLabel = entry ? entry.displayName : build;
-  const heading = TYPE_TITLES[type ?? ''] ?? type ?? '';
+  const heading = ENTITY_TITLES[type ?? ''] ?? type ?? '';
   const buildLink = build ? <Link to={`/${build}`}>{buildLabel}</Link> : buildLabel;
   useDocumentTitle(`${heading}${TITLE_SEPARATOR}${buildLabel ?? ''}`.trim());
 

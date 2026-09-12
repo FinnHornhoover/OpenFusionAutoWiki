@@ -12,6 +12,7 @@ const WORLD_MARKER_CULL_BUFFER = WORLD_MARKER_SCREEN_SIZE * 2;
 const WORLD_ROUTE_SCREEN_WIDTH = 2;
 const WORLD_ROUTE_ACTIVE_SCREEN_WIDTH = 4;
 const MIN_WORLD_MAP_ZOOM = 1.5;
+const INITIAL_WORLD_MAP_ZOOM = 2;
 const MAX_WORLD_MAP_ZOOM = 24;
 
 type VisibleMarkerKinds = Record<MapMarkerKind, boolean>;
@@ -83,7 +84,7 @@ export default function WorldMap() {
   const entry = useBuildEntry(build);
   const { areas, loading, error } = useAreas(build);
   const [offset, setOffset] = useState({ x: -520, y: -520 });
-  const [zoom, setZoom] = useState(MIN_WORLD_MAP_ZOOM);
+  const [zoom, setZoom] = useState(INITIAL_WORLD_MAP_ZOOM);
   const [viewportSize, setViewportSize] = useState({ width: 0, height: 0 });
   const [hoverRoutes, setHoverRoutes] = useState<string[]>([]);
   const [visibleKinds, setVisibleKinds] = useState<VisibleMarkerKinds>(() => defaultVisibleMarkerKinds());

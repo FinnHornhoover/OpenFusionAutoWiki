@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import Icon from '../components/Icon';
 import EntityPageSkeleton from '../components/EntityPageSkeleton';
 import ErrorState from '../components/ErrorState';
+import { ENTITY_TITLES } from '../data/entityTitles';
 import type { Area, Code, InfectedZone, Instance, Item, ItemSet, Mission, Mob, Nano, Npc, NpcAmbiguity } from '../data/types';
 import { useBuildEntry } from '../data/useBuildEntry';
 import { useBuildMeta } from '../data/useBuildMeta';
@@ -67,7 +68,7 @@ export default function EntityPage() {
 
   const buildLabel = entry ? entry.displayName : build;
   const entityName = (entity as { name?: string } | null)?.name;
-  const typeLabel = type ? type.charAt(0).toUpperCase() + type.replace(/s$/, '').slice(1) : '';
+  const typeLabel = ENTITY_TITLES[type ?? ''] ?? type ?? '';
   useDocumentTitle(
     entityName ? [entityName, typeLabel, buildLabel].filter(Boolean).join(TITLE_SEPARATOR) : ambiguity ? [ambiguity.title, typeLabel, buildLabel].filter(Boolean).join(TITLE_SEPARATOR) : null,
   );
