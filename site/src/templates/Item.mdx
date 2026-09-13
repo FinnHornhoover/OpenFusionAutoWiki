@@ -35,6 +35,7 @@ import SimilarItems from '../components/SimilarItems';
   {props.data.range && props.data.range !== 'None' && <><dt>Range</dt><dd>{props.data.range}{props.data.rangeValue ? ' (' + props.data.rangeValue + ')' : ''}</dd></>}
   {props.data.rateOfFire > 0 && <><dt>Rate of fire</dt><dd>{props.data.rateOfFire}</dd></>}
   {props.data.defense > 0 && <><dt>Defense</dt><dd>{props.data.defense.toLocaleString()}</dd></>}
+  {props.data.typeId === 10 && props.data.vehicleClass > 0 && <><dt>Speed class</dt><dd>{props.data.vehicleClass.toLocaleString()}</dd></>}
   {props.data.maxStack > 1 && <><dt>Stack</dt><dd>{props.data.maxStack}</dd></>}
   {props.data.gender && props.data.gender !== 'Any' && <><dt>Gender</dt><dd>{props.data.gender}</dd></>}
   <><dt>Tradeable</dt><dd>{props.data.tradeable ? 'Yes' : 'No'}</dd></>
