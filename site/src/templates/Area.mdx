@@ -1,4 +1,5 @@
 import Dropdown from '../components/Dropdown';
+import TransportCost from '../components/TransportCost';
 import EntityLink from '../components/EntityLink';
 import Icon from '../components/Icon';
 import InlineMeta from '../components/InlineMeta';
@@ -181,6 +182,7 @@ import { transportIcon, warpIcon } from '../data/mapMarkers';
               <td>
                 <strong>{t.routeName}</strong>
                 {t.moveType && <div><InlineMeta>{t.moveType && <span>{t.moveType}</span>}</InlineMeta></div>}
+                <TransportCost cost={t.cost} />
               </td>
               <td>{t.startNpc ? <EntityLink entity={t.startNpc} /> : <span className="muted">—</span>}</td>
               <td>{start ? (

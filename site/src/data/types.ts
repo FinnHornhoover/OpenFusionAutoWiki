@@ -153,6 +153,7 @@ export interface NpcTransportSpot {
 }
 
 export interface NpcTransportRoute {
+  cost: number | null;
   routeId: number;
   routeName: string;
   moveType: string;
@@ -636,6 +637,7 @@ export interface AreaEggEntry {
 }
 
 export interface AreaTransport {
+  cost: number | null;
   routeId: number;
   routeName: string;
   moveType: string;

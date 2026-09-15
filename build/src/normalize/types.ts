@@ -163,6 +163,7 @@ export interface NpcTransportSpot {
 }
 
 export interface NpcTransportRoute {
+  cost: number | null;
   routeId: number;
   routeName: string;
   moveType: string;
@@ -722,6 +723,7 @@ export interface AreaEggEntry {
 
 /** A transportation route that has at least one stop in this area. */
 export interface AreaTransport {
+  cost: number | null;
   routeId: number;
   routeName: string;          // human label
   moveType: string;           // "Slider", "MonkeySkyway", "SCAMPER", …

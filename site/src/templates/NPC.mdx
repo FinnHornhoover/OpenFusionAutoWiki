@@ -1,4 +1,5 @@
 import Dropdown from '../components/Dropdown';
+import TransportCost from '../components/TransportCost';
 import EntityLink from '../components/EntityLink';
 import Icon from '../components/Icon';
 import InlineMeta from '../components/InlineMeta';
@@ -93,6 +94,7 @@ import { transportIcon } from '../data/mapMarkers';
             <td>
               <strong>{route.routeName}</strong>
               {route.moveType && <div><InlineMeta>{route.moveType && <span>{route.moveType}</span>}</InlineMeta></div>}
+              <TransportCost cost={route.cost} />
             </td>
             <td>{route.start ? (
               <MapSpot x={route.start.x} y={route.start.y} z={route.start.z} areaId={route.start.areaId} title={route.start.areaZone} icon={transportIcon(route.moveType)} />

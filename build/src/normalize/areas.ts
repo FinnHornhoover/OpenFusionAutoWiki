@@ -156,6 +156,7 @@ interface RawTransportRoute {
   NPCType?: { Name?: string; Icon?: string; Category?: string } | null;
   StartLocation?: { Name?: string; AreaZone?: string; X?: number; Y?: number; Z?: number };
   Transportations?: Record<string, {
+    Cost?: number;
     AreaZone?: string;
     Name?: string;
     Icon?: string;
@@ -570,6 +571,7 @@ function buildTransportIndex(
           routeId,
           routeName: sub.Name || route.MoveType || `Route ${routeId}`,
           moveType: route.MoveType ?? '',
+          cost: sub.Cost ?? null,
           startNpc,
           stops: stops.map((s) => ({ ...s, isHere: s.areaZone === z })),
           routePoints,

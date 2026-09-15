@@ -743,6 +743,19 @@ details.dropdown > .dropdown-body {
   margin-left: var(--space-5);
   margin-right: var(--space-5);
 }
+.transport-cost {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: 0.875rem;
+}
+.transport-cost-turbo {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  color: #f2c94c;
+  white-space: nowrap;
+}
 .world-map-page h1 {
   margin-top: 0;
 }

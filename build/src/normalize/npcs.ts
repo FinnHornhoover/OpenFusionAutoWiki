@@ -69,6 +69,7 @@ interface RawTransportRoute {
   NPCType?: { Category?: string } | null;
   StartLocation?: RawTransportPoint;
   Transportations?: Record<string, RawTransportPoint & {
+    Cost?: number;
     Route?: RawTransportPoint[];
   }>;
 }
@@ -134,6 +135,7 @@ function buildNpcTransportRoutes(rawTransport: Record<string, RawTransportRoute>
         routeId,
         routeName: sub.Name || moveType || `Route ${routeId}`,
         moveType,
+        cost: sub.Cost ?? null,
         start,
         landing,
       });
