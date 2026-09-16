@@ -25,6 +25,10 @@ import SimilarItems from '../components/SimilarItems';
   <blockquote className="npc-comment">{props.data.description}</blockquote>
 )}
 
+{props.data.typeId >= 0 && props.data.typeId <= 3 && ['Common', 'Uncommon', 'Rare', 'Ultra Rare'].includes(props.data.rarity) && (
+  <p><Link to={'/' + props.build + '/combinations?style=' + encodeURIComponent(props.data.id)}>Plan combinations with this style item</Link></p>
+)}
+
 <dl className="stat-grid">
   {props.data.playerPrice > 0 && <><dt>Player price</dt><dd>{props.data.playerPrice.toLocaleString()} Taros</dd></>}
   {props.data.buyPrice > 0 && <><dt>Buy</dt><dd>{props.data.buyPrice.toLocaleString()} Taros</dd></>}

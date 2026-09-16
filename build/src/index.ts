@@ -10,6 +10,7 @@ import { slugForZip, writeManifest } from './manifest.js';
 import { downloadMinimap } from './minimap.js';
 import { normalizeAreas } from './normalize/areas.js';
 import { normalizeCodes } from './normalize/codes.js';
+import { normalizeCombinations } from './normalize/combinations.js';
 import { buildInstanceNameIndex } from './normalize/instanceLookup.js';
 import { normalizeInfectedZones } from './normalize/infectedZones.js';
 import { normalizeInstances } from './normalize/instances.js';
@@ -129,6 +130,7 @@ async function main(): Promise<void> {
     totalItems += it.count;
     totalItemChunks += it.chunks;
     totalItemSources += it.sourceCount;
+    const combinationsAvailable = await normalizeCombinations(d.path, slug);
 
     const co = await normalizeCodes(d.path, slug, iconMap);
     totalCodes += co.count;
@@ -165,7 +167,7 @@ async function main(): Promise<void> {
     totalSearchRows += search.count;
     totalSearchBytes += search.bytes;
 
-    await writeBuildMeta(slug, ['missions', 'npcs', 'items', 'item-sets', 'codes', 'monsters', 'areas', 'instances', 'infected-zones', 'nanos', 'player-stats']);
+    await writeBuildMeta(slug, ['missions', 'npcs', 'items', 'item-sets', 'codes', 'monsters', 'areas', 'instances', 'infected-zones', 'nanos', 'player-stats', ...(combinationsAvailable ? ['combinations'] : [])]);
     log.info(`${slug.padEnd(46)} missions=${m.count} npcs=${n.count} items=${it.count} codes=${co.count} mobs=${mb.count} areas=${ar.count} instances=${ins.count} infectedZones=${iz.count} nanos=${na.count} playerStats=${ps.count} itemSets=${itemSets.count} setItems=${itemSets.itemCount} search=${search.count}`);
   }
   log.done(`missions: ${totalMissions} → ${totalMissionChunks} chunks`);
