@@ -3,7 +3,7 @@ import { Link, useParams, useSearchParams } from 'react-router-dom';
 import EntityLink from '../components/EntityLink';
 import Icon from '../components/Icon';
 import ErrorState from '../components/ErrorState';
-import { compatible, optimizeCombination, statsDonor } from '../data/combinations';
+import { combinationCostPercentile, compatible, optimizeCombination, statsDonor } from '../data/combinations';
 import type { CombinationData, CombinationItem, CombinationStep } from '../data/combinations';
 import { useBuildEntry } from '../data/useBuildEntry';
 import { useBuildMeta } from '../data/useBuildMeta';
@@ -14,10 +14,35 @@ const rarities = ['Common', 'Uncommon', 'Rare', 'Ultra Rare'];
 const money = (value: number) => Math.ceil(value).toLocaleString() + ' Taros';
 const itemRef = (item: CombinationItem) => ({ type: 'item' as const, id: item.id, name: item.name, icon: item.icon });
 const itemType = (item: CombinationItem) => item.typeId === 0 ? item.weaponType : ['Weapon', 'Body', 'Legs', 'Shoes'][item.typeId];
-const stats = (item: CombinationItem) => item.typeId === 0
-  ? 'Damage: ' + item.singleDamage.toLocaleString() + ' single / ' + item.multiDamage.toLocaleString() + ' multi'
-  : 'Defense: ' + item.defense.toLocaleString();
 const itemLabel = (item: CombinationItem) => item.name + ' — Lv' + item.level + ' ' + item.rarity + ' · ' + itemType(item) + ' · ' + item.gender + (item.obtainable ? '' : ' · Unobtainable');
+
+function CombinationItemLink({ item, combined = false, showMeta = false, iconSize = 96, separateIcon = false }: { item: CombinationItem; combined?: boolean; showMeta?: boolean; iconSize?: number; separateIcon?: boolean }) {
+  if (!separateIcon) return <div className="combination-item-link"><EntityLink entity={itemRef(item)} iconSize={iconSize} /></div>;
+  return <div className="combination-item-link">
+    <div className="combination-preview-icon" style={{ flexBasis: iconSize }}>
+      <Icon src={item.icon} alt={item.name} size={iconSize} className="icon-item" />
+      {combined && <img className="combination-badge" src="/ui/combined_item_icon.png" alt="Combined" />}
+    </div>
+    <div><EntityLink entity={itemRef(item)} withIcon={false} />
+      {showMeta && <small className="muted">Lv {item.level} {item.rarity} {itemType(item)}</small>}
+      {!item.obtainable && <small className="muted">Unobtainable</small>}
+    </div>
+  </div>;
+}
+
+function StatIcons({ item, available = true }: { item: CombinationItem; available?: boolean }) {
+  const size = 64;
+  return <dl className="combination-stat-preview" aria-label={item.name + ' stats'} aria-live="polite">
+    {[
+      { icon: 'item_vs_one.png', label: 'Single-target damage', value: item.singleDamage },
+      { icon: 'item_vs_many.png', label: 'Multi-target damage', value: item.multiDamage },
+      { icon: 'item_defense.png', label: 'Defense', value: item.defense },
+    ].map(stat => <div key={stat.icon}>
+      <dt><img src={'/ui/' + stat.icon} alt={stat.label} title={stat.label} width={size} height={size} /></dt>
+      <dd>{available ? stat.value.toLocaleString() : '—'}</dd>
+    </div>)}
+  </dl>;
+}
 
 function StylePicker({ items, selected, onSelect }: { items: CombinationItem[]; selected: CombinationItem; onSelect: (item: CombinationItem) => void }) {
   const [query, setQuery] = useState(selected.name);
@@ -67,33 +92,51 @@ function StylePicker({ items, selected, onSelect }: { items: CombinationItem[]; 
   </div>;
 }
 
-function StepCard({ step, number }: { step: CombinationStep; number: number }) {
+function StepCard({ step: originalStep, number, style }: { step: CombinationStep; number: number; style: CombinationItem }) {
+  const [selection, setSelection] = useState<{ source: CombinationStep; id: string } | null>(null);
+  const choices = [originalStep, ...(originalStep.alternatives ?? [])];
+  const step = choices.find(choice => selection?.source === originalStep && choice.item.id === selection.id) ?? originalStep;
+  const alternatives = choices.filter(choice => choice.item.id !== step.item.id);
   return <li><details className="combination-step">
     <summary>
       <span className="combination-step-number">{number}</span>
-      <Icon src={step.item.icon} size={80} className="icon-item" />
-      <span className="combination-step-name"><strong>{step.item.name}</strong><small>Lv{step.from.level} → Lv{step.item.level} · {step.item.rarity}</small>{Boolean(step.alternatives?.length) && <small>+ {step.alternatives!.length} equally viable {step.alternatives!.length === 1 ? 'item' : 'items'}</small>}</span>
+      <span className="combination-step-pair">
+        <span className="combination-step-item">
+          <span className="combination-step-icon"><Icon src={style.icon} size={64} className="icon-item" />{number > 1 && <img className="combination-badge" src="/ui/combined_item_icon.png" alt="Combined" />}</span>
+          <span><strong>{style.name}</strong><small>Lv {step.from.level} {number > 1 ? 'Special' : style.rarity}</small></span>
+        </span>
+        <svg className="combination-step-arrow" viewBox="0 0 48 24" role="img" aria-label="receives stats from">
+          <path className="mission-task-arrow mission-task-arrow-end" d="M 46 12 H 18" />
+          <path className="mission-task-arrow-head-end" d="M 2 12 L 22 2 L 22 22 Z" />
+        </svg>
+        <span className="combination-step-item">
+          <Icon src={step.item.icon} size={64} className="icon-item" />
+          <span><strong>{step.item.name}</strong><small>Lv {step.item.level} {step.item.rarity}</small>{Boolean(alternatives.length) && <small>({alternatives.length} {alternatives.length === 1 ? 'alternative' : 'alternatives'})</small>}</span>
+        </span>
+      </span>
       <span className="combination-step-total"><strong>{money(step.total)}</strong><small>{(step.probability * 100).toLocaleString(undefined, { maximumFractionDigits: 2 })}% success</small></span>
       <span className="combination-step-chevron" aria-hidden="true">⌄</span>
     </summary>
     <div className="combination-step-details">
-      <EntityLink entity={itemRef(step.item)} withIcon={false} />
-      <p className="muted">{stats(step.item)}</p>
+      <CombinationItemLink item={step.item} iconSize={64} />
+      <StatIcons item={step.item} />
       <dl className="combination-costs">
-        <dt>Obtain item{step.ignoreObtainCost && <small>Excluded from total</small>}</dt><dd>{money(step.item.obtainCost)}<small>{step.item.priceSource === 'player' ? 'Player price' : step.item.priceSource === 'vendor' ? 'Cheapest vendor' : 'Estimated price'}</small></dd>
-        <dt>Combine per attempt</dt><dd>{money(step.fee)}</dd>
+        <dt>Item cost{step.ignoreObtainCost && <small>Excluded from total</small>}</dt><dd>{money(step.item.obtainCost)}<small>{step.item.priceSource === 'player' ? 'Player price' : step.item.priceSource === 'vendor' ? 'Cheapest vendor' : 'Estimated price'}</small></dd>
+        <dt>Combine cost per attempt</dt><dd>{money(step.fee)}</dd>
         <dt>Expected combine cost</dt><dd>{money(step.expectedFee)}<small>{(1 / step.probability).toLocaleString(undefined, { maximumFractionDigits: 2 })} attempts on average</small></dd>
         <dt>Expected total</dt><dd><strong>{money(step.total)}</strong></dd>
       </dl>
       {step.item.vendor && <div className="combination-vendor">Buy from <EntityLink entity={step.item.vendor} iconSize={48} /></div>}
-      {Boolean(step.alternatives?.length) && <div className="combination-alternatives">
+      {Boolean(alternatives.length) && <div className="combination-alternatives">
         <h4>Equally viable items</h4>
-        <ul>{step.alternatives!.map(alternative => <li key={alternative.item.id}>
-          <EntityLink entity={itemRef(alternative.item)} iconSize={64} />
-          <small>{stats(alternative.item)} · {alternative.item.gender}</small>
-          <small>Obtain: {money(alternative.item.obtainCost)}{alternative.ignoreObtainCost ? ' (excluded)' : ''} · {alternative.item.priceSource === 'player' ? 'Player price' : alternative.item.priceSource === 'vendor' ? 'Vendor price' : 'Estimated price'}</small>
-          <small>Expected attempts cost: {money(alternative.expectedFee)}</small>
-          {alternative.item.vendor && <EntityLink entity={alternative.item.vendor} iconSize={32} />}
+        <ul>{alternatives.map(alternative => <li key={alternative.item.id}>
+          <button type="button" className="combination-alternative-choice" onClick={() => setSelection({ source: originalStep, id: alternative.item.id })} aria-label={'Use ' + alternative.item.name}>
+            <span className="combination-item-link"><Icon src={alternative.item.icon} size={64} className="icon-item" /><strong>{alternative.item.name}</strong></span>
+            <span className="combination-cost-breakdown">
+              <span>Item cost{alternative.ignoreObtainCost && ' (excluded)'}</span><span>{money(alternative.item.obtainCost)}</span>
+              <span>Expected combine cost</span><span>{money(alternative.expectedFee)}</span>
+            </span>
+          </button>
         </li>)}</ul>
       </div>}
     </div>
@@ -105,8 +148,8 @@ function CostBreakdown({ steps }: { steps: CombinationStep[] }) {
   const attemptCost = steps.reduce((total, step) => total + step.expectedFee, 0);
   const excluded = steps.some(step => step.ignoreObtainCost);
   return <dl className="combination-cost-breakdown">
-    <dt>Cost of items{excluded && ' (excluded)'}</dt><dd>{money(obtainCost)}</dd>
-    <dt>Average cost of combines</dt><dd>{money(attemptCost)}</dd>
+    <dt>Item cost{excluded && ' (excluded)'}</dt><dd>{money(obtainCost)}</dd>
+    <dt>Expected combine cost</dt><dd>{money(attemptCost)}</dd>
   </dl>;
 }
 
@@ -116,7 +159,7 @@ function Calculator({ data }: { data: CombinationData }) {
   const [targetLevel, setTargetLevel] = useState<number | null>(null);
   const [targetRarity, setTargetRarity] = useState(4);
   const [ignoreObtainCost, setIgnoreObtainCost] = useState(false);
-  const [priceLimitInput, setPriceLimitInput] = useState('');
+  const [priceLimitInput, setPriceLimitInput] = useState('40000');
   const [allowedRarities, setAllowedRarities] = useState<number[]>([1, 2, 3, 4]);
   const rarityDropdown = useRef<HTMLDetailsElement>(null);
   useEffect(() => {
@@ -138,6 +181,10 @@ function Calculator({ data }: { data: CombinationData }) {
   const availableRarities = [...new Set(candidates.filter(item => item.level === level).map(item => item.rarityId))].sort();
   const rarity = availableRarities.includes(targetRarity) ? targetRarity : availableRarities.at(-1) ?? 1;
   const result = useMemo(() => style && candidates.length ? optimizeCombination(data, style, level, rarity, { ignoreObtainCost, priceLimit, allowedRarities }) : null, [data, style, candidates, level, rarity, ignoreObtainCost, priceLimit, allowedRarities]);
+  const luckCosts = useMemo(() => result ? {
+    multi: combinationCostPercentile(result.steps, 0.75),
+    direct: result.direct ? combinationCostPercentile([result.direct], 0.25) : null,
+  } : null, [result]);
   if (!style) return <p>No combinable items are available.</p>;
   const finalItem = result?.steps.at(-1)?.item ?? style;
   return <>
@@ -146,25 +193,12 @@ function Calculator({ data }: { data: CombinationData }) {
         <h2 id="combination-style-heading">Style</h2>
         <StylePicker key={style.id} items={data.items} selected={style} onSelect={item => setParams({ style: item.id }, { replace: true })} />
         <div className="combination-preview">
-          <div className="combination-preview-icon">
-            <Icon src={style.icon} alt={style.name} size={96} className="icon-item" />
-            {Boolean(result?.steps.length) && <img className="combination-badge" src="/ui/combined_item_icon.png" alt="Combined" />}
-          </div>
-          <div><EntityLink entity={itemRef(style)} withIcon={false} /><p className="muted">Lv {style.level} {style.rarity} {itemType(style)}</p>{!style.obtainable && <small className="muted">Unobtainable</small>}</div>
+          <CombinationItemLink item={style} combined={Boolean(result?.steps.length)} showMeta separateIcon />
         </div>
       </section>
       <section className="combination-section" aria-labelledby="combination-stats-heading">
         <h2 id="combination-stats-heading">Stats</h2>
-        <dl className="combination-stat-preview" aria-label="Target item stats" aria-live="polite">
-          {[
-            { icon: 'item_vs_one.png', label: 'Single-target damage', value: finalItem.singleDamage },
-            { icon: 'item_vs_many.png', label: 'Multi-target damage', value: finalItem.multiDamage },
-            { icon: 'item_defense.png', label: 'Defense', value: finalItem.defense },
-          ].map(stat => <div key={stat.icon}>
-            <dt><img src={'/ui/' + stat.icon} alt={stat.label} title={stat.label} width={64} height={64} /></dt>
-            <dd>{result ? stat.value.toLocaleString() : '—'}</dd>
-          </div>)}
-        </dl>
+        <StatIcons item={finalItem} available={Boolean(result)} />
         <div className="combination-target-controls">
           <label>Level<select className="styled-select" id="combination-level" value={level} disabled={!levels.length} onChange={event => setTargetLevel(Number(event.target.value))}>
             {levels.map(value => <option key={value} value={value}>{value}</option>)}
@@ -175,9 +209,9 @@ function Calculator({ data }: { data: CombinationData }) {
         </div>
       </section>
       <section className="combination-section" aria-labelledby="combination-options-heading">
-        <h2 id="combination-options-heading">Options</h2>
+        <h2 id="combination-options-heading">Options for Intermediate Items</h2>
         <div className="combination-option-controls">
-          <label>Price limit (Taros)<input type="number" min="0" step="1" placeholder="No limit" value={priceLimitInput} onChange={event => setPriceLimitInput(event.target.value)} /></label>
+          <label>Price limit<input type="number" min="0" step="1" placeholder="No limit" value={priceLimitInput} onChange={event => setPriceLimitInput(event.target.value)} /></label>
           <div className="combination-rarity-control">
             <span id="combination-allowed-rarities-label">Allowed rarities</span>
             <details ref={rarityDropdown} className="combination-rarity-dropdown" onKeyDown={event => {
@@ -202,19 +236,19 @@ function Calculator({ data }: { data: CombinationData }) {
       <h2 id="combination-comparison-heading">Comparison</h2>
       {!result ? <p role="status">No obtainable combination path for this target.</p> : <>
         <div className="combination-comparison" aria-live="polite">
-          <div className="combination-summary"><span>Multi-Step Expected Cost</span><div className="combination-total"><strong>{money(result.total)}</strong>{result.direct && <span className="combination-savings"> (saves {money(Math.max(0, result.direct.total - result.total))})</span>}</div><CostBreakdown steps={result.steps} /><small>{result.steps.length} {result.steps.length === 1 ? 'step' : 'steps'}</small></div>
-          <div className="combination-summary"><span>Direct Expected Cost</span><strong>{result.direct ? money(result.direct.total) : 'Unavailable'}</strong>{result.direct && <CostBreakdown steps={[result.direct]} />}<small>1 step</small></div>
+          <div className="combination-summary"><span>Multi-Step Expected Cost</span><div className="combination-total"><strong>{money(result.total)}</strong>{result.direct && <span className="combination-savings"> (saves {money(Math.max(0, result.direct.total - result.total))})</span>}</div><CostBreakdown steps={result.steps} /><div className="combination-luck-cost" title="Estimated 75th percentile of total cost across the complete route"><span>Bottom 25% luck</span><span>≈ {money(luckCosts!.multi)}</span></div><small>{result.steps.length} {result.steps.length === 1 ? 'step' : 'steps'}</small></div>
+          <div className="combination-summary"><span>Direct Expected Cost</span><strong>{result.direct ? money(result.direct.total) : 'Unavailable'}</strong>{result.direct && <><CostBreakdown steps={[result.direct]} /><div className="combination-luck-cost" title="25th percentile of total cost for the direct combination"><span>Top 25% luck</span><span>{money(luckCosts!.direct!)}</span></div></>}<small>1 step</small></div>
         </div>
       </>}
     </section>
     <section className="combination-section" aria-labelledby="combination-multi-heading">
       <h2 id="combination-multi-heading">Multi-Step</h2>
-      {result?.steps.length ? <ol className="combination-steps">{result.steps.map((step, index) => <StepCard key={step.from.id + ':' + step.item.id} step={step} number={index + 1} />)}</ol>
+      {result?.steps.length ? <ol className="combination-steps">{result.steps.map((step, index) => <StepCard key={step.from.id + ':' + step.item.id} step={step} style={style} number={index + 1} />)}</ol>
         : <p className="muted">{result ? 'Already at the target stats.' : 'No available path.'}</p>}
     </section>
     <section className="combination-section" aria-labelledby="combination-direct-heading">
       <h2 id="combination-direct-heading">Direct</h2>
-      {result?.direct ? <ol className="combination-steps"><StepCard key={result.direct.from.id + ':' + result.direct.item.id} step={result.direct} number={1} /></ol>
+      {result?.direct ? <ol className="combination-steps"><StepCard key={result.direct.from.id + ':' + result.direct.item.id} step={result.direct} style={style} number={1} /></ol>
         : <p className="muted">No obtainable direct combination.</p>}
     </section>
   </>;

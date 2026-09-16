@@ -2216,9 +2216,9 @@ details.dropdown > .dropdown-body {
 .combination-page { min-width: 0; }
 .combination-section { min-width: 0; margin-block: var(--space-5); padding: var(--space-4); border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-bg-elevated) url("/assets/modal-bg-dark.png") repeat; box-shadow: var(--glow-sm); }
 .combination-section h2 { margin: 0 0 var(--space-4); }
-.combination-controls { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-4); }
-.combination-controls > .combination-section { margin-bottom: 0; }
-.combination-target-controls { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); gap: var(--space-3); }
+.combination-controls { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-5); margin-top: var(--space-5); }
+.combination-controls > .combination-section { margin: 0; }
+.combination-target-controls { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-3); }
 .combination-target-controls label { display: grid; gap: var(--space-2); min-width: 0; }
 .combination-controls select { width: 100%; min-width: 0; min-height: 44px; }
 .combination-controls input:not([type="checkbox"]) { width: 100%; min-width: 0; min-height: 44px; padding: var(--space-2) var(--space-3); font: inherit; color: var(--color-text); background: var(--color-bg-subtle); border: 1px solid var(--color-border); border-radius: var(--radius-sm); box-shadow: var(--glow-sm-both); }
@@ -2247,6 +2247,12 @@ details.dropdown > .dropdown-body {
 .combination-options > p { padding: var(--space-3); }
 .combination-preview { display: flex; align-items: center; gap: var(--space-3); margin-top: var(--space-4); overflow-wrap: anywhere; }
 .combination-preview p { margin: var(--space-1) 0; }
+.combination-item-link { display: flex; align-items: center; gap: var(--space-3); min-width: 0; overflow-wrap: anywhere; }
+.combination-item-link > div:last-child { min-width: 0; }
+.combination-item-link small { display: block; margin-top: var(--space-1); }
+.combination-item-link .entity-link { font-weight: 600; }
+.combination-step-details .combination-item-link .entity-link { padding: var(--space-3); }
+
 .combination-preview-icon { position: relative; flex: 0 0 96px; }
 .combination-preview-icon > .icon { display: block; }
 /* Badge and inset retain their 25px / 2px proportions on a 64px item icon. */
@@ -2258,18 +2264,29 @@ details.dropdown > .dropdown-body {
 .combination-cost-breakdown dt { color: var(--color-text-muted); }
 .combination-cost-breakdown dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
 .combination-summary small, .combination-costs small { color: var(--color-text-muted); }
-.combination-savings { color: var(--color-success); }
+.combination-total { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--space-2) var(--space-4); }
+.combination-luck-cost { display: flex; justify-content: space-between; flex-wrap: wrap; gap: var(--space-2) var(--space-4); padding-top: var(--space-3); border-top: 1px solid var(--color-border); }
+.combination-luck-cost > span:last-child { margin-left: auto; text-align: right; font-variant-numeric: tabular-nums; }
+.combination-savings { margin-left: auto; text-align: right; color: var(--color-success); }
 .combination-steps { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-3); padding: 0; margin: 0; list-style: none; }
 .combination-step { min-width: 0; border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-bg-elevated) url("/assets/modal-bg-dark.png") repeat; box-shadow: var(--glow-sm-both); overflow-wrap: anywhere; }
-.combination-step summary { display: grid; grid-template-columns: auto 80px minmax(0, 1fr) auto 16px; align-items: center; gap: var(--space-3); padding: var(--space-3); cursor: pointer; list-style: none; background: var(--color-bg-elevated) url("/assets/modal-header-bg-dark.png") repeat; border-radius: inherit; }
+.combination-step summary { display: grid; grid-template-columns: auto minmax(0, 1fr) auto 16px; align-items: center; gap: var(--space-3); padding: var(--space-3); cursor: pointer; list-style: none; background: var(--color-bg-elevated) url("/assets/modal-header-bg-dark.png") repeat; border-radius: inherit; }
 .combination-step summary::-webkit-details-marker { display: none; }
 .combination-step summary:hover, .combination-step summary:focus-visible { background: var(--color-bg-subtle); color: var(--color-link-hover); box-shadow: var(--glow-sm-inverse); }
 .combination-step[open] > summary { border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
 .combination-step-number { color: var(--color-text-muted); font-variant-numeric: tabular-nums; }
+.combination-step-pair { display: grid; grid-template-columns: fit-content(45%) auto fit-content(45%); justify-content: start; align-items: center; gap: var(--space-3); }
+.combination-step-item { display: flex; align-items: center; gap: var(--space-3); min-width: 0; }
+.combination-step-item > span:last-child { min-width: 0; }
+.combination-step-icon { position: relative; display: block; width: 64px; height: 64px; flex: 0 0 64px; }
+.combination-step-icon > .icon { display: block; }
+.combination-step-arrow { display: block; width: 48px; height: 24px; }
 .combination-step-total { text-align: right; }
 .combination-step-chevron { text-align: center; }
 .combination-step[open] .combination-step-chevron { transform: rotate(180deg); }
 .combination-step-details { padding: var(--space-4); border-top: 1px solid var(--color-border); }
+.combination-step-details > .combination-item-link { justify-content: center; }
+.combination-step-details > .combination-stat-preview { max-width: 360px; margin: var(--space-4) auto; }
 .combination-costs { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--space-3); margin-bottom: 0; }
 .combination-costs dd { margin: 0; text-align: right; }
 .combination-costs small { display: block; }
@@ -2277,15 +2294,19 @@ details.dropdown > .dropdown-body {
 .combination-alternatives { margin-top: var(--space-4); border-top: 1px solid var(--color-border); padding-top: var(--space-3); }
 .combination-alternatives h4 { margin: 0 0 var(--space-3); }
 .combination-alternatives ul { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); gap: var(--space-3); padding: 0; margin: 0; list-style: none; }
-.combination-alternatives li { min-width: 0; padding: var(--space-3); background: var(--color-bg-subtle); border: 1px solid var(--color-border); border-radius: var(--radius-sm); }
-.combination-alternatives li > small { margin-top: var(--space-1); }
-.combination-alternatives li > .entity-link { max-width: 100%; }
+.combination-alternatives li { min-width: 0; }
+.combination-alternative-choice { display: block; width: 100%; height: 100%; padding: var(--space-3); font: inherit; color: inherit; text-align: left; cursor: pointer; background: var(--color-bg-subtle); border: 1px solid var(--color-border); border-radius: var(--radius-sm); }
+.combination-alternative-choice:hover, .combination-alternative-choice:focus-visible { color: var(--color-link-hover); box-shadow: var(--glow-sm-inverse); }
+.combination-alternative-choice:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+.combination-alternative-choice .combination-item-link { padding: var(--space-3); }
+.combination-alternative-choice .combination-cost-breakdown > span:nth-child(odd) { color: var(--color-text-muted); }
+.combination-alternative-choice .combination-cost-breakdown > span:nth-child(even) { text-align: right; font-variant-numeric: tabular-nums; }
 @media (max-width: 640px) {
   .combination-controls, .combination-comparison { grid-template-columns: minmax(0, 1fr); }
-  .combination-step summary { grid-template-columns: 80px minmax(0, 1fr) 16px; gap: var(--space-2); }
+  .combination-step summary { grid-template-columns: minmax(0, 1fr) 16px; gap: var(--space-2); }
   .combination-step-number { display: none; }
-  .combination-step summary > .icon { grid-column: 1; grid-row: 1 / 3; }
-  .combination-step-name { grid-column: 2; grid-row: 1; }
-  .combination-step-total { grid-column: 2; grid-row: 2; text-align: left; }
-  .combination-step-chevron { grid-column: 3; grid-row: 1 / 3; }
+  .combination-step-pair { grid-column: 1; grid-row: 1; gap: var(--space-2); }
+  .combination-step-item { flex-direction: column; align-items: flex-start; text-align: left; gap: var(--space-2); }
+  .combination-step-total { grid-column: 1; grid-row: 2; text-align: right; }
+  .combination-step-chevron { grid-column: 2; grid-row: 1 / 3; }
 }

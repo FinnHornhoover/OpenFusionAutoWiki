@@ -43,6 +43,34 @@ export interface CombinationStep {
   total: number;
   alternatives?: CombinationStep[];
 }
+/** Cost percentile for independent retries; purchases are paid only once.
+ * Single random steps are exact. Multi-step estimates use a fixed seed and
+ * 65,536 trials so rerenders never change the displayed scenario.
+ */
+export function combinationCostPercentile(steps: CombinationStep[], percentile: number): number {
+  if (!(percentile > 0 && percentile < 1)) throw new RangeError('Percentile must be between 0 and 1');
+  const fixed = steps.reduce((sum, step) => sum + (step.ignoreObtainCost ? 0 : step.item.obtainCost)
+    + (step.probability === 1 ? step.fee : 0), 0);
+  const random = steps.filter(step => step.probability < 1 && step.fee > 0);
+  if (!random.length) return fixed;
+  const attempts = (probability: number, quantile: number) => Math.max(1, Math.ceil(Math.log1p(-quantile) / Math.log1p(-probability)));
+  if (random.length === 1) return fixed + random[0].fee * attempts(random[0].probability, percentile);
+  let seed = 0x12345678;
+  const samples = new Float64Array(65536);
+  const trials = random.map(step => ({ fee: step.fee, logFailure: Math.log1p(-step.probability) }));
+  for (let i = 0; i < samples.length; i++) {
+    let cost = fixed;
+    for (const trial of trials) {
+      seed ^= seed << 13; seed ^= seed >>> 17; seed ^= seed << 5;
+      const uniform = ((seed >>> 0) + 0.5) / 4294967296;
+      cost += trial.fee * Math.max(1, Math.ceil(Math.log1p(-uniform) / trial.logFailure));
+    }
+    samples[i] = cost;
+  }
+  samples.sort();
+  return samples[Math.ceil(percentile * samples.length) - 1];
+}
+
 export interface CombinationResult { steps: CombinationStep[]; total: number; direct: CombinationStep | null }
 
 export function compatible(a: CombinationItem, b: CombinationItem): boolean {
