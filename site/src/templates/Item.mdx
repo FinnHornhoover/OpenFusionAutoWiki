@@ -1,3 +1,4 @@
+import Currency from '../components/Currency';
 import { Link } from 'react-router-dom';
 
 import Dropdown from '../components/Dropdown';
@@ -30,9 +31,9 @@ import SimilarItems from '../components/SimilarItems';
 )}
 
 <dl className="stat-grid">
-  {props.data.playerPrice > 0 && <><dt>Player price</dt><dd>{props.data.playerPrice.toLocaleString()} Taros</dd></>}
-  {props.data.buyPrice > 0 && <><dt>Buy</dt><dd>{props.data.buyPrice.toLocaleString()} Taros</dd></>}
-  {props.data.sellPrice > 0 && <><dt>Sell</dt><dd>{props.data.sellPrice.toLocaleString()} Taros</dd></>}
+  {props.data.playerPrice > 0 && <><dt>Player price</dt><dd><Currency amount={props.data.playerPrice} /></dd></>}
+  {props.data.buyPrice > 0 && <><dt>Buy</dt><dd><Currency amount={props.data.buyPrice} /></dd></>}
+  {props.data.sellPrice > 0 && <><dt>Sell</dt><dd><Currency amount={props.data.sellPrice} /></dd></>}
   {props.data.singleDamage > 0 && <><dt>Damage (single)</dt><dd>{props.data.singleDamage.toLocaleString()}</dd></>}
   {props.data.multiDamage > 0 && <><dt>Damage (multi)</dt><dd>{props.data.multiDamage.toLocaleString()} × {props.data.numberOfTargets} targets</dd></>}
   {props.data.weaponType && props.data.weaponType !== 'None' && <><dt>Weapon class</dt><dd>{props.data.weaponType}</dd></>}
@@ -177,7 +178,7 @@ import SimilarItems from '../components/SimilarItems';
                   {list.map((s, i) => (
                     <tr key={i}>
                       <td><EntityLink entity={s.npc} /></td>
-                      <td>{s.price > 0 ? s.price.toLocaleString() + ' Taros' : <span className="muted">-</span>}</td>
+                      <td>{s.price > 0 ? <Currency amount={s.price} /> : <span className="muted">-</span>}</td>
                       <td>{s.areaZone || <span className="muted">-</span>}</td>
                     </tr>
                   ))}

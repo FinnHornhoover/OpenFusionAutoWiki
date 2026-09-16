@@ -1,3 +1,4 @@
+import Currency from '../components/Currency';
 import Dropdown from '../components/Dropdown';
 import TransportCost from '../components/TransportCost';
 import EntityLink from '../components/EntityLink';
@@ -94,7 +95,7 @@ import { transportIcon } from '../data/mapMarkers';
             <td>
               <strong>{route.routeName}</strong>
               {route.moveType && <div><InlineMeta>{route.moveType && <span>{route.moveType}</span>}</InlineMeta></div>}
-              <TransportCost cost={route.cost} />
+              <TransportCost cost={route.cost} moveType={route.moveType} />
             </td>
             <td>{route.start ? (
               <MapSpot x={route.start.x} y={route.start.y} z={route.start.z} areaId={route.start.areaId} title={route.start.areaZone} icon={transportIcon(route.moveType)} />
@@ -116,7 +117,7 @@ import { transportIcon } from '../data/mapMarkers';
         <li key={`${v.ref.id}-${i}`}>
           <EntityLink entity={v.ref} />
           <InlineMeta leading>
-            <span>{v.buyPrice.toLocaleString()} Taros</span>
+            <span><Currency amount={v.buyPrice} /></span>
             {v.rarity && <span>{v.rarity}</span>}
             {v.requiredLevel > 0 && <span>Lv {v.requiredLevel}</span>}
             {v.itemKind && <span>{v.itemKind}</span>}

@@ -1,3 +1,4 @@
+import Currency from '../components/Currency';
 import DropChance from '../components/DropChance';
 import Dropdown from '../components/Dropdown';
 import EntityLink from '../components/EntityLink';
@@ -77,7 +78,7 @@ import { warpIcon } from '../data/mapMarkers';
               {warp.npc ? <EntityLink entity={warp.npc} /> : <span className="muted">-</span>}
               <InlineMeta leading>
                 {warp.requiredItem && <span><EntityLink entity={warp.requiredItem} /></span>}
-                {warp.warpPrice > 0 && <span>{warp.warpPrice.toLocaleString()} Taros</span>}
+                {warp.warpPrice > 0 && <span><Currency amount={warp.warpPrice} /></span>}
               </InlineMeta>
             </td>
             <td>{warp.entryLocation ? (

@@ -2212,6 +2212,9 @@ details.dropdown > .dropdown-body {
   list-style: none;
 }
 
+.currency-amount { display: inline-flex; align-items: baseline; gap: 0.25em; white-space: nowrap; }
+.currency-icon { display: inline-block; width: 1em; height: 1em; min-width: 16px; min-height: 16px; object-fit: contain; vertical-align: -0.15em; align-self: center; }
+
 /* Combination calculator */
 .combination-page { min-width: 0; }
 .combination-section { min-width: 0; margin-block: var(--space-5); padding: var(--space-4); border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-bg-elevated) url("/assets/modal-bg-dark.png") repeat; box-shadow: var(--glow-sm); }

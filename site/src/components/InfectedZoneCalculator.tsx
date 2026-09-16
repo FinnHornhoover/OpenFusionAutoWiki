@@ -1,3 +1,4 @@
+import Currency from './Currency';
 import { useMemo, useState } from 'react';
 
 import { racingScore } from '../data/racingScore';
@@ -112,9 +113,9 @@ export default function InfectedZoneCalculator({ data }: Props) {
         <dt>Unbounded score</dt>
         <dd>{result?.rawScore.toLocaleString()}</dd>
         <dt>Base FM</dt>
-        <dd>{result?.baseFm.toLocaleString()}</dd>
+        <dd>{result && <Currency amount={result.baseFm} kind="fm" />}</dd>
         <dt>Final FM</dt>
-        <dd>{result?.boostedFm.toLocaleString()}</dd>
+        <dd>{result && <Currency amount={result.boostedFm} kind="fm" />}</dd>
       </dl>
     </div>
   );

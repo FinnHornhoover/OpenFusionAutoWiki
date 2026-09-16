@@ -1,3 +1,4 @@
+import Currency from '../components/Currency';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import EntityLink from '../components/EntityLink';
@@ -11,7 +12,7 @@ import { useIndex } from '../data/useIndex';
 import { TITLE_SEPARATOR, useDocumentTitle } from '../data/useDocumentTitle';
 
 const rarities = ['Common', 'Uncommon', 'Rare', 'Ultra Rare'];
-const money = (value: number) => Math.ceil(value).toLocaleString() + ' Taros';
+const money = (value: number) => <Currency amount={Math.ceil(value)} />;
 const itemRef = (item: CombinationItem) => ({ type: 'item' as const, id: item.id, name: item.name, icon: item.icon });
 const itemType = (item: CombinationItem) => item.typeId === 0 ? item.weaponType : ['Weapon', 'Body', 'Legs', 'Shoes'][item.typeId];
 const itemLabel = (item: CombinationItem) => item.name + ' — Lv' + item.level + ' ' + item.rarity + ' · ' + itemType(item) + ' · ' + item.gender + (item.obtainable ? '' : ' · Unobtainable');

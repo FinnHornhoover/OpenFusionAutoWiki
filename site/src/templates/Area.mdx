@@ -182,7 +182,7 @@ import { transportIcon, warpIcon } from '../data/mapMarkers';
               <td>
                 <strong>{t.routeName}</strong>
                 {t.moveType && <div><InlineMeta>{t.moveType && <span>{t.moveType}</span>}</InlineMeta></div>}
-                <TransportCost cost={t.cost} />
+                <TransportCost cost={t.cost} moveType={t.moveType} />
               </td>
               <td>{t.startNpc ? <EntityLink entity={t.startNpc} /> : <span className="muted">—</span>}</td>
               <td>{start ? (
