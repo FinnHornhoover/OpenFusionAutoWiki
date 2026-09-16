@@ -23,6 +23,7 @@ interface EntityLinkProps {
   entity?: Ref | null;
   withIcon?: boolean;
   iconSize?: number;
+  showMissionMeta?: boolean;
 }
 
 /**
@@ -30,7 +31,7 @@ interface EntityLinkProps {
  * for the current build, otherwise as plain text. Always shows the icon if
  * one is known.
  */
-export default function EntityLink({ entity, withIcon = true, iconSize = 96 }: EntityLinkProps) {
+export default function EntityLink({ entity, withIcon = true, iconSize = 96, showMissionMeta = true }: EntityLinkProps) {
   const { build } = useParams();
   const meta = useBuildMeta(build);
   const route = entity ? ROUTE_FOR[entity.type] : undefined;
@@ -55,7 +56,7 @@ export default function EntityLink({ entity, withIcon = true, iconSize = 96 }: E
   const body = (
     <span className="entity-link-body">
       {withIcon && icon ? <Icon src={icon} alt={entity.name} size={iconSize} className={entity.type === 'item' ? 'icon-item' : undefined} /> : null}
-      {missionMeta ? (
+      {showMissionMeta && missionMeta ? (
         <span className="mission-link-text">
           <span className="mission-link-meta">{missionMeta}</span>
           {name}

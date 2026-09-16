@@ -133,7 +133,7 @@ import { transportIcon } from '../data/mapMarkers';
     <ul className="barker-list">
       {props.data.missionBarkers.map((b, i) => (
         <li key={`${b.mission.id}-${i}`}>
-          <EntityLink entity={b.mission} withIcon={false} />: <em>"{b.text}"</em>
+          <EntityLink entity={b.mission} withIcon={false} showMissionMeta={false} />: <em>"{b.text}"</em>
         </li>
       ))}
     </ul>
