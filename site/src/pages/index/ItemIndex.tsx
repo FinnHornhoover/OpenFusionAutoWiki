@@ -96,13 +96,13 @@ export default function ItemIndex({ build, rows, loading }: Props) {
   const effectiveHideUnobtainable = hideUnobtainable && !hasNameFilter;
 
   const levelOptions = useMemo(() => {
-    return [...new Set(rows.map((r) => r.contentLevel).filter((level) => level > 0))].sort((a, b) => a - b);
+    return [...new Set(rows.map((r) => r.contentLevel ?? 0).filter((level) => level >= 0))].sort((a, b) => a - b);
   }, [rows]);
 
   const matchClass = (r: ItemIndexEntry) => activeClass === 'All' || itemSuperclass(r) === activeClass;
   const matchType = (r: ItemIndexEntry) => !activeType || itemTypeFilterLabel(r).toLowerCase() === activeType.toLowerCase();
   const matchRarity = (r: ItemIndexEntry) => activeRarity === 'All' || r.rarity === activeRarity;
-  const matchLevel = (r: ItemIndexEntry) => activeLevels.size === 0 || activeLevels.has(String(r.contentLevel));
+  const matchLevel = (r: ItemIndexEntry) => activeLevels.size === 0 || activeLevels.has(String(r.contentLevel ?? 0));
   const matchName = hasNameFilter
     ? (r: ItemIndexEntry) => r.name.toLowerCase().includes(nameNeedle)
     : () => true;
@@ -154,7 +154,8 @@ export default function ItemIndex({ build, rows, loading }: Props) {
     for (const level of levelOptions) acc.set(level, 0);
     for (const r of rows) {
       if (!matchClass(r) || !matchType(r) || !matchRarity(r) || !matchName(r) || !matchObtainable(r)) continue;
-      if (r.contentLevel > 0) acc.set(r.contentLevel, (acc.get(r.contentLevel) ?? 0) + 1);
+      const level = r.contentLevel ?? 0;
+      if (level >= 0) acc.set(level, (acc.get(level) ?? 0) + 1);
     }
     return acc;
   }, [rows, activeClass, activeType, activeRarity, q, effectiveHideUnobtainable, levelOptions]);
@@ -168,7 +169,7 @@ export default function ItemIndex({ build, rows, loading }: Props) {
       if (classDelta !== 0) return classDelta;
       const typeDelta = typeRank(itemTypeFilterLabel(a)) - typeRank(itemTypeFilterLabel(b));
       if (typeDelta !== 0) return typeDelta;
-      if (a.contentLevel !== b.contentLevel) return a.contentLevel - b.contentLevel;
+      if ((a.contentLevel ?? 0) !== (b.contentLevel ?? 0)) return (a.contentLevel ?? 0) - (b.contentLevel ?? 0);
       const ra = rarityRank(a.rarity);
       const rb = rarityRank(b.rarity);
       if (ra !== rb) return ra - rb;
@@ -321,7 +322,7 @@ export default function ItemIndex({ build, rows, loading }: Props) {
                         <Link className="entity-index-link" to={`/${build}/items/${r.routeId ?? r.id}`}>{r.name}</Link>
                       </div>
                     </td>
-                    <td>{r.contentLevel > 0 ? r.contentLevel : <span className="muted">-</span>}</td>
+                    <td>{r.contentLevel ?? 0}</td>
                     <td>{r.rarity && r.rarity !== 'Any' ? r.rarity : <span className="muted">-</span>}</td>
                   </tr>
                 ))}

@@ -73,7 +73,7 @@ export async function normalizeCombinations(zipPath: string, slug: string): Prom
     .map(item => {
       return {
         id: item.id, name: item.name, icon: item.icon, typeId: item.typeId,
-        weaponType: item.weaponType, level: item.requiredLevel, rarity: item.rarity,
+        weaponType: item.weaponType, level: item.requiredLevel ?? 0, rarity: item.rarity,
         rarityId: rarities.indexOf(item.rarity) + 1, obtainable: item.obtainable,
         buyPrice: item.buyPrice, gender: item.gender, guideItem: guides.has(item.id),
         singleDamage: item.singleDamage, multiDamage: item.multiDamage, defense: item.defense,

@@ -154,7 +154,7 @@ function CostBreakdown({ steps }: { steps: CombinationStep[] }) {
   </dl>;
 }
 
-function Calculator({ data }: { data: CombinationData }) {
+function Calculator({ data, academyLevelZeroBonus }: { data: CombinationData; academyLevelZeroBonus: boolean }) {
   const [params, setParams] = useSearchParams();
   const style = data.items.find(item => item.id === params.get('style')) ?? data.items.find(item => item.obtainable) ?? data.items[0];
   const [targetLevel, setTargetLevel] = useState<number | null>(null);
@@ -181,7 +181,7 @@ function Calculator({ data }: { data: CombinationData }) {
   const level = targetLevel !== null && levels.includes(targetLevel) ? targetLevel : levels.at(-1) ?? 0;
   const availableRarities = [...new Set(candidates.filter(item => item.level === level).map(item => item.rarityId))].sort();
   const rarity = availableRarities.includes(targetRarity) ? targetRarity : availableRarities.at(-1) ?? 1;
-  const result = useMemo(() => style && candidates.length ? optimizeCombination(data, style, level, rarity, { ignoreObtainCost, priceLimit, allowedRarities }) : null, [data, style, candidates, level, rarity, ignoreObtainCost, priceLimit, allowedRarities]);
+  const result = useMemo(() => style && candidates.length ? optimizeCombination(data, style, level, rarity, { ignoreObtainCost, priceLimit, allowedRarities, academyLevelZeroBonus }) : null, [data, style, candidates, level, rarity, ignoreObtainCost, priceLimit, allowedRarities, academyLevelZeroBonus]);
   const luckCosts = useMemo(() => result ? {
     multi: combinationCostPercentile(result.steps, 0.75),
     direct: result.direct ? combinationCostPercentile([result.direct], 0.25) : null,
@@ -261,6 +261,10 @@ export default function Combinations() {
   const meta = useBuildMeta(build);
   const supported = meta?.builtTypes.includes('combinations') ?? false;
   const { rows, loading, error } = useIndex<CombinationData>(supported ? build : undefined, supported ? 'combinations' : undefined);
+  const academyLevelZeroBonus = Boolean(entry?.date && entry.date >= '2011-02-13');
+  const calculatorData = useMemo(() => rows?.[0] ? {
+    ...rows[0], items: rows[0].items.map(item => ({ ...item, level: item.level ?? 0 })),
+  } : null, [rows]);
   const label = entry?.displayName ?? build;
   useDocumentTitle('Combination Calculator' + TITLE_SEPARATOR + (label ?? ''));
   return <section className="combination-page">
@@ -269,6 +273,6 @@ export default function Combinations() {
     {(!meta || loading) && <p role="status">Loading combination data…</p>}
     {meta && !supported && <p>Combination data is not available for this build.</p>}
     {error && <ErrorState title="Couldn't load combination data" message="The calculator data failed to load." detail={error} />}
-    {rows?.[0] && <Calculator key={build} data={rows[0]} />}
+    {calculatorData && <Calculator key={build} data={calculatorData} academyLevelZeroBonus={academyLevelZeroBonus} />}
   </section>;
 }

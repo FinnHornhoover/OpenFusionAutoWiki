@@ -28,6 +28,8 @@ export interface CombinationRule {
 }
 export interface CombinationData { items: CombinationItem[]; rules: CombinationRule[] }
 export interface CombinationOptions {
+  /** Academy only: guaranteed success for the initial uncombined level-zero style. */
+  academyLevelZeroBonus?: boolean;
   ignoreObtainCost?: boolean;
   /** Maximum acquisition price per intermediate donor; null means unlimited. */
   priceLimit?: number | null;
@@ -83,9 +85,9 @@ export function statsDonor(item: CombinationItem): boolean {
   return item.obtainable === true && item.guideItem !== true;
 }
 
-export function combinationStep(from: CombinationItem, item: CombinationItem, rule?: CombinationRule, ignoreObtainCost = false, styleBuyPrice = from.buyPrice): CombinationStep | null {
+export function combinationStep(from: CombinationItem, item: CombinationItem, rule?: CombinationRule, ignoreObtainCost = false, styleBuyPrice = from.buyPrice, guaranteedSuccess = false): CombinationStep | null {
   if (!statsDonor(item) || !compatible(from, item) || !rule || rule.gap !== Math.abs(from.level - item.level)) return null;
-  const probability = rule.probabilities[Math.abs(from.rarityId - item.rarityId)];
+  const probability = guaranteedSuccess ? 1 : rule.probabilities[Math.abs(from.rarityId - item.rarityId)];
   const fee = Math.trunc(styleBuyPrice * rule.looksMultiplier + item.buyPrice * rule.statsMultiplier);
   if (!Number.isFinite(probability) || probability <= 0 || probability > 1
     || !Number.isFinite(fee) || fee < 0 || !Number.isFinite(item.obtainCost) || item.obtainCost < 0) return null;
@@ -98,13 +100,14 @@ export function combinationStep(from: CombinationItem, item: CombinationItem, ru
  */
 export function optimizeCombination(data: CombinationData, style: CombinationItem, level: number, rarityId: number, options: CombinationOptions = {}): CombinationResult | null {
   const { ignoreObtainCost = false, priceLimit = null, allowedRarities = [1, 2, 3, 4] } = options;
+  const guaranteedFirstStep = options.academyLevelZeroBonus === true && style.level === 0;
   const rules = new Map(data.rules.map(rule => [rule.gap, rule]));
   const target = (item: CombinationItem) => item.level === level && item.rarityId === rarityId;
   const donors = data.items.filter(item => statsDonor(item) && compatible(style, item)
     && (target(item) || ((priceLimit === null || item.obtainCost <= priceLimit) && allowedRarities.includes(item.rarityId))));
   let direct: CombinationStep | null = null;
   for (const item of donors.filter(target)) {
-    const step = combinationStep(style, item, rules.get(Math.abs(style.level - item.level)), ignoreObtainCost, style.buyPrice);
+    const step = combinationStep(style, item, rules.get(Math.abs(style.level - item.level)), ignoreObtainCost, style.buyPrice, guaranteedFirstStep);
     if (step && (!direct || step.total < direct.total)) direct = step;
   }
   if (target(style)) return { steps: [], total: 0, direct };
@@ -130,7 +133,7 @@ export function optimizeCombination(data: CombinationData, style: CombinationIte
         const equalCost = (a: number, b: number) => Math.abs(a - b) <= 1e-8;
         step.alternatives = donors.flatMap(item => {
           if (item.id === step.item.id || item.level !== step.item.level || item.rarityId !== step.item.rarityId) return [];
-          const alternative = combinationStep(step.from, item, rules.get(Math.abs(step.from.level - item.level)), ignoreObtainCost, style.buyPrice);
+          const alternative = combinationStep(step.from, item, rules.get(Math.abs(step.from.level - item.level)), ignoreObtainCost, style.buyPrice, guaranteedFirstStep && index === 0);
           if (!alternative || !equalCost(alternative.total, step.total)) return [];
           // A substitute must also leave the next combination's cost unchanged.
           if (next) {
@@ -145,7 +148,7 @@ export function optimizeCombination(data: CombinationData, style: CombinationIte
     visited[current] = true;
     for (let next = 1; next < nodes.length; next++) {
       if (visited[next]) continue;
-      const step = combinationStep(nodes[current], nodes[next], rules.get(Math.abs(nodes[current].level - nodes[next].level)), ignoreObtainCost, style.buyPrice);
+      const step = combinationStep(nodes[current], nodes[next], rules.get(Math.abs(nodes[current].level - nodes[next].level)), ignoreObtainCost, style.buyPrice, guaranteedFirstStep && current === 0);
       if (step && distance[current] + step.total < distance[next]) {
         distance[next] = distance[current] + step.total;
         previous[next] = current;

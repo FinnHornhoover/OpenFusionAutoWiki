@@ -17,7 +17,7 @@ import SimilarItems from '../components/SimilarItems';
     <span className="badge badge-category">{props.data.type}</span>
     {props.data.displayType && props.data.displayType !== props.data.type && <span className="badge badge-category">{props.data.displayType}</span>}
     {props.data.rarity && <span className="badge badge-category">{props.data.rarity}</span>}
-    {props.data.contentLevel > 0 && <span className="badge badge-category">Level {props.data.contentLevel}</span>}
+    <span className="badge badge-category">Level {props.data.contentLevel ?? 0}</span>
     {!props.data.obtainable && <span className="badge badge-warn">unobtainable</span>}
   </div>
 </div>
