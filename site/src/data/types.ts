@@ -113,6 +113,7 @@ export interface GuideEmail {
 }
 
 export interface MissionIndexEntry {
+  inGame?: boolean;
   id: number;
   routeId?: string;
   name: string;

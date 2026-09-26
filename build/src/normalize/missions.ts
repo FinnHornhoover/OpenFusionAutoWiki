@@ -400,6 +400,7 @@ function normalizeMission(
 function indexEntry(m: Mission): MissionIndexEntry {
   const displayNPC = m.startNPC ?? m.journalNPC;
   return {
+    inGame: m.inGame,
     id: m.id,
     name: m.name,
     level: m.level,

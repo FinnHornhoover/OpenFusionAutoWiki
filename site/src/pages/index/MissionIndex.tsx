@@ -228,7 +228,7 @@ export default function MissionIndex({ build, rows, loading }: Props) {
               </thead>
               <tbody>
                 {renderedRows.map((r) => (
-                  <tr key={r.id}>
+                  <tr key={r.id} className={r.inGame === false ? 'entity-index-row-muted' : undefined}>
                     <td>
                       <div className="entity-index-name">
                         {r.displayNPC?.icon

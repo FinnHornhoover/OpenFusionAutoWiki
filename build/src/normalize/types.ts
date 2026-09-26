@@ -121,6 +121,7 @@ export interface GuideEmail {
 
 /** Summary record emitted to /data/<slug>/index/<type>.json. */
 export interface MissionIndexEntry {
+  inGame: boolean;
   id: number;
   routeId?: string;
   name: string;
