@@ -1,5 +1,6 @@
 import Currency from './Currency';
 import { useMemo, useState } from 'react';
+import { useParams } from 'react-router-dom';
 
 import { racingScore } from '../data/racingScore';
 import type { InfectedZone } from '../data/types';
@@ -27,12 +28,17 @@ function finalFm(base: number, scavenge: number, raceBoost: number): number {
 }
 
 export default function InfectedZoneCalculator({ data }: Props) {
+  const { build } = useParams();
+  const allowScavenge = build !== 'retrobution';
+  const allowBooster = allowScavenge && build !== 'beta-20100104' && build !== 'beta-20100104-fixed';
   const maxPods = Math.max(0, data.podCount);
   const maxTime = Math.max(0, data.timeLimitSeconds);
   const [pods, setPods] = useState(maxPods);
   const [elapsed, setElapsed] = useState(maxTime);
   const [scavenge, setScavenge] = useState(1);
   const [raceBoost, setRaceBoost] = useState(1);
+  const effectiveScavenge = allowScavenge ? scavenge : 1;
+  const effectiveRaceBoost = allowBooster ? raceBoost : 1;
 
   const usable = maxPods > 0 && maxTime > 0 && data.podFactor > 0 && data.timeFactor > 0;
   const result = useMemo(() => {
@@ -52,9 +58,9 @@ export default function InfectedZoneCalculator({ data }: Props) {
       score,
       rawScore,
       baseFm,
-      boostedFm: finalFm(baseFm, scavenge, raceBoost),
+      boostedFm: finalFm(baseFm, effectiveScavenge, effectiveRaceBoost),
     };
-  }, [data.maxScore, data.podFactor, data.scaleFactor, data.timeFactor, elapsed, maxPods, maxTime, pods, raceBoost, scavenge, usable]);
+  }, [data.maxScore, data.podFactor, data.scaleFactor, data.timeFactor, elapsed, maxPods, maxTime, pods, effectiveRaceBoost, effectiveScavenge, usable]);
 
   if (!usable) {
     return (
@@ -89,21 +95,21 @@ export default function InfectedZoneCalculator({ data }: Props) {
             onChange={(e) => setElapsed(clampNumber(e.currentTarget.valueAsNumber, 0, maxTime))}
           />
         </label>
-        <label>
+        {allowScavenge && <label>
           <span>Scavenge?</span>
           <select className="styled-select" value={scavenge} onChange={(e) => setScavenge(Number(e.currentTarget.value))}>
             <option value={1}>None</option>
             <option value={1.2}>Scavenge</option>
           </select>
-        </label>
-        <label>
+        </label>}
+        {allowBooster && <label>
           <span>Booster?</span>
           <select className="styled-select" value={raceBoost} onChange={(e) => setRaceBoost(Number(e.currentTarget.value))}>
             <option value={1}>None</option>
             <option value={1.5}>Racing Booster</option>
             <option value={1.75}>Super Booster DX</option>
           </select>
-        </label>
+        </label>}
       </div>
       <dl className="stat-grid iz-calculator-results">
         <dt>Time</dt>
