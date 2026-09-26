@@ -48,12 +48,12 @@ function refPath(build: string, ref: Ref): string {
   return `/${build}/${ROUTE_FOR[ref.type]}/${ref.id}`;
 }
 
-export function transportIcon(moveType: string): string {
+export function transportIcon(moveType: string, npcName = ''): string {
   const normalized = moveType.toLowerCase();
-  if (normalized.includes('scamper')) return '/minimap/mapicons/scamper_npc.png';
+  if (normalized.includes('scamper')) return npcName.includes('Woosh') ? '/minimap/mapicons/woosh_npc.png' : '/minimap/mapicons/scamper_npc.png';
   if (normalized.includes('monkey')) return '/minimap/mapicons/monkey_skyway_npc.png';
   if (normalized.includes('slider')) return '/minimap/mapicons/world_icon.png';
-  if (normalized.includes('woosh')) return '/minimap/mapicons/warp_npc.png';
+  if (normalized.includes('woosh')) return '/minimap/mapicons/woosh_npc.png';
   return '/minimap/mapicons/location_npc.png';
 }
 
@@ -175,7 +175,7 @@ export function buildAreaMapMarkers(area: Area, build: string): MapMarker[] {
         label: t.routeName,
         x: s.x,
         y: s.y,
-        icon: transportIcon(t.moveType),
+        icon: transportIcon(t.moveType, t.startNpc?.name),
         to,
         routeKey: key,
       });

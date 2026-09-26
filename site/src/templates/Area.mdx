@@ -181,15 +181,15 @@ import { transportIcon, warpIcon } from '../data/mapMarkers';
             <tr key={`${t.routeId}-${i}`}>
               <td>
                 <strong>{t.routeName}</strong>
-                {t.moveType && <div><InlineMeta>{t.moveType && <span>{t.moveType}</span>}</InlineMeta></div>}
+                {t.moveType && <div><InlineMeta><span>{t.moveType === 'SCAMPER' && t.startNpc?.name.includes('Woosh') ? 'Woosh' : t.moveType}</span></InlineMeta></div>}
                 <TransportCost cost={t.cost} moveType={t.moveType} />
               </td>
               <td>{t.startNpc ? <EntityLink entity={t.startNpc} /> : <span className="muted">—</span>}</td>
               <td>{start ? (
-                <MapSpot x={start.x} y={start.y} z={start.z} areaId={start.areaId} title={start.areaZone} icon={transportIcon(t.moveType)} />
+                <MapSpot x={start.x} y={start.y} z={start.z} areaId={start.areaId} title={start.areaZone} icon={transportIcon(t.moveType, t.startNpc?.name)} />
               ) : <span className="muted">—</span>}</td>
               <td>{landing ? (
-                <MapSpot x={landing.x} y={landing.y} z={landing.z} areaId={landing.areaId} title={landing.areaZone} icon={transportIcon(t.moveType)} />
+                <MapSpot x={landing.x} y={landing.y} z={landing.z} areaId={landing.areaId} title={landing.areaZone} icon={transportIcon(t.moveType, t.startNpc?.name)} />
               ) : <span className="muted">—</span>}</td>
             </tr>
           );

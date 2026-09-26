@@ -94,14 +94,14 @@ import { transportIcon } from '../data/mapMarkers';
           <tr key={`${route.routeId}-${route.routeName}-${i}`}>
             <td>
               <strong>{route.routeName}</strong>
-              {route.moveType && <div><InlineMeta>{route.moveType && <span>{route.moveType}</span>}</InlineMeta></div>}
+              {route.moveType && <div><InlineMeta><span>{route.moveType === 'SCAMPER' && props.data.name.includes('Woosh') ? 'Woosh' : route.moveType}</span></InlineMeta></div>}
               <TransportCost cost={route.cost} moveType={route.moveType} />
             </td>
             <td>{route.start ? (
-              <MapSpot x={route.start.x} y={route.start.y} z={route.start.z} areaId={route.start.areaId} title={route.start.areaZone} icon={transportIcon(route.moveType)} />
+              <MapSpot x={route.start.x} y={route.start.y} z={route.start.z} areaId={route.start.areaId} title={route.start.areaZone} icon={transportIcon(route.moveType, props.data.name)} />
             ) : <span className="muted">—</span>}</td>
             <td>{route.landing ? (
-              <MapSpot x={route.landing.x} y={route.landing.y} z={route.landing.z} areaId={route.landing.areaId} title={route.landing.areaZone} icon={transportIcon(route.moveType)} />
+              <MapSpot x={route.landing.x} y={route.landing.y} z={route.landing.z} areaId={route.landing.areaId} title={route.landing.areaZone} icon={transportIcon(route.moveType, props.data.name)} />
             ) : <span className="muted">—</span>}</td>
           </tr>
         ))}
@@ -149,5 +149,3 @@ import { transportIcon } from '../data/mapMarkers';
     </ul>
   </Dropdown>
 )}
-
-

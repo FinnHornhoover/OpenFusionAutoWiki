@@ -219,7 +219,7 @@ function npcMapIcon(raw: RawNpcType, canStartMission: boolean): string {
   if (canStartMission) return mapIcon('mission_start_npc.png');
   if (category === 'StartEcom') return mapIcon('race_start_sact_npc.png');
   if (category === 'EndEcom') return mapIcon('race_end_sact_npc.png');
-  if (category === 'SCAMPER') return mapIcon('scamper_npc.png');
+  if (category === 'SCAMPER') return mapIcon(name.includes('Woosh') ? 'woosh_npc.png' : 'scamper_npc.png');
   if (category === 'MonkeySkyway') return mapIcon('monkey_skyway_npc.png');
   if (category === 'RXcom') return mapIcon('recall_point_npc.png');
   if (category === 'Warp') return mapIcon('warp_npc.png');
