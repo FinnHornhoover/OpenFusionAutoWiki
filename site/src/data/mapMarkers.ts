@@ -27,6 +27,7 @@ export interface MapMarker {
 
 export interface MapRouteLine {
   key: string;
+  routeKeys: string[];
   label: string;
   moveType: string;
   points: Array<{ x: number; y: number }>;
@@ -228,15 +229,26 @@ export function buildWorldMapMarkers(areas: Area[], build: string): MapMarker[] 
 
 export function buildWorldTransportRoutes(areas: Area[]): MapRouteLine[] {
   const routes = new Map<string, MapRouteLine>();
+  const seenRoutes = new Set<string>();
   for (const area of areas) {
     for (const route of area.transportation) {
       const key = routeKey(route);
-      if (routes.has(key)) continue;
+      if (seenRoutes.has(key)) continue;
+      seenRoutes.add(key);
       const points = (route.routePoints && route.routePoints.length > 0 ? route.routePoints : route.stops)
         .map((p) => ({ x: p.x, y: p.y }))
         .filter((p) => p.x !== 0 || p.y !== 0);
       if (points.length < 2) continue;
-      routes.set(key, { key, label: route.routeName, moveType: route.moveType, points });
+      // Opposite-direction routes share one stroke so their dashes cannot fill each other's gaps.
+      const forward = points.map((p) => `${p.x},${p.y}`).join(';');
+      const reverse = [...points].reverse().map((p) => `${p.x},${p.y}`).join(';');
+      const geometryKey = `${route.moveType}:${forward < reverse ? forward : reverse}`;
+      const existing = routes.get(geometryKey);
+      if (existing) {
+        existing.routeKeys.push(key);
+      } else {
+        routes.set(geometryKey, { key, routeKeys: [key], label: route.routeName, moveType: route.moveType, points });
+      }
     }
   }
   return [...routes.values()];

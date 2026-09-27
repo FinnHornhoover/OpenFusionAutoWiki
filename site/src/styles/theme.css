@@ -802,18 +802,21 @@ details.dropdown > .dropdown-body {
 }
 .world-map-routes {
   pointer-events: none;
+  transform-origin: top left;
 }
 .world-map-route {
   fill: none;
-  stroke-width: var(--world-map-route-width, 1px);
+  stroke-width: 2px;
+  stroke-dasharray: 12px 8px;
   stroke-linecap: round;
   stroke-linejoin: round;
   opacity: 0.42;
-  transition: opacity 0.12s ease, stroke-width 0.12s ease;
+  transition: opacity 0.12s ease;
 }
 .world-map-route.is-active {
   opacity: 0.9;
-  stroke-width: var(--world-map-route-active-width, 2px);
+  stroke-width: 4px;
+  stroke-dasharray: none;
 }
 .world-map-route-monkey-skyway { stroke: #8f5cff; }
 .world-map-route-scamper { stroke: #e05252; }

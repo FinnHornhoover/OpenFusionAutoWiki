@@ -9,8 +9,6 @@ import { TITLE_SEPARATOR, useDocumentTitle } from '../data/useDocumentTitle';
 
 const WORLD_MARKER_SCREEN_SIZE = 32;
 const WORLD_MARKER_CULL_BUFFER = WORLD_MARKER_SCREEN_SIZE * 2;
-const WORLD_ROUTE_SCREEN_WIDTH = 2;
-const WORLD_ROUTE_ACTIVE_SCREEN_WIDTH = 4;
 const MIN_WORLD_MAP_ZOOM = 1.5;
 const INITIAL_WORLD_MAP_ZOOM = 2;
 const MAX_WORLD_MAP_ZOOM = 24;
@@ -278,19 +276,22 @@ export default function WorldMap() {
             className="world-map-canvas"
             style={{
               transform: `translate(${offset.x}px, ${offset.y}px) scale(${zoom})`,
-              '--world-map-route-width': `${WORLD_ROUTE_SCREEN_WIDTH / zoom}px`,
-              '--world-map-route-active-width': `${WORLD_ROUTE_ACTIVE_SCREEN_WIDTH / zoom}px`,
             } as CSSProperties}
           >
             <img src="/minimap/all.png" alt="" className="world-map-image" draggable={false} />
-            <svg className="world-map-routes" viewBox={`0 0 ${MINIMAP_PX} ${MINIMAP_PX}`} aria-hidden>
+            {/* Cancel the canvas scale for strokes; only route coordinates scale with zoom. */}
+            <svg
+              className="world-map-routes"
+              style={{ width: MINIMAP_PX * zoom, height: MINIMAP_PX * zoom, transform: `scale(${1 / zoom})` }}
+              aria-hidden
+            >
               {routes.map((route) => (
                 <polyline
                   key={route.key}
-                  className={`world-map-route world-map-route-${routeClass(route.moveType)} ${hoverRoutes.includes(route.key) ? 'is-active' : ''}`}
+                  className={`world-map-route world-map-route-${routeClass(route.moveType)} ${route.routeKeys.some((key) => hoverRoutes.includes(key)) ? 'is-active' : ''}`}
                   points={route.points.map((p) => {
                     const pos = worldToPx(p.x, p.y);
-                    return `${pos.px},${pos.py}`;
+                    return `${pos.px * zoom},${pos.py * zoom}`;
                   }).join(' ')}
                 />
               ))}
