@@ -1,11 +1,12 @@
 import type { Area, AreaTransport, Ref } from './types';
 
-export type MapMarkerKind = 'npc' | 'vendor' | 'monster' | 'egg' | 'transport' | 'instance-warp';
+export type MapMarkerKind = 'npc' | 'vendor' | 'monster' | 'world-boss' | 'egg' | 'transport' | 'instance-warp';
 
 export const MAP_MARKER_KIND_LABELS: Record<MapMarkerKind, string> = {
   npc: 'NPCs',
   vendor: 'Vendors',
   monster: 'Monsters',
+  'world-boss': 'World Bosses',
   egg: 'Eggs',
   transport: 'Transport',
   'instance-warp': 'Instance warps',
@@ -31,6 +32,28 @@ export interface MapRouteLine {
   label: string;
   moveType: string;
   points: Array<{ x: number; y: number }>;
+}
+
+function bossPathKey(mobId: Ref['id'], points: Array<{ x: number; y: number }>): string {
+  return `boss-${mobId}:${points.map((p) => `${p.x},${p.y}`).join(';')}`;
+}
+
+/** Authored patrols only: never connect independent spawn locations. */
+export function buildWorldBossPaths(areas: Area[]): Array<{ id: string; label: string; points: Array<{ x: number; y: number }> }> {
+  const paths = new Map<string, { id: string; label: string; points: Array<{ x: number; y: number }> }>();
+  for (const area of areas) {
+    for (const mob of area.mobs) {
+      if (!mob.worldBoss) continue;
+      const spawns = mob.points.length > 0 ? mob.points : [mob];
+      if (!spawns.some((point) => (point.instanceID ?? mob.instanceID) === 0)) continue;
+      for (const points of mob.paths ?? []) {
+        if (points.length < 2) continue;
+        const id = bossPathKey(mob.ref.id, points);
+        paths.set(id, { id, label: mob.ref.name, points });
+      }
+    }
+  }
+  return [...paths.values()];
 }
 
 const ROUTE_FOR: Record<Ref['type'], string> = {
@@ -104,11 +127,14 @@ export function buildAreaMapMarkers(area: Area, build: string): MapMarker[] {
   }
 
   for (const mob of area.mobs) {
-    const points = mob.points.length > 0 ? mob.points : [{ x: mob.x, y: mob.y }];
+    const points = mob.points.length > 0 ? mob.points : [{ x: mob.x, y: mob.y, instanceID: mob.instanceID }];
     points.forEach((point, pointIndex) => {
+      if (mob.worldBoss && (point.instanceID ?? mob.instanceID) !== 0) return;
+      const path = point.pathIndex == null ? undefined : mob.paths?.[point.pathIndex];
       markers.push({
         id: `monster-${mob.ref.id}-${pointIndex}`,
-        kind: 'monster',
+        kind: mob.worldBoss ? 'world-boss' : 'monster',
+        routeKeys: mob.worldBoss && path && path.length > 1 ? [bossPathKey(mob.ref.id, path)] : undefined,
         label: mob.ref.name,
         x: point.x,
         y: point.y,
@@ -240,14 +266,16 @@ export function buildWorldTransportRoutes(areas: Area[]): MapRouteLine[] {
         .filter((p) => p.x !== 0 || p.y !== 0);
       if (points.length < 2) continue;
       // Opposite-direction routes share one stroke so their dashes cannot fill each other's gaps.
+      const moveType = route.moveType === 'SCAMPER' && route.startNpc?.name.includes('Woosh')
+        ? 'Woosh' : route.moveType;
       const forward = points.map((p) => `${p.x},${p.y}`).join(';');
       const reverse = [...points].reverse().map((p) => `${p.x},${p.y}`).join(';');
-      const geometryKey = `${route.moveType}:${forward < reverse ? forward : reverse}`;
+      const geometryKey = `${moveType}:${forward < reverse ? forward : reverse}`;
       const existing = routes.get(geometryKey);
       if (existing) {
         existing.routeKeys.push(key);
       } else {
-        routes.set(geometryKey, { key, routeKeys: [key], label: route.routeName, moveType: route.moveType, points });
+        routes.set(geometryKey, { key, routeKeys: [key], label: route.routeName, moveType, points });
       }
     }
   }

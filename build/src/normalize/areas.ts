@@ -1,4 +1,5 @@
 import AdmZip from 'adm-zip';
+import { isWorldBoss, monsterMapIcon } from './monsterClassification.js';
 
 import { writeChunks, writeIndex } from '../chunk.js';
 import { iconFor, itemRef } from './refs.js';
@@ -75,6 +76,7 @@ interface RawAreaVendor {
   NPCs?: Record<string, RawAreaNpc>;
 }
 interface RawAreaMob {
+  Route?: Array<{ X: number; Y: number; Z?: number }>;
   TypeID: number;
   TypeName?: string;
   TypeIcon?: string;
@@ -425,13 +427,8 @@ function buildAreaVendors(
     .sort((a, b) => a.ref.name.localeCompare(b.ref.name));
 }
 
-function monsterMapIcon(name: string): string {
-  return name.includes('Fusion') && !name.includes('Fusion Spawn')
-    ? mapIcon('lair_fusion_boss_monster.png')
-    : mapIcon('other_monster.png');
-}
-
 function buildAreaMobs(
+  build: string,
   mobs: Record<string, RawAreaMob> | undefined,
   mobTypes: Record<string, RawAreaMobType> | undefined,
   iconMap: IconMap,
@@ -459,9 +456,28 @@ function buildAreaMobs(
   return [...counts.entries()]
     .map(([id, { name, icon, level, hp, points }]) => {
       const instance = sharedInstanceLabel(points.map((p) => p.InstanceID ?? 0), instanceIndex);
+      const worldBoss = isWorldBoss(build, id);
+      const paths: AreaMobEntry['paths'] = [];
+      const mapPoints = points.map((spawn) => {
+        const point: AreaMobEntry['points'][number] = {
+          x: spawn.X ?? 0, y: spawn.Y ?? 0, instanceID: spawn.InstanceID ?? 0,
+        };
+        if (!worldBoss || point.instanceID === 0) {
+          const path = (spawn.Route ?? [])
+            .filter((p) => Number.isFinite(p.X) && Number.isFinite(p.Y))
+            .map((p) => ({ x: p.X, y: p.Y }));
+          if (path.length > 1) {
+            point.pathIndex = paths.length;
+            paths.push(path);
+          }
+        }
+        return point;
+      });
       return {
         ref: { type: 'monster' as const, id, name, icon },
-        mapIcon: monsterMapIcon(name),
+        mapIcon: monsterMapIcon(build, id, name),
+        worldBoss,
+        paths,
         instanceCount: points.length,
         level,
         hp,
@@ -471,7 +487,7 @@ function buildAreaMobs(
         areaId,
         areaZone: points[0]?.AreaZone ?? fullName,
         ...instance,
-        points: points.map((p) => ({ x: p.X ?? 0, y: p.Y ?? 0 })),
+        points: mapPoints,
       };
     })
     .sort((a, b) => a.level - b.level || a.ref.name.localeCompare(b.ref.name));
@@ -737,7 +753,7 @@ export async function normalizeAreas(
     const id = slugify(fullName);
     const vendorIndex = buildVendorIndex(raw.Vendors, fullName);
     const npcs = buildAreaNpcs(raw.NPCs, raw.NPCTypes, iconMap, id, fullName, instanceIndex, npcMissions, vendorIndex);
-    const mobs = buildAreaMobs(raw.Mobs, raw.MobTypes, iconMap, id, fullName, instanceIndex);
+    const mobs = buildAreaMobs(slug, raw.Mobs, raw.MobTypes, iconMap, id, fullName, instanceIndex);
     const vendors = buildAreaVendors(raw.Vendors, raw.NPCTypes, iconMap, id, fullName, instanceIndex, npcMissions);
     const eggs = buildAreaEggs(raw.Eggs, raw.EggTypes, iconMap, id, fullName, instanceIndex);
     const transportation = transportIndex.get(fullName) ?? [];

@@ -19,6 +19,8 @@ interface MinimapProps {
   extent?: number;
   /** Secondary world-coordinate points to draw inside this viewport. */
   points?: MinimapPoint[];
+  paths?: MinimapPoint[][];
+  fitContent?: boolean;
   /** Optional marker icon. Falls back to the generic pin. */
   icon?: string;
   /** Optional tooltip. */
@@ -39,11 +41,26 @@ export default function Minimap({
   size = 96,
   extent = 25600,
   points = [],
+  paths = [],
+  fitContent = false,
   icon,
   title,
 }: MinimapProps) {
-  const center = worldToPx(x, y);
-  const extentPx = gameToPxExtent(extent);
+  let centerX = x;
+  let centerY = y;
+  let fittedExtent = extent;
+  if (fitContent) {
+    const content = [...(points.length ? points : [{ x, y }]), ...paths.flat()];
+    const minX = Math.min(...content.map((point) => point.x));
+    const maxX = Math.max(...content.map((point) => point.x));
+    const minY = Math.min(...content.map((point) => point.y));
+    const maxY = Math.max(...content.map((point) => point.y));
+    centerX = (minX + maxX) / 2;
+    centerY = (minY + maxY) / 2;
+    fittedExtent = Math.max(extent, Math.max((maxX - minX) / 2, (maxY - minY) / 2) * 1.2);
+  }
+  const center = worldToPx(centerX, centerY);
+  const extentPx = gameToPxExtent(fittedExtent);
   if (extentPx <= 0) return null;
 
   const scale = size / (2 * extentPx);
@@ -88,6 +105,20 @@ export default function Minimap({
         />
       ) : (
         <>
+          {paths.length > 0 && (
+            <svg width={size} height={size} style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }} aria-hidden>
+              {paths.map((path, index) => (
+                <polyline
+                  key={index}
+                  className="world-boss-path is-active"
+                  points={path.map((point) => {
+                    const pos = worldToPx(point.x, point.y);
+                    return `${size / 2 + (pos.px - center.px) * scale},${size / 2 + (pos.py - center.py) * scale}`;
+                  }).join(' ')}
+                />
+              ))}
+            </svg>
+          )}
           {overlayPoints.map((point, i) => point.icon ? (
             <img
               key={i}

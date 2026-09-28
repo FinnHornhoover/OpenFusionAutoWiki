@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { gameToPxExtent, MINIMAP_PX, worldToPx } from '../data/minimapCoords';
 import type { Area } from '../data/types';
-import { buildAreaMapMarkers, MAP_MARKER_KIND_LABELS, MAP_MARKER_KINDS, type MapMarkerKind } from '../data/mapMarkers';
+import { buildAreaMapMarkers, buildWorldBossPaths, MAP_MARKER_KIND_LABELS, MAP_MARKER_KINDS, type MapMarkerKind } from '../data/mapMarkers';
 
 interface AreaMapProps {
   area: Area;
@@ -42,6 +42,7 @@ export default function AreaMap({ area, build, size = 960 }: AreaMapProps) {
   const [zoom, setZoom] = useState(MIN_AREA_MAP_ZOOM);
   const [viewBox, setViewBox] = useState({ x: 0, y: 0, width: size, height: size });
   const [visibleKinds, setVisibleKinds] = useState<VisibleMarkerKinds>(() => defaultVisibleMarkerKinds());
+  const [hoverPaths, setHoverPaths] = useState<string[]>([]);
   const [renderedWidth, setRenderedWidth] = useState(size);
   const mapRef = useRef<SVGSVGElement | null>(null);
   const activePointers = useRef(new Map<number, PointerPoint>());
@@ -102,6 +103,7 @@ export default function AreaMap({ area, build, size = 960 }: AreaMapProps) {
 
   const markers = useMemo(() => buildAreaMapMarkers(area, build), [area, build]);
   const visibleMarkers = useMemo(() => markers.filter((marker) => visibleKinds[marker.kind]), [markers, visibleKinds]);
+  const bossPaths = useMemo(() => visibleKinds['world-boss'] ? buildWorldBossPaths([area]) : [], [area, visibleKinds]);
 
   if (extentPx <= 0) return null;
 
@@ -124,6 +126,7 @@ export default function AreaMap({ area, build, size = 960 }: AreaMapProps) {
 
   function toggleMarkerKind(kind: MapMarkerKind) {
     setVisibleKinds((prev) => ({ ...prev, [kind]: !prev[kind] }));
+    setHoverPaths([]);
   }
 
   return (
@@ -221,12 +224,34 @@ export default function AreaMap({ area, build, size = 960 }: AreaMapProps) {
       onPointerLeave={(event) => { if (!event.currentTarget.hasPointerCapture(event.pointerId)) clearPointer(event.pointerId); }}
     >
       <image href="/minimap/all.png" x={imageX} y={imageY} width={imageSize} height={imageSize} className="map-base-image" />
+      {bossPaths.map((path) => (
+        <polyline
+          key={path.id}
+          className={`world-boss-path${hoverPaths.includes(path.id) ? ' is-active' : ''}`}
+          vectorEffect="non-scaling-stroke"
+          points={path.points.map((point) => {
+            const pos = worldToPx(point.x, point.y);
+            return `${size / 2 + (pos.px - center.px) * scale},${size / 2 + (pos.py - center.py) * scale}`;
+          }).join(' ')}
+        >
+          <title>{path.label} patrol</title>
+        </polyline>
+      ))}
       {visibleMarkers.map((marker) => {
         const pos = worldToPx(marker.x, marker.y);
         const left = size / 2 + (pos.px - center.px) * scale;
         const top = size / 2 + (pos.py - center.py) * scale;
         return (
-          <a key={marker.id} href={marker.to} className={`area-map-marker area-map-marker-${marker.kind}`} aria-label={marker.label}>
+          <a
+            key={marker.id}
+            href={marker.to}
+            className={`area-map-marker area-map-marker-${marker.kind}`}
+            aria-label={marker.label}
+            onMouseEnter={() => setHoverPaths(marker.routeKeys ?? [])}
+            onMouseLeave={() => setHoverPaths([])}
+            onFocus={() => setHoverPaths(marker.routeKeys ?? [])}
+            onBlur={() => setHoverPaths([])}
+          >
             <image
               href={marker.icon}
               x={left - markerSize / 2}

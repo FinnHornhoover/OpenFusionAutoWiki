@@ -423,6 +423,7 @@ export interface ItemIndexEntry {
 // ---- Monsters ---------------------------------------------------------------
 
 export interface MobLocation {
+  route?: Array<{ x: number; y: number }>;
   areaZone: string;
   areaId: string;
   x: number;
@@ -435,6 +436,7 @@ export interface MobLocation {
 }
 
 export interface MobLocationGroup {
+  paths?: Array<Array<{ x: number; y: number }>>;
   areaZone: string;
   areaId: string;
   x: number;
@@ -466,6 +468,7 @@ export interface MobMiscRewards {
 }
 
 export interface Mob {
+  worldBoss: boolean;
   id: number;
   name: string;
   icon: string;
@@ -662,6 +665,8 @@ export interface AreaNpcEntry {
 
 /** A mob type appearing in an area, with how many instances and (when uniform) level/HP. */
 export interface AreaMobEntry {
+  worldBoss: boolean;
+  paths: Array<Array<{ x: number; y: number }>>;
   ref: Ref;
   mapIcon: string;
   instanceCount: number;
@@ -674,7 +679,7 @@ export interface AreaMobEntry {
   areaZone: string;
   instanceID: number;
   instanceName: string;
-  points: Array<{ x: number; y: number }>;
+  points: Array<{ x: number; y: number; instanceID: number; pathIndex?: number }>;
 }
 
 export interface AreaVendorEntry {

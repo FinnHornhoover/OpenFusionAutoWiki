@@ -2,7 +2,7 @@ import { type CSSProperties, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom';
 import ErrorState from '../components/ErrorState';
 import { MINIMAP_PX, worldToPx } from '../data/minimapCoords';
-import { buildWorldMapMarkers, buildWorldTransportRoutes, MAP_MARKER_KIND_LABELS, MAP_MARKER_KINDS, type MapMarker, type MapMarkerKind } from '../data/mapMarkers';
+import { buildWorldMapMarkers, buildWorldTransportRoutes, buildWorldBossPaths, MAP_MARKER_KIND_LABELS, MAP_MARKER_KINDS, type MapMarker, type MapMarkerKind } from '../data/mapMarkers';
 import type { Area } from '../data/types';
 import { useBuildEntry } from '../data/useBuildEntry';
 import { TITLE_SEPARATOR, useDocumentTitle } from '../data/useDocumentTitle';
@@ -124,6 +124,7 @@ export default function WorldMap() {
     return rendered;
   }, [markers, offset.x, offset.y, viewportSize.height, viewportSize.width, visibleKinds, zoom]);
   const routes = useMemo(() => visibleKinds.transport ? buildWorldTransportRoutes(areas) : [], [areas, visibleKinds.transport]);
+  const bossPaths = useMemo(() => visibleKinds['world-boss'] ? buildWorldBossPaths(areas) : [], [areas, visibleKinds]);
   const markerScale = 1 / zoom;
 
   useEffect(() => {
@@ -173,7 +174,7 @@ export default function WorldMap() {
 
   function toggleMarkerKind(kind: MapMarkerKind) {
     setVisibleKinds((prev) => ({ ...prev, [kind]: !prev[kind] }));
-    if (kind === 'transport' && visibleKinds.transport) setHoverRoutes([]);
+    if ((kind === 'transport' || kind === 'world-boss') && visibleKinds[kind]) setHoverRoutes([]);
   }
 
   if (!build) return null;
@@ -285,6 +286,18 @@ export default function WorldMap() {
               style={{ width: MINIMAP_PX * zoom, height: MINIMAP_PX * zoom, transform: `scale(${1 / zoom})` }}
               aria-hidden
             >
+              {bossPaths.map((path) => (
+                <polyline
+                  key={path.id}
+                  className={`world-boss-path${hoverRoutes.includes(path.id) ? ' is-active' : ''}`}
+                  points={path.points.map((point) => {
+                    const pos = worldToPx(point.x, point.y);
+                    return `${pos.px * zoom},${pos.py * zoom}`;
+                  }).join(' ')}
+                >
+                  <title>{path.label} patrol</title>
+                </polyline>
+              ))}
               {routes.map((route) => (
                 <polyline
                   key={route.key}

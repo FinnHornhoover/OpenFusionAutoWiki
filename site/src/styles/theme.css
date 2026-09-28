@@ -813,6 +813,22 @@ details.dropdown > .dropdown-body {
   opacity: 0.42;
   transition: opacity 0.12s ease;
 }
+.world-boss-path {
+  fill: none;
+  stroke: #80c400;
+  stroke-width: 2px;
+  stroke-dasharray: 12px 8px;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0.42;
+  transition: opacity 0.12s ease;
+  pointer-events: none;
+}
+.world-boss-path.is-active {
+  stroke-dasharray: none;
+  stroke-width: 4px;
+  opacity: 0.9;
+}
 .world-map-route.is-active {
   opacity: 0.9;
   stroke-width: 4px;
@@ -821,7 +837,7 @@ details.dropdown > .dropdown-body {
 .world-map-route-monkey-skyway { stroke: #8f5cff; }
 .world-map-route-scamper { stroke: #e05252; }
 .world-map-route-slider { stroke: #3b82f6; }
-.world-map-route-woosh { stroke: #f2c94c; }
+.world-map-route-woosh { stroke: #e6a43b; }
 .world-map-route-other { stroke: var(--color-text-muted); }
 .world-map-marker {
   position: absolute;

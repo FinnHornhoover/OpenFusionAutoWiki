@@ -1,4 +1,5 @@
 import AdmZip from 'adm-zip';
+import { monsterMapIcon } from './monsterClassification.js';
 
 import type { IconMap } from '../icons.js';
 import { iconFor } from './refs.js';
@@ -46,14 +47,9 @@ function median(values: number[]): number {
   return sorted.length % 2 ? sorted[mid] : Math.round((sorted[mid - 1] + sorted[mid]) / 2);
 }
 
-function monsterMapIcon(name: string): string {
-  return name.includes('Fusion') && !name.includes('Fusion Spawn')
-    ? '/minimap/mapicons/lair_fusion_boss_monster.png'
-    : '/minimap/mapicons/other_monster.png';
-}
-
 export function buildMissionMobLocationMap(
   zipPath: string,
+  build: string,
   iconMap: IconMap,
   instanceNames: InstanceNameIndex,
 ): MissionMobLocationMap {
@@ -104,7 +100,7 @@ export function buildMissionMobLocationMap(
     });
     out.set(raw.ID, {
       icon: iconFor(raw.Icon ?? '', iconMap),
-      mapIcon: monsterMapIcon(raw.Name ?? ''),
+      mapIcon: monsterMapIcon(build, raw.ID, raw.Name ?? ''),
       locations,
     });
   }

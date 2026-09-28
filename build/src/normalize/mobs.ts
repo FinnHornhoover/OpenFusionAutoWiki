@@ -1,4 +1,5 @@
 import AdmZip from 'adm-zip';
+import { isWorldBoss, monsterMapIcon } from './monsterClassification.js';
 
 import { chunkOf, writeChunks, writeIndex } from '../chunk.js';
 import { iconFor } from './refs.js';
@@ -64,6 +65,7 @@ interface RawMobType {
 }
 
 interface RawMobInstance {
+  Route?: Array<{ X: number; Y: number }>;
   ID?: string | number;
   AreaZone?: string;
   TypeID?: number;
@@ -105,6 +107,9 @@ function buildLocationsByType(
         instanceName: instanceNames.get(instanceID) ?? '',
         hp: inst.HP ?? 0,
         groupId,
+        route: instanceID === 0 ? (inst.Route ?? [])
+          .filter((point) => Number.isFinite(point.X) && Number.isFinite(point.Y))
+          .map((point) => ({ x: point.X, y: point.Y })) : [],
       });
     }
   }
@@ -162,6 +167,7 @@ function groupLocations(locations: MobLocation[]): MobLocationGroup[] {
         hp: mostCommonHP(group.map((loc) => loc.hp)),
         spawnCount: group.length,
         points: group.map((loc) => ({ x: loc.x, y: loc.y })),
+        paths: group.flatMap((loc) => loc.route && loc.route.length > 1 ? [loc.route] : []),
       };
     })
     .sort((a, b) =>
@@ -173,13 +179,8 @@ function groupLocations(locations: MobLocation[]): MobLocationGroup[] {
     );
 }
 
-function monsterMapIcon(name: string): string {
-  return name.includes('Fusion') && !name.includes('Fusion Spawn')
-    ? '/minimap/mapicons/lair_fusion_boss_monster.png'
-    : '/minimap/mapicons/other_monster.png';
-}
-
 function normalizeMob(
+  build: string,
   raw: RawMobType,
   iconMap: IconMap,
   locations: MobLocation[],
@@ -194,7 +195,8 @@ function normalizeMob(
     id: raw.ID,
     name: raw.Name,
     icon: iconFor(raw.Icon ?? '', iconMap),
-    mapIcon: monsterMapIcon(raw.Name),
+    mapIcon: monsterMapIcon(build, raw.ID, raw.Name),
+    worldBoss: isWorldBoss(build, raw.ID),
     category: raw.Category ?? '',
     colorType: raw.ColorType ?? '',
     level: raw.Level ?? 0,
@@ -288,7 +290,7 @@ export async function normalizeMobs(
   const locationsByType = buildLocationsByType(rawInsts, instanceNames);
 
   const mobs: Mob[] = Object.values(rawTypes)
-    .map((t) => normalizeMob(t, iconMap, locationsByType.get(t.ID) ?? [], mobMissions, mobItems))
+    .map((t) => normalizeMob(slug, t, iconMap, locationsByType.get(t.ID) ?? [], mobMissions, mobItems))
     .sort((a, b) => a.id - b.id);
 
   const linked = mobs.filter((m) => m.missionsRequiring.length > 0).length;

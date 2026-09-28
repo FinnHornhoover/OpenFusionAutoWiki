@@ -17,6 +17,8 @@ interface MapSpotProps {
   instanceName?: string;
   instanceID?: number;
   points?: MapSpotPoint[];
+  paths?: MapSpotPoint[][];
+  fitContent?: boolean;
   size?: number;
   extent?: number;
   icon?: string;
@@ -31,6 +33,8 @@ export default function MapSpot({
   instanceName = '',
   instanceID = 0,
   points = [],
+  paths = [],
+  fitContent = false,
   size = 256,
   extent,
   icon,
@@ -40,7 +44,7 @@ export default function MapSpot({
   const instanceLabel = instanceName
     ? <span className="map-spot-instance">{instanceName}</span>
     : instanceID > 0 ? <span className="map-spot-instance">Instance {instanceID}</span> : null;
-  const map = <Minimap x={x} y={y} size={size} extent={extent} points={points} icon={icon} title={title} />;
+  const map = <Minimap x={x} y={y} size={size} extent={extent} points={points} paths={paths} fitContent={fitContent} icon={icon} title={title} />;
   const coordinates = <span className="map-spot-coordinates">({x}, {y}, {z})</span>;
   const content = (
     <>
