@@ -838,6 +838,7 @@ details.dropdown > .dropdown-body {
 .world-map-route-scamper { stroke: #e05252; }
 .world-map-route-slider { stroke: #3b82f6; }
 .world-map-route-woosh { stroke: #e6a43b; }
+.world-map-route-warp { stroke: #45bcc7; }
 .world-map-route-other { stroke: var(--color-text-muted); }
 .world-map-marker {
   position: absolute;

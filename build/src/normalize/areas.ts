@@ -121,6 +121,9 @@ interface RawAreaEggType {
   EffectDuration?: number;
 }
 interface RawAreaInstanceWarp {
+  ToX?: number;
+  ToY?: number;
+  ToZ?: number;
   ID?: number;
   EntryInstanceID?: number;
   EntryInstance?: string;
@@ -174,6 +177,7 @@ interface RawTransportRoute {
 interface RawInstance {
   ID?: number;
   Name?: string;
+  EPID?: number;
 }
 
 
@@ -618,9 +622,20 @@ function buildAreaInstanceWarps(
   instanceIndex: Map<number, RawInstance>,
   iconMap: IconMap,
   missionLevels: Map<number, number>,
+  areaZone?: string,
 ): AreaInstanceWarp[] {
   const out: AreaInstanceWarp[] = [];
-  for (const w of Object.values(warps ?? {})) {
+  // One warp definition can be served by multiple NPC spawns (e.g. both IZ exits).
+  // Keep each local spawn instead of choosing the first spawn for every area.
+  const localWarps = Object.values(warps ?? {}).flatMap((warp) => {
+    if (!warp || typeof warp !== 'object') return [];
+    const spawns = Object.entries(warp.NPCs ?? {});
+    if (spawns.length === 0) return [warp];
+    return spawns
+      .filter(([, npc]) => !areaZone || npc.AreaZone === areaZone)
+      .map(([id, npc]) => ({ ...warp, NPCs: { [id]: npc } }));
+  });
+  for (const w of localWarps) {
     if (!w || typeof w !== 'object') continue;
     const instId = w.EntryInstanceID ?? 0;
     const entryNpcs = Object.values(w.NPCs ?? {});
@@ -649,6 +664,12 @@ function buildAreaInstanceWarps(
       instanceID: instId,
       instanceName: inst?.Name ?? w.EntryInstance ?? `Instance ${instId}`,
       npc,
+      npcCategory: w.NPCType?.Category ?? '',
+      exitLocation: Number.isFinite(w.ToX) && Number.isFinite(w.ToY) ? {
+        x: w.ToX!, y: w.ToY!, z: w.ToZ ?? 0,
+        instanceID: w.EntryInstanceID ?? -1,
+        infectedZone: (instanceIndex.get(w.EntryInstanceID ?? -1)?.EPID ?? 0) > 0,
+      } : null,
       entryLocation: entryNpc ? {
         areaZone: entryAreaZone,
         areaId: entryAreaZone && entryAreaZone !== 'Unknown - Unknown' ? slugify(entryAreaZone) : '',
@@ -656,6 +677,7 @@ function buildAreaInstanceWarps(
         y: entryNpc.Y ?? 0,
         z: entryNpc.Z ?? 0,
         instanceID: entryInstanceID,
+        infectedZone: (instanceIndex.get(entryInstanceID)?.EPID ?? 0) > 0,
         instanceName: instanceIndex.get(entryInstanceID)?.Name ?? '',
       } : null,
       requiredItem,
@@ -772,7 +794,7 @@ export async function normalizeAreas(
     const vendors = buildAreaVendors(raw.Vendors, raw.NPCTypes, iconMap, id, fullName, instanceIndex, npcMissions);
     const eggs = buildAreaEggs(raw.Eggs, raw.EggTypes, iconMap, id, fullName, instanceIndex);
     const transportation = transportIndex.get(fullName) ?? [];
-    const instanceWarps = buildAreaInstanceWarps(raw.InstanceWarps, instanceIndex, iconMap, missionLevels);
+    const instanceWarps = buildAreaInstanceWarps(raw.InstanceWarps, instanceIndex, iconMap, missionLevels, fullName);
     const infectedZone = summarizeInfectedZone(raw.InfectedZone, infectedZones);
 
     // Missions starting in this area: any mission whose startNPC.id is one of our NPC type IDs.

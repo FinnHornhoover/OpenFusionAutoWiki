@@ -2,7 +2,7 @@ import { type CSSProperties, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom';
 import ErrorState from '../components/ErrorState';
 import { MINIMAP_PX, worldToPx } from '../data/minimapCoords';
-import { buildWorldMapMarkers, buildWorldTransportRoutes, buildWorldBossPaths, MAP_MARKER_KIND_LABELS, MAP_MARKER_KINDS, type MapMarker, type MapMarkerKind } from '../data/mapMarkers';
+import { buildWorldMapMarkers, buildWorldTransportRoutes, buildWorldWarpRoutes, buildWorldBossPaths, MAP_MARKER_KIND_LABELS, MAP_MARKER_KINDS, type MapMarker, type MapMarkerKind } from '../data/mapMarkers';
 import type { Area } from '../data/types';
 import { useBuildEntry } from '../data/useBuildEntry';
 import { TITLE_SEPARATOR, useDocumentTitle } from '../data/useDocumentTitle';
@@ -26,6 +26,7 @@ const ROUTE_CLASS: Record<string, string> = {
   scamper: 'scamper',
   slider: 'slider',
   woosh: 'woosh',
+  warp: 'warp',
 };
 
 function routeClass(moveType: string): string {
@@ -123,7 +124,10 @@ export default function WorldMap() {
 
     return rendered;
   }, [markers, offset.x, offset.y, viewportSize.height, viewportSize.width, visibleKinds, zoom]);
-  const routes = useMemo(() => visibleKinds.transport ? buildWorldTransportRoutes(areas) : [], [areas, visibleKinds.transport]);
+  const routes = useMemo(() => [
+    ...(visibleKinds.transport ? buildWorldTransportRoutes(areas) : []),
+    ...(visibleKinds['instance-warp'] ? buildWorldWarpRoutes(areas) : []),
+  ], [areas, visibleKinds.transport, visibleKinds['instance-warp']]);
   const bossPaths = useMemo(() => visibleKinds['world-boss'] ? buildWorldBossPaths(areas) : [], [areas, visibleKinds]);
   const markerScale = 1 / zoom;
 
@@ -174,7 +178,7 @@ export default function WorldMap() {
 
   function toggleMarkerKind(kind: MapMarkerKind) {
     setVisibleKinds((prev) => ({ ...prev, [kind]: !prev[kind] }));
-    if ((kind === 'transport' || kind === 'world-boss') && visibleKinds[kind]) setHoverRoutes([]);
+    if ((kind === 'transport' || kind === 'world-boss' || kind === 'instance-warp') && visibleKinds[kind]) setHoverRoutes([]);
   }
 
   if (!build) return null;

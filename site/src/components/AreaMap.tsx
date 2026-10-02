@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { gameToPxExtent, MINIMAP_PX, worldToPx } from '../data/minimapCoords';
 import type { Area } from '../data/types';
-import { buildAreaMapMarkers, buildWorldBossPaths, MAP_MARKER_KIND_LABELS, MAP_MARKER_KINDS, type MapMarkerKind } from '../data/mapMarkers';
+import { buildAreaMapMarkers, buildWorldBossPaths, buildWorldWarpRoutes, MAP_MARKER_KIND_LABELS, MAP_MARKER_KINDS, type MapMarkerKind } from '../data/mapMarkers';
 
 interface AreaMapProps {
   area: Area;
@@ -104,6 +104,7 @@ export default function AreaMap({ area, build, size = 960 }: AreaMapProps) {
   const markers = useMemo(() => buildAreaMapMarkers(area, build), [area, build]);
   const visibleMarkers = useMemo(() => markers.filter((marker) => visibleKinds[marker.kind]), [markers, visibleKinds]);
   const bossPaths = useMemo(() => visibleKinds['world-boss'] ? buildWorldBossPaths([area]) : [], [area, visibleKinds]);
+  const warpPaths = useMemo(() => visibleKinds['instance-warp'] ? buildWorldWarpRoutes([area]) : [], [area, visibleKinds]);
 
   if (extentPx <= 0) return null;
 
@@ -236,6 +237,18 @@ export default function AreaMap({ area, build, size = 960 }: AreaMapProps) {
         >
           <title>{path.label} patrol</title>
         </polyline>
+      ))}
+      {warpPaths.map((path) => (
+        <polyline
+          key={path.key}
+          className={`world-map-route world-map-route-warp${path.routeKeys.some((key) => hoverPaths.includes(key)) ? ' is-active' : ''}`}
+          vectorEffect="non-scaling-stroke"
+          style={{ pointerEvents: 'none' }}
+          points={path.points.map((point) => {
+            const pos = worldToPx(point.x, point.y);
+            return `${size / 2 + (pos.px - center.px) * scale},${size / 2 + (pos.py - center.py) * scale}`;
+          }).join(' ')}
+        />
       ))}
       {visibleMarkers.map((marker) => {
         const pos = worldToPx(marker.x, marker.y);

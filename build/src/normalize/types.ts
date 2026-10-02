@@ -742,6 +742,8 @@ export interface AreaTransport {
 
 /** A warp door in the area leading to an instance. */
 export interface AreaInstanceWarp {
+  npcCategory: string;
+  exitLocation: { x: number; y: number; z: number; instanceID: number; infectedZone: boolean } | null;
   id: number;
   instance: Ref;
   instanceID: number;
@@ -754,6 +756,7 @@ export interface AreaInstanceWarp {
     y: number;
     z: number;
     instanceID: number;
+    infectedZone: boolean;
     instanceName: string;
   } | null;
   requiredItem: Ref | null;

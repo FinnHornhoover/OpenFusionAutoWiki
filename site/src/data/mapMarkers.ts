@@ -1,4 +1,4 @@
-import type { Area, AreaTransport, Ref } from './types';
+import type { Area, AreaTransport, AreaInstanceWarp, Ref } from './types';
 
 export type MapMarkerKind = 'npc' | 'vendor' | 'monster' | 'world-boss' | 'egg' | 'transport' | 'instance-warp';
 
@@ -6,10 +6,10 @@ export const MAP_MARKER_KIND_LABELS: Record<MapMarkerKind, string> = {
   npc: 'NPCs',
   vendor: 'Vendors',
   monster: 'Monsters',
-  'world-boss': 'World Bosses',
+  'world-boss': 'Bosses',
   egg: 'Eggs',
   transport: 'Transport',
-  'instance-warp': 'Instance warps',
+  'instance-warp': 'Warps',
 };
 
 export const MAP_MARKER_KINDS = Object.keys(MAP_MARKER_KIND_LABELS) as MapMarkerKind[];
@@ -104,6 +104,77 @@ export function missionWaypointIcon(taskType: string, hasNpc: boolean): string {
 
 function routeKey(route: AreaTransport): string {
   return `${route.moveType}:${route.routeId}:${route.routeName}`;
+}
+
+function mapWarpKey(warp: AreaInstanceWarp): string | null {
+  if (warp.npcCategory !== 'Warp') return null;
+  const from = warp.entryLocation;
+  const to = warp.exitLocation;
+  if (!from || !to) return null;
+  if (from.instanceID !== 0 && !from.infectedZone) return null;
+  if (to.instanceID !== 0 && !to.infectedZone) return null;
+  if (![from.x, from.y, to.x, to.y].every(Number.isFinite)) return null;
+  if (from.x === to.x && from.y === to.y) return null;
+  return `warp:${warp.id}:${from.instanceID}:${from.x},${from.y}:${to.instanceID}:${to.x},${to.y}`;
+}
+
+export function buildWorldWarpRoutes(areas: Area[]): MapRouteLine[] {
+  const routes = new Map<string, MapRouteLine>();
+  const instances = new Map<string, [number, number]>();
+  for (const area of areas) {
+    for (const warp of area.instanceWarps) {
+      const key = mapWarpKey(warp);
+      if (!key) continue;
+      const points = [warp.entryLocation!, warp.exitLocation!].map(({ x, y }) => ({ x, y }));
+      const endpoints = [warp.entryLocation!, warp.exitLocation!];
+      instances.set(key, [endpoints[0].instanceID, endpoints[1].instanceID]);
+      const geometryKey = endpoints.map((p) => `${p.instanceID}:${p.x},${p.y}`).sort().join(';');
+      const existing = routes.get(geometryKey);
+      if (existing) {
+        if (!existing.routeKeys.includes(key)) existing.routeKeys.push(key);
+      } else {
+        routes.set(geometryKey, { key, routeKeys: [key], label: warpLabel(warp.npc?.name ?? '', warp.instance.name), moveType: 'Warp', points });
+      }
+    }
+  }
+  // Landing positions can be slightly offset from the operator for the return trip.
+  // Match both ends, closest pairs first, and never merge chains of nearby warps.
+  // Academy's Orchid Bay / Sector V landing is ~2,148 units from its return operator.
+  const returnWarpDistance = 2500;
+  const lines = [...routes.values()].sort((a, b) => a.key.localeCompare(b.key));
+  const pairs: Array<{ a: number; b: number; distance: number }> = [];
+  const distance = (a: { x: number; y: number }, b: { x: number; y: number }) => Math.hypot(a.x - b.x, a.y - b.y);
+  for (let a = 0; a < lines.length; a++) {
+    for (let b = a + 1; b < lines.length; b++) {
+      const [aFrom, aTo] = instances.get(lines[a].key)!;
+      const [bFrom, bTo] = instances.get(lines[b].key)!;
+      if (aFrom !== bTo || aTo !== bFrom) continue;
+      const [aStart, aEnd] = lines[a].points;
+      const [bStart, bEnd] = lines[b].points;
+      const directionDot = (aEnd.x - aStart.x) * (bEnd.x - bStart.x)
+        + (aEnd.y - aStart.y) * (bEnd.y - bStart.y);
+      if (directionDot >= 0) continue;
+      const outbound = distance(lines[a].points[1], lines[b].points[0]);
+      const inbound = distance(lines[b].points[1], lines[a].points[0]);
+      if (outbound <= returnWarpDistance && inbound <= returnWarpDistance) {
+        pairs.push({ a, b, distance: outbound + inbound });
+      }
+    }
+  }
+  pairs.sort((a, b) => a.distance - b.distance || a.a - b.a || a.b - b.b);
+  const paired = new Set<number>();
+  const merged: MapRouteLine[] = [];
+  for (const { a, b } of pairs) {
+    if (paired.has(a) || paired.has(b)) continue;
+    paired.add(a);
+    paired.add(b);
+    merged.push({
+      ...lines[a],
+      routeKeys: [...new Set([...lines[a].routeKeys, ...lines[b].routeKeys])],
+      points: [lines[a].points[0], lines[b].points[0]],
+    });
+  }
+  return [...merged, ...lines.filter((_, index) => !paired.has(index))];
 }
 
 export function buildAreaMapMarkers(area: Area, build: string): MapMarker[] {
@@ -210,11 +281,13 @@ export function buildAreaMapMarkers(area: Area, build: string): MapMarker[] {
   });
 
   area.instanceWarps.forEach((w, i) => {
-    if (!w.entryLocation) return;
+    if (!w.entryLocation || w.npcCategory !== 'Warp') return;
     const npcName = w.npc?.name ?? '';
+    const key = mapWarpKey(w);
     markers.push({
       id: `instance-warp-${w.id}-${i}`,
       kind: 'instance-warp',
+      routeKeys: key ? [key] : undefined,
       label: warpLabel(npcName, w.instance.name),
       x: w.entryLocation.x,
       y: w.entryLocation.y,
