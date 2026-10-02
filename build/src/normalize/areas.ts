@@ -76,6 +76,8 @@ interface RawAreaVendor {
   NPCs?: Record<string, RawAreaNpc>;
 }
 interface RawAreaMob {
+  ID?: string | number;
+  FollowsMobID?: string | number;
   Route?: Array<{ X: number; Y: number; Z?: number }>;
   TypeID: number;
   TypeName?: string;
@@ -436,6 +438,9 @@ function buildAreaMobs(
   fullName: string,
   instanceIndex: Map<number, RawInstance>,
 ): AreaMobEntry[] {
+  const spawnsById = new Map(Object.entries(mobs ?? {})
+    .filter(([, spawn]) => spawn && typeof spawn === 'object')
+    .map(([key, spawn]) => [String(spawn.ID ?? key), spawn]));
   const counts = new Map<number, { name: string; icon: string; level: number; hp: number; points: RawAreaMob[] }>();
   for (const inst of Object.values(mobs ?? {})) {
     if (!inst || typeof inst !== 'object') continue;
@@ -458,17 +463,27 @@ function buildAreaMobs(
       const instance = sharedInstanceLabel(points.map((p) => p.InstanceID ?? 0), instanceIndex);
       const worldBoss = isWorldBoss(build, id);
       const paths: AreaMobEntry['paths'] = [];
+      const pathIndexes = new Map<string, number>();
       const mapPoints = points.map((spawn) => {
         const point: AreaMobEntry['points'][number] = {
           x: spawn.X ?? 0, y: spawn.Y ?? 0, instanceID: spawn.InstanceID ?? 0,
         };
         if (!worldBoss || point.instanceID === 0) {
-          const path = (spawn.Route ?? [])
+          const followsLeader = spawn.FollowsMobID != null && spawn.FollowsMobID !== '';
+          const leader = followsLeader ? spawnsById.get(String(spawn.FollowsMobID)) : spawn;
+          const route = leader && (leader.InstanceID ?? 0) === point.instanceID ? leader.Route : undefined;
+          const path = (route ?? [])
             .filter((p) => Number.isFinite(p.X) && Number.isFinite(p.Y))
             .map((p) => ({ x: p.X, y: p.Y }));
           if (path.length > 1) {
-            point.pathIndex = paths.length;
-            paths.push(path);
+            const key = JSON.stringify(path);
+            let pathIndex = pathIndexes.get(key);
+            if (pathIndex == null) {
+              pathIndex = paths.length;
+              paths.push(path);
+              pathIndexes.set(key, pathIndex);
+            }
+            point.pathIndex = pathIndex;
           }
         }
         return point;
