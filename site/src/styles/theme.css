@@ -146,15 +146,6 @@ pre {
   padding: var(--space-5);
 }
 
-.site-footer {
-  padding: var(--space-4) var(--space-5);
-  border-top: 1px solid var(--color-border);
-  color: var(--color-text-muted);
-  font-size: 0.875rem;
-  text-align: left;
-  box-shadow: var(--glow-sm);
-}
-
 .home-header {
   display: flex;
   flex-direction: column;
@@ -723,8 +714,7 @@ details.dropdown > .dropdown-body {
 .app-world-map {
   height: 100dvh;
 }
-.app-world-map .site-header,
-.app-world-map .site-footer {
+.app-world-map .site-header {
   flex-shrink: 0;
 }
 .app-world-map .site-main {

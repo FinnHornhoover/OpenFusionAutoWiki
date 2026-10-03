@@ -33,11 +33,6 @@ export default function App() {
           <Route path="*" element={<NotFound />} />
         </Routes>
       </main>
-      <footer className="site-footer">
-        <span>Data from <a href="https://github.com/FinnHornhoover/FFInfoPacks" target="_blank" rel="noreferrer">FFInfoPacks</a></span>
-        {' · '}
-        <span>Contribute to <a href="https://github.com/FinnHornhoover/OpenFusionAutoWiki" target="_blank" rel="noreferrer">OpenFusionAutoWiki</a></span>
-      </footer>
     </div>
   );
 }

@@ -15,6 +15,10 @@ export default function Home() {
           Auto-generated reference for every FusionFall game build.
           <br />
           Just select a build below or from the above build buttons to get started.
+          <br />
+          Data from <a href="https://github.com/FinnHornhoover/FFInfoPacks" target="_blank" rel="noreferrer">FFInfoPacks</a>
+          {' · '}
+          Contribute to <a href="https://github.com/FinnHornhoover/OpenFusionAutoWiki" target="_blank" rel="noreferrer">OpenFusionAutoWiki</a>
         </p>
       </div>
 
