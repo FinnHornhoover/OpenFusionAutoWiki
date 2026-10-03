@@ -106,6 +106,13 @@ function routeKey(route: AreaTransport): string {
   return `${route.moveType}:${route.routeId}:${route.routeName}`;
 }
 
+export function warpDestinationPath(build: string, warp: AreaInstanceWarp): string {
+  if (warp.instanceID !== 0) return refPath(build, warp.instance);
+  return warp.exitLocation?.areaId
+    ? `/${build}/areas/${warp.exitLocation.areaId}`
+    : `/${build}/map`;
+}
+
 function mapWarpKey(warp: AreaInstanceWarp): string | null {
   if (warp.npcCategory !== 'Warp') return null;
   const from = warp.entryLocation;
@@ -292,7 +299,7 @@ export function buildAreaMapMarkers(area: Area, build: string): MapMarker[] {
       x: w.entryLocation.x,
       y: w.entryLocation.y,
       icon: warpIcon(npcName),
-      to: refPath(build, w.instance),
+      to: warpDestinationPath(build, w),
     });
   });
 

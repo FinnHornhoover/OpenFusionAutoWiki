@@ -1,4 +1,5 @@
 import Dropdown from '../components/Dropdown';
+import { Link } from 'react-router-dom';
 import TransportCost from '../components/TransportCost';
 import EntityLink from '../components/EntityLink';
 import Icon from '../components/Icon';
@@ -6,7 +7,7 @@ import InlineMeta from '../components/InlineMeta';
 import AreaMap from '../components/AreaMap';
 import MapSpot from '../components/MapSpot';
 import { formatDurationSeconds } from '../data/formatTime';
-import { transportIcon, warpIcon } from '../data/mapMarkers';
+import { transportIcon, warpIcon, warpDestinationPath } from '../data/mapMarkers';
 
 # {props.data.name}
 
@@ -205,7 +206,7 @@ import { transportIcon, warpIcon } from '../data/mapMarkers';
       <thead>
         <tr>
           <th>Warp NPC</th>
-          <th>Instance</th>
+          <th>Destination</th>
           <th>Entry location</th>
           <th>Required mission</th>
           <th>Level</th>
@@ -216,7 +217,9 @@ import { transportIcon, warpIcon } from '../data/mapMarkers';
           <tr key={`${w.id}-${w.instanceID}-${i}`}>
             <td>{w.npc ? <EntityLink entity={w.npc} /> : <span className="muted">-</span>}</td>
             <td>
-              <EntityLink entity={w.instance} withIcon={false} />
+              {w.instanceID === 0 ? (
+                <Link to={warpDestinationPath(props.build, w)}>{w.exitLocation?.areaId ? w.exitLocation.areaZone : 'World Map'}</Link>
+              ) : <EntityLink entity={w.instance} withIcon={false} />}
               <InlineMeta leading>
                 {w.requiredItem && <span>needs <EntityLink entity={w.requiredItem} withIcon={false} /></span>}
               </InlineMeta>

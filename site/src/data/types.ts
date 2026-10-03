@@ -654,7 +654,7 @@ export interface AreaTransport {
 
 export interface AreaInstanceWarp {
   npcCategory?: string;
-  exitLocation?: { x: number; y: number; z: number; instanceID: number; infectedZone?: boolean } | null;
+  exitLocation?: { x: number; y: number; z: number; instanceID: number; infectedZone?: boolean; areaZone?: string; areaId?: string } | null;
   id: number;
   instance: Ref;
   instanceID: number;

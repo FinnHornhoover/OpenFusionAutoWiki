@@ -121,6 +121,7 @@ interface RawAreaEggType {
   EffectDuration?: number;
 }
 interface RawAreaInstanceWarp {
+  ToAreaZone?: string;
   ToX?: number;
   ToY?: number;
   ToZ?: number;
@@ -667,6 +668,8 @@ function buildAreaInstanceWarps(
       npcCategory: w.NPCType?.Category ?? '',
       exitLocation: Number.isFinite(w.ToX) && Number.isFinite(w.ToY) ? {
         x: w.ToX!, y: w.ToY!, z: w.ToZ ?? 0,
+        areaZone: w.ToAreaZone ?? '',
+        areaId: w.ToAreaZone && w.ToAreaZone !== 'Unknown - Unknown' ? slugify(w.ToAreaZone) : '',
         instanceID: w.EntryInstanceID ?? -1,
         infectedZone: (instanceIndex.get(w.EntryInstanceID ?? -1)?.EPID ?? 0) > 0,
       } : null,
