@@ -696,6 +696,7 @@ details.dropdown > .dropdown-body {
   transition: transform 0.12s ease, filter 0.12s ease;
 }
 .area-map-marker:hover .area-map-marker-image,
+.area-map-marker.is-active .area-map-marker-image,
 .area-map-marker:focus .area-map-marker-image {
   transform: scale(1.45);
   filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.55));
@@ -734,6 +735,7 @@ details.dropdown > .dropdown-body {
   opacity: 1;
 }
 .area-map-marker:hover .area-map-marker-tooltip,
+.area-map-marker.is-active .area-map-marker-tooltip,
 .area-map-marker:focus .area-map-marker-tooltip {
   opacity: 1;
 }
@@ -890,10 +892,12 @@ details.dropdown > .dropdown-body {
   transition: transform 0.12s ease;
 }
 .world-map-marker:hover,
+.world-map-marker.is-active,
 .world-map-marker:focus {
   z-index: 5;
 }
 .world-map-marker:hover img,
+.world-map-marker.is-active img,
 .world-map-marker:focus img {
   transform: scale(1.45);
 }
@@ -921,6 +925,7 @@ details.dropdown > .dropdown-body {
   transition: opacity 0.04s ease;
 }
 .world-map-marker:hover .world-map-marker-tooltip,
+.world-map-marker.is-active .world-map-marker-tooltip,
 .world-map-marker:focus .world-map-marker-tooltip {
   opacity: 1;
 }

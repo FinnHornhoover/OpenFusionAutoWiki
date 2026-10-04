@@ -68,6 +68,7 @@ export default function AreaMap({ area, build, size = 960 }: AreaMapProps) {
   const [hoverPaths, setHoverPaths] = useState<string[]>([]);
   const [hoverMarkerId, setHoverMarkerId] = useState<string | null>(null);
   const [hoverRoutePoint, setHoverRoutePoint] = useState<PointerPoint | null>(null);
+  const [hoverBossPathId, setHoverBossPathId] = useState<string | null>(null);
   const [allAreas, setAllAreas] = useState<Area[]>([]);
   const [renderedWidth, setRenderedWidth] = useState(size);
   const mapRef = useRef<SVGSVGElement | null>(null);
@@ -90,6 +91,7 @@ export default function AreaMap({ area, build, size = 960 }: AreaMapProps) {
     setViewBox({ x: 0, y: 0, width: size, height: size });
     setHoverPaths([]);
     setHoverMarkerId(null);
+    setHoverBossPathId(null);
     setHoverRoutePoint(null);
   }, [area.id, size]);
 
@@ -165,6 +167,7 @@ export default function AreaMap({ area, build, size = 960 }: AreaMapProps) {
   const markerScreenX = hoveredMarkerPosition ? (size / 2 + (hoveredMarkerPosition.px - center.px) * scale - viewBox.x) / screenUnit : 0;
   const markerScreenY = hoveredMarkerPosition ? (size / 2 + (hoveredMarkerPosition.py - center.py) * scale - viewBox.y) / screenUnit : 0;
   const routeTooltipId = `area-map-hover-routes-${area.id}`;
+  const hoveredBossPath = bossPaths.find((path) => path.id === hoverBossPathId);
 
   function clearPointer(pointerId: number) {
     activePointers.current.delete(pointerId);
@@ -177,6 +180,15 @@ export default function AreaMap({ area, build, size = 960 }: AreaMapProps) {
     setVisibleKinds((prev) => ({ ...prev, [kind]: !prev[kind] }));
     setHoverPaths([]);
     setHoverMarkerId(null);
+    setHoverBossPathId(null);
+  }
+
+  function hoverBossPath(pathId: string) {
+    const boss = markers.find((marker) => marker.kind === 'world-boss' && marker.routeKeys?.includes(pathId));
+    setHoverMarkerId(null);
+    setHoverBossPathId(pathId);
+    setHoverPaths(boss?.routeKeys ?? [pathId]);
+    setHoverRoutePoint({ x: viewBox.x + viewBox.width / 2, y: viewBox.y + 35 * screenUnit });
   }
 
   return (
@@ -275,19 +287,28 @@ export default function AreaMap({ area, build, size = 960 }: AreaMapProps) {
       onPointerLeave={(event) => { if (!event.currentTarget.hasPointerCapture(event.pointerId)) clearPointer(event.pointerId); }}
     >
       <image href="/minimap/all.png" x={imageX} y={imageY} width={imageSize} height={imageSize} className="map-base-image" />
-      {bossPaths.map((path) => (
-        <polyline
-          key={path.id}
-          className={`world-boss-path${hoverPaths.includes(path.id) ? ' is-active' : ''}`}
-          vectorEffect="non-scaling-stroke"
-          points={path.points.map((point) => {
+      {bossPaths.map((path) => {
+        const points = path.points.map((point) => {
             const pos = worldToPx(point.x, point.y);
             return `${size / 2 + (pos.px - center.px) * scale},${size / 2 + (pos.py - center.py) * scale}`;
-          }).join(' ')}
-        >
-          <title>{path.label} patrol</title>
-        </polyline>
-      ))}
+        }).join(' ');
+        return <g key={path.id}>
+          <polyline className={`world-boss-path${hoverPaths.includes(path.id) ? ' is-active' : ''}`}
+            vectorEffect="non-scaling-stroke" points={points} />
+          <polyline className="map-route-hitbox" vectorEffect="non-scaling-stroke" points={points}
+            tabIndex={0} role="img" aria-label={path.label}
+            onMouseEnter={() => hoverBossPath(path.id)}
+            onMouseMove={(event) => {
+              if (activePointers.current.size) return;
+              const rect = mapRef.current?.getBoundingClientRect();
+              if (rect) setHoverRoutePoint({ x: viewBox.x + (event.clientX - rect.left) / rect.width * viewBox.width, y: viewBox.y + (event.clientY - rect.top) / rect.height * viewBox.height });
+            }}
+            onMouseLeave={() => { setHoverBossPathId(null); setHoverRoutePoint(null); setHoverPaths([]); }}
+            onFocus={() => hoverBossPath(path.id)}
+            onBlur={() => { setHoverBossPathId(null); setHoverRoutePoint(null); setHoverPaths([]); }}
+          />
+        </g>;
+      })}
       {visibleRoutes.map((path) => {
         const points = path.points.map((point) => {
           const pos = worldToPx(point.x, point.y);
@@ -314,14 +335,14 @@ export default function AreaMap({ area, build, size = 960 }: AreaMapProps) {
               tabIndex={0}
               role="img"
               aria-label={path.label}
-              onMouseEnter={() => { setHoverMarkerId(null); setHoverPaths(path.routeKeys); }}
+              onMouseEnter={() => { setHoverBossPathId(null); setHoverMarkerId(null); setHoverPaths(path.routeKeys); }}
               onMouseMove={(event) => {
                 if (activePointers.current.size) return;
                 const rect = mapRef.current?.getBoundingClientRect();
                 if (rect) setHoverRoutePoint({ x: viewBox.x + (event.clientX - rect.left) / rect.width * viewBox.width, y: viewBox.y + (event.clientY - rect.top) / rect.height * viewBox.height });
               }}
               onMouseLeave={() => { setHoverPaths([]); setHoverRoutePoint(null); }}
-              onFocus={() => { setHoverMarkerId(null); setHoverPaths(path.routeKeys); setHoverRoutePoint(null); }}
+              onFocus={() => { setHoverBossPathId(null); setHoverMarkerId(null); setHoverPaths(path.routeKeys); setHoverRoutePoint(null); }}
               onBlur={() => { setHoverPaths([]); setHoverRoutePoint(null); }}
             />
             {active && !hoveredMarker && tip && <text
@@ -334,6 +355,13 @@ export default function AreaMap({ area, build, size = 960 }: AreaMapProps) {
           </g>
         );
       })}
+      {hoveredBossPath && hoverRoutePoint && <text
+        className="map-route-label"
+        x={Math.max(viewBox.x + 12 * screenUnit, Math.min(viewBox.x + viewBox.width - 12 * screenUnit, hoverRoutePoint.x))}
+        y={Math.max(viewBox.y + 22 * screenUnit, Math.min(viewBox.y + viewBox.height - 12 * screenUnit, hoverRoutePoint.y - 12 * screenUnit))}
+        textAnchor={hoverRoutePoint.x > viewBox.x + viewBox.width / 2 ? 'end' : 'start'}
+        style={{ fontSize: 13 * screenUnit, strokeWidth: 4 * screenUnit, opacity: 1 }}
+      >{hoveredBossPath.label}</text>}
       {visibleMarkers.map((marker) => {
         const pos = worldToPx(marker.x, marker.y);
         const left = size / 2 + (pos.px - center.px) * scale;
@@ -342,12 +370,12 @@ export default function AreaMap({ area, build, size = 960 }: AreaMapProps) {
           <a
             key={marker.id}
             href={marker.to}
-            className={`area-map-marker area-map-marker-${marker.kind}`}
+            className={`area-map-marker area-map-marker-${marker.kind}${marker.id === hoverMarkerId ? ' is-active' : ''}`}
             aria-label={marker.label}
             aria-describedby={marker.id === hoverMarkerId && markerRouteLabels.length > 0 ? routeTooltipId : undefined}
-            onMouseEnter={() => { setHoverMarkerId(marker.id); setHoverRoutePoint(null); setHoverPaths(marker.routeKeys ?? (marker.routeKey ? [marker.routeKey] : [])); }}
+            onMouseEnter={() => { setHoverBossPathId(null); setHoverMarkerId(marker.id); setHoverRoutePoint(null); setHoverPaths(marker.routeKeys ?? (marker.routeKey ? [marker.routeKey] : [])); }}
             onMouseLeave={() => { setHoverMarkerId(null); setHoverPaths([]); }}
-            onFocus={() => { setHoverMarkerId(marker.id); setHoverRoutePoint(null); setHoverPaths(marker.routeKeys ?? (marker.routeKey ? [marker.routeKey] : [])); }}
+            onFocus={() => { setHoverBossPathId(null); setHoverMarkerId(marker.id); setHoverRoutePoint(null); setHoverPaths(marker.routeKeys ?? (marker.routeKey ? [marker.routeKey] : [])); }}
             onBlur={() => { setHoverMarkerId(null); setHoverPaths([]); }}
           >
             <image

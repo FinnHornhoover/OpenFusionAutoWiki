@@ -192,6 +192,13 @@ export default function WorldMap() {
     if ((kind === 'transport' || kind === 'world-boss' || kind === 'instance-warp') && visibleKinds[kind]) setHoverRoutes([]);
   }
 
+  function hoverBossPath(pathId: string) {
+    const boss = markers.find((marker) => marker.kind === 'world-boss' && marker.routeKeys?.includes(pathId));
+    setHoverMarkerId(null);
+    setHoverRoutes(boss?.routeKeys ?? [pathId]);
+    setHoverRoute({ key: pathId, x: -offset.x + viewportSize.width / 2, y: -offset.y + 35 });
+  }
+
   if (!build) return null;
 
   return (
@@ -300,20 +307,29 @@ export default function WorldMap() {
             <svg
               className="world-map-routes"
               style={{ width: MINIMAP_PX * zoom, height: MINIMAP_PX * zoom, transform: `scale(${1 / zoom})` }}
-              aria-label="Warp and transportation routes"
+              aria-label="Boss patrol, warp and transportation routes"
             >
-              {bossPaths.map((path) => (
-                <polyline
-                  key={path.id}
-                  className={`world-boss-path${hoverRoutes.includes(path.id) ? ' is-active' : ''}`}
-                  points={path.points.map((point) => {
+              {bossPaths.map((path) => {
+                const points = path.points.map((point) => {
                     const pos = worldToPx(point.x, point.y);
                     return `${pos.px * zoom},${pos.py * zoom}`;
-                  }).join(' ')}
-                >
-                  <title>{path.label} patrol</title>
-                </polyline>
-              ))}
+                }).join(' ');
+                return <g key={path.id}>
+                  <polyline className={`world-boss-path${hoverRoutes.includes(path.id) ? ' is-active' : ''}`} points={points} />
+                  <polyline className="map-route-hitbox" points={points}
+                    tabIndex={0} role="img" aria-label={path.label}
+                    onMouseEnter={() => hoverBossPath(path.id)}
+                    onMouseMove={(event) => {
+                      if (activePointers.current.size) return;
+                      const rect = viewportRef.current?.getBoundingClientRect();
+                      if (rect) setHoverRoute({ key: path.id, x: event.clientX - rect.left - offset.x, y: event.clientY - rect.top - offset.y });
+                    }}
+                    onMouseLeave={() => { setHoverRoute(null); setHoverRoutes([]); }}
+                    onFocus={() => hoverBossPath(path.id)}
+                    onBlur={() => { setHoverRoute(null); setHoverRoutes([]); }}
+                  />
+                </g>;
+              })}
               {routes.map((route) => {
                 const points = route.points.map((p) => {
                     const pos = worldToPx(p.x, p.y);
@@ -349,7 +365,7 @@ export default function WorldMap() {
                 </g>;
               })}
               {hoverRoute && (() => {
-                const route = routes.find((r) => r.key === hoverRoute.key);
+                const route = routes.find((r) => r.key === hoverRoute.key) ?? bossPaths.find((path) => path.id === hoverRoute.key);
                 if (!route) return null;
                 const x = Math.max(-offset.x + 12, Math.min(-offset.x + viewportSize.width - 12, hoverRoute.x));
                 const y = Math.max(-offset.y + 22, Math.min(-offset.y + viewportSize.height - 12, hoverRoute.y - 12));
@@ -367,7 +383,7 @@ export default function WorldMap() {
                 <a
                   key={marker.id}
                   href={marker.to}
-                  className={`world-map-marker world-map-marker-${marker.kind}`}
+                  className={`world-map-marker world-map-marker-${marker.kind}${marker.id === hoverMarkerId ? ' is-active' : ''}`}
                   style={{ left: marker.px, top: marker.py, width: WORLD_MARKER_SCREEN_SIZE, height: WORLD_MARKER_SCREEN_SIZE, '--world-marker-scale': markerScale } as CSSProperties}
                   aria-label={marker.label}
                   aria-describedby={marker.id === hoverMarkerId && markerRouteLabels.length > 0 ? 'world-map-hover-routes' : undefined}
