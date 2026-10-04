@@ -6,7 +6,7 @@ import Icon from '../components/Icon';
 import InlineMeta from '../components/InlineMeta';
 import AreaMap from '../components/AreaMap';
 import MapSpot from '../components/MapSpot';
-import { formatDurationSeconds } from '../data/formatTime';
+import { formatDurationClock } from '../data/formatTime';
 import { transportIcon, warpIcon, warpDestinationPath } from '../data/mapMarkers';
 
 # {props.data.name}
@@ -254,10 +254,9 @@ import { transportIcon, warpIcon, warpDestinationPath } from '../data/mapMarkers
       <thead>
         <tr>
           <th>Egg</th>
-          <th>Type</th>
           <th>Contains</th>
-          <th>Power</th>
           <th>Duration</th>
+          <th>Respawn</th>
           <th>Coordinates</th>
         </tr>
       </thead>
@@ -265,17 +264,16 @@ import { transportIcon, warpIcon, warpDestinationPath } from '../data/mapMarkers
         {props.data.eggs.map((e, i) => (
           <tr key={i}>
             <td>{e.typeName || <span className="muted">Egg</span>}</td>
-            <td>{e.typeComment || <span className="muted">—</span>}</td>
-            <td>{e.crateItem ? <EntityLink entity={e.crateItem} /> : <span className="muted">—</span>}</td>
             <td>
-              {e.effectName ? (
+              {e.crateItem ? <EntityLink entity={e.crateItem} /> : e.effectName ? (
                 <>
                   {e.effectIcon && <Icon src={e.effectIcon} alt="" size={32} />}
                   {' '}{e.effectName}
                 </>
               ) : <span className="muted">—</span>}
             </td>
-            <td>{e.effectDuration > 0 ? formatDurationSeconds(e.effectDuration) : <span className="muted">—</span>}</td>
+            <td>{e.effectDuration > 0 ? formatDurationClock(e.effectDuration) : <span className="muted">—</span>}</td>
+            <td>{e.respawnSeconds != null ? formatDurationClock(e.respawnSeconds) : <span className="muted">—</span>}</td>
             <td>
               <MapSpot
                 x={e.x}

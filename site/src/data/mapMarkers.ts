@@ -1,4 +1,5 @@
 import type { Area, AreaTransport, AreaInstanceWarp, Ref } from './types';
+import { formatDurationClock } from './formatTime';
 
 export type MapMarkerKind = 'npc' | 'vendor' | 'monster' | 'world-boss' | 'egg' | 'transport' | 'instance-warp';
 
@@ -132,12 +133,6 @@ function mapWarpKey(warp: AreaInstanceWarp): string | null {
 
 function areaLabel(name: string): string {
   return name.split(' - ')[0];
-}
-
-function mapTime(seconds: number | null | undefined): string {
-  if (seconds == null || !Number.isFinite(seconds) || seconds < 0) return '--:--';
-  const rounded = Math.round(seconds);
-  return `${String(Math.floor(rounded / 60)).padStart(2, '0')}:${String(rounded % 60).padStart(2, '0')}`;
 }
 
 const SLIDER_ROUTE_LABEL = 'Marquee Row ↔ Peach Creek Estates';
@@ -295,8 +290,8 @@ export function buildAreaMapMarkers(area: Area, build: string): MapMarker[] {
   area.eggs.forEach((e, i) => {
     const rewardName = e.crateItem ? e.crateItem.name || 'Crate' : e.effectName || 'Power';
     const hoverLabels = e.crateItem
-      ? [rewardName, `Resp: ${mapTime(e.respawnSeconds)}`]
-      : [rewardName, `Dur: ${mapTime(e.effectDuration)}`, `Resp: ${mapTime(e.respawnSeconds)}`];
+      ? [rewardName, `Resp: ${formatDurationClock(e.respawnSeconds)}`]
+      : [rewardName, `Dur: ${formatDurationClock(e.effectDuration)}`, `Resp: ${formatDurationClock(e.respawnSeconds)}`];
     markers.push({
       id: `egg-${i}`,
       kind: 'egg',
