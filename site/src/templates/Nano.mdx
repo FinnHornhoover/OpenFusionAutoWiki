@@ -10,6 +10,7 @@ import { formatDurationSeconds } from '../data/formatTime';
   {props.data.icon ? <div className="entity-header-icon"><Icon src={props.data.icon} alt={props.data.name} size={192} /></div> : null}
   <div className="entity-meta muted">
     {props.data.nanoType && <span className="badge badge-category" data-combat-type={props.data.nanoType}>{props.data.nanoType}</span>}
+    {props.data.obtainable === false && <span className="badge badge-warn">unobtainable</span>}
   </div>
 </div>
 

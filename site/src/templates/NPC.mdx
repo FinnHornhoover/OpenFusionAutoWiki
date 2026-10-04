@@ -13,7 +13,7 @@ import { transportIcon } from '../data/mapMarkers';
   {props.data.icon ? <div className="entity-header-icon"><Icon src={props.data.icon} alt={props.data.name} size={192} /></div> : null}
   <div className="entity-meta muted">
     {props.data.category && <span className="badge badge-category">{props.data.category}</span>}
-    {props.data.inGame === false && <span className="badge badge-warn">cut from final build</span>}
+    {props.data.inGame === false && <span className="badge badge-warn">Out of game</span>}
     {props.data.locations.length > 0 && (
       <span className="badge badge-category">
         {props.data.locations.length} spawn{props.data.locations.length === 1 ? '' : 's'}

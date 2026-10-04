@@ -37,7 +37,7 @@ import MapSpot from '../components/MapSpot';
               <Link className="entity-index-link" to={`/${props.build}/npcs/${member.id}`}>ID {member.id}</Link>
               <InlineMeta leading>
                 {member.category && <span>{member.category}</span>}
-                {!member.inGame && <span>cut from final build</span>}
+                {!member.inGame && <span>Out of game</span>}
               </InlineMeta>
             </div>
           </div>
