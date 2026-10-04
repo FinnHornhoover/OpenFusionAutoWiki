@@ -200,8 +200,8 @@ import { transportIcon, warpIcon, warpDestinationPath } from '../data/mapMarkers
   </Dropdown>
 )}
 
-{props.data.instanceWarps.length > 0 && (
-  <Dropdown summary={`Instance warps (${props.data.instanceWarps.length})`}>
+{props.data.instanceWarps.some((warp) => warp.npcCategory === 'Warp') && (
+  <Dropdown summary={`Instance warps (${props.data.instanceWarps.filter((warp) => warp.npcCategory === 'Warp').length})`}>
     <table className="location-table source-table">
       <thead>
         <tr>
@@ -213,7 +213,7 @@ import { transportIcon, warpIcon, warpDestinationPath } from '../data/mapMarkers
         </tr>
       </thead>
       <tbody>
-        {props.data.instanceWarps.map((w, i) => (
+        {props.data.instanceWarps.filter((warp) => warp.npcCategory === 'Warp').map((w, i) => (
           <tr key={`${w.id}-${w.instanceID}-${i}`}>
             <td>{w.npc ? <EntityLink entity={w.npc} /> : <span className="muted">-</span>}</td>
             <td>
