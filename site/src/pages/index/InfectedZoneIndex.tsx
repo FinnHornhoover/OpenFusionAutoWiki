@@ -78,7 +78,6 @@ export default function InfectedZoneIndex({ build, rows, loading }: Props) {
                   <th>Pods</th>
                   <th>Time</th>
                   <th>Max score</th>
-                  <th>Warps</th>
                 </tr>
               </thead>
               <tbody>
@@ -95,7 +94,6 @@ export default function InfectedZoneIndex({ build, rows, loading }: Props) {
                     <td>{r.podCount.toLocaleString()}</td>
                     <td>{formatTime(r.timeLimitSeconds, r.timeLimit) ?? <span className="muted">-</span>}</td>
                     <td>{r.maxScore > 0 ? r.maxScore.toLocaleString() : <span className="muted">-</span>}</td>
-                    <td>{r.entryWarpCount.toLocaleString()} / {r.exitWarpCount.toLocaleString()}</td>
                   </tr>
                 ))}
               </tbody>
