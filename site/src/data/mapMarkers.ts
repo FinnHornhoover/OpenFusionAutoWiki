@@ -24,6 +24,8 @@ export interface MapMarker {
   to: string;
   routeKey?: string;
   routeKeys?: string[];
+  hoverIcon?: string;
+  hoverItemIcon?: boolean;
 }
 
 export interface MapRouteLine {
@@ -287,10 +289,12 @@ export function buildAreaMapMarkers(area: Area, build: string): MapMarker[] {
     markers.push({
       id: `egg-${i}`,
       kind: 'egg',
-      label: e.crateItem ? `${e.typeName}: ${e.crateItem.name}` : e.typeName || 'Egg',
+      label: e.crateItem ? e.crateItem.name || 'Crate' : e.effectName || 'Power',
       x: e.x,
       y: e.y,
       icon: '/minimap/mapicons/world_egg_shiny_npc.png',
+      hoverIcon: e.crateItem ? e.crateItem.icon : e.effectIcon,
+      hoverItemIcon: Boolean(e.crateItem),
       to: e.crateItem ? refPath(build, e.crateItem) : `/${build}/areas/${area.id}`,
     });
   });

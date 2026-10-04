@@ -149,7 +149,8 @@ export default function AreaMap({ area, build, size = 960 }: AreaMapProps) {
   const visibleRoutes = outgoingRoutes.filter((route) => visibleKinds[route.kind]);
   const hoveredMarker = visibleMarkers.find((marker) => marker.id === hoverMarkerId);
   const markerRouteLabels = hoveredMarker
-    ? [...new Set(visibleRoutes.filter((route) => route.routeKeys.some((key) => hoverPaths.includes(key))).flatMap((route) => route.markerLabels ?? [route.label]))]
+    ? hoveredMarker.kind === 'egg' ? [hoveredMarker.label]
+      : [...new Set(visibleRoutes.filter((route) => route.routeKeys.some((key) => hoverPaths.includes(key))).flatMap((route) => route.markerLabels ?? [route.label]))]
     : [];
 
   if (extentPx <= 0) return null;
@@ -386,7 +387,7 @@ export default function AreaMap({ area, build, size = 960 }: AreaMapProps) {
               height={markerSize}
               className="area-map-marker-image"
             />
-            <text
+            {marker.kind !== 'egg' && <text
               className="area-map-marker-tooltip"
               x={left}
               y={top - markerSize / 2 - tooltipOffset}
@@ -394,7 +395,7 @@ export default function AreaMap({ area, build, size = 960 }: AreaMapProps) {
               style={{ fontSize: tooltipFontSize, strokeWidth: tooltipStrokeWidth }}
             >
               {marker.label}
-            </text>
+            </text>}
           </a>
         );
       })}
@@ -402,6 +403,8 @@ export default function AreaMap({ area, build, size = 960 }: AreaMapProps) {
       {hoveredMarker && markerRouteLabels.length > 0 && <MapRouteTooltip
         id={routeTooltipId}
         labels={markerRouteLabels}
+        icon={hoveredMarker.hoverIcon}
+        itemIcon={hoveredMarker.hoverItemIcon}
         x={markerScreenX}
         y={markerScreenY}
         viewportWidth={renderedWidth}

@@ -839,6 +839,14 @@ details.dropdown > .dropdown-body {
   overflow-y: auto;
   pointer-events: none;
 }
+.map-tooltip-content {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.map-tooltip-content > div {
+  min-width: 0;
+}
 .world-map-route {
   fill: none;
   stroke-width: 2px;

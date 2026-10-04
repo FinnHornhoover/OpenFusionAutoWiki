@@ -134,7 +134,8 @@ export default function WorldMap() {
   const bossPaths = useMemo(() => visibleKinds['world-boss'] ? buildWorldBossPaths(areas) : [], [areas, visibleKinds]);
   const hoveredMarker = visibleMarkers.find((marker) => marker.id === hoverMarkerId);
   const markerRouteLabels = hoveredMarker
-    ? [...new Set(routes.filter((route) => route.routeKeys.some((key) => hoverRoutes.includes(key))).flatMap((route) => route.markerLabels ?? [route.label]))]
+    ? hoveredMarker.kind === 'egg' ? [hoveredMarker.label]
+      : [...new Set(routes.filter((route) => route.routeKeys.some((key) => hoverRoutes.includes(key))).flatMap((route) => route.markerLabels ?? [route.label]))]
     : [];
   const markerScreenX = hoveredMarker ? offset.x + hoveredMarker.px * zoom : 0;
   const markerScreenY = hoveredMarker ? offset.y + hoveredMarker.py * zoom : 0;
@@ -393,7 +394,7 @@ export default function WorldMap() {
                   onBlur={() => { setHoverMarkerId(null); setHoverRoutes([]); }}
                 >
                   <img src={marker.icon} alt="" draggable={false} />
-                  <span className="world-map-marker-tooltip">{marker.label}</span>
+                  {marker.kind !== 'egg' && <span className="world-map-marker-tooltip">{marker.label}</span>}
                 </a>
               );
             })}
@@ -402,6 +403,8 @@ export default function WorldMap() {
             <MapRouteTooltip
               id="world-map-hover-routes"
               labels={markerRouteLabels}
+              icon={hoveredMarker.hoverIcon}
+              itemIcon={hoveredMarker.hoverItemIcon}
               x={markerScreenX}
               y={markerScreenY}
               viewportWidth={viewportSize.width}
