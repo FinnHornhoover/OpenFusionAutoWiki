@@ -33,6 +33,7 @@ export interface MapRouteLine {
   moveType: string;
   points: Array<{ x: number; y: number }>;
   bidirectional?: boolean;
+  markerLabels?: string[];
 }
 
 function bossPathKey(mobId: Ref['id'], points: Array<{ x: number; y: number }>): string {
@@ -128,6 +129,15 @@ function mapWarpKey(warp: AreaInstanceWarp): string | null {
 
 function areaLabel(name: string): string {
   return name.split(' - ')[0];
+}
+
+const SLIDER_ROUTE_LABEL = 'Marquee Row ↔ Peach Creek Estates';
+
+function sliderStopLabels(route: AreaTransport): string[] {
+  return [...new Set(route.stops
+    .map((stop) => stop.areaZone)
+    .filter((name) => name && name !== 'Unknown - Unknown')
+    .map(areaLabel))];
 }
 
 function warpRouteLabel(warp: AreaInstanceWarp, bidirectional = false): string {
@@ -392,11 +402,13 @@ export function buildWorldTransportRoutes(areas: Area[]): MapRouteLine[] {
       } else {
         const start = route.stops[0];
         const end = route.stops.at(-1);
-        const bidirectional = Boolean(start && end && hasReturnTransport(route, start, end, areas));
-        const label = start && end
+        const slider = route.moveType.toLowerCase().includes('slider');
+        const bidirectional = slider || Boolean(start && end && hasReturnTransport(route, start, end, areas));
+        const label = slider ? SLIDER_ROUTE_LABEL : start && end
           ? `${areaLabel(start.areaZone || route.routeName)} ${bidirectional ? '↔' : '→'} ${areaLabel(end.areaZone || route.routeName)}`
           : route.routeName;
-        routes.set(geometryKey, { key, routeKeys: [key], label, bidirectional, moveType, points });
+        routes.set(geometryKey, { key, routeKeys: [key], label, bidirectional, moveType, points,
+          markerLabels: slider ? sliderStopLabels(route) : undefined });
       }
     }
   }
@@ -408,21 +420,24 @@ export function buildAreaOutgoingRoutes(area: Area, allAreas: Area[] = [area]): 
   for (const route of area.transportation) {
     const slider = route.moveType.toLowerCase().includes('slider');
     route.stops.forEach((stop, index) => {
-      if (!stop.isHere || (!slider && index !== 0)) return;
       const destination = slider ? route.stops[index + 1] : route.stops.at(-1);
       if (!destination || destination === stop) return;
+      // The Slider's return track reaches a local stop from outside the area.
+      // Include both adjoining legs so its loop stays connected at each station.
+      if (slider ? !stop.isHere && !destination.isHere : !stop.isHere || index !== 0) return;
       const authored = route.routePoints ?? [];
       const start = authored.findIndex((p) => p.x === stop.x && p.y === stop.y);
       const end = authored.findIndex((p, i) => i > start && p.x === destination.x && p.y === destination.y);
       const points = slider
         ? start >= 0 && end > start ? authored.slice(start, end + 1) : [stop, destination]
         : authored.length > 1 ? authored : route.stops;
-      const bidirectional = hasReturnTransport(route, stop, destination, allAreas);
+      const bidirectional = slider || hasReturnTransport(route, stop, destination, allAreas);
       const destinationName = destination.areaZone || route.routeName;
       routes.push({
         key: `${routeKey(route)}:outgoing:${index}`,
         routeKeys: [routeKey(route)],
-        label: `${areaLabel(stop.areaZone || area.fullName)} ${bidirectional ? '↔' : '→'} ${areaLabel(destinationName)}`,
+        label: slider ? SLIDER_ROUTE_LABEL : `${areaLabel(stop.areaZone || area.fullName)} ${bidirectional ? '↔' : '→'} ${areaLabel(destinationName)}`,
+        markerLabels: slider ? sliderStopLabels(route) : undefined,
         bidirectional,
         moveType: route.moveType === 'SCAMPER' && route.startNpc?.name.includes('Woosh') ? 'Woosh' : route.moveType,
         points,
