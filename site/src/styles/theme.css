@@ -2030,6 +2030,33 @@ details.dropdown > .dropdown-body {
 .type-tab:disabled { opacity: 0.4; cursor: not-allowed; }
 .type-tab-count { opacity: 0.75; margin-left: var(--space-1); }
 
+.type-tab[data-combat-type="Adaptium"] {
+  --combat-tab-color: #2563eb;
+  --combat-tab-text: #fff;
+}
+.type-tab[data-combat-type="Blastons"] {
+  --combat-tab-color: #c92f40;
+  --combat-tab-text: #fff;
+}
+.type-tab[data-combat-type="Cosmix"] {
+  --combat-tab-color: #f1c40f;
+  --combat-tab-text: #221a00;
+}
+.type-tab[data-combat-type] {
+  background: color-mix(in srgb, var(--combat-tab-color) 15%, var(--color-bg-subtle));
+  border-color: color-mix(in srgb, var(--combat-tab-color) 35%, var(--color-border));
+  color: var(--color-text);
+}
+.type-tab[data-combat-type]:hover:not(:disabled),
+.type-tab[data-combat-type].active {
+  background: var(--combat-tab-color);
+  border-color: var(--combat-tab-color);
+  color: var(--combat-tab-text);
+}
+.type-tab[data-combat-type].active {
+  box-shadow: inset 0 0 0 2px currentColor, var(--glow-sm-both);
+}
+
 /* Entity index */
 .entity-index {
   list-style: none;

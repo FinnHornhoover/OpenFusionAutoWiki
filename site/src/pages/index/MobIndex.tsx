@@ -124,6 +124,7 @@ export default function MobIndex({ build, rows, loading }: Props) {
             key={t}
             type="button"
             className={'type-tab' + (activeTab === t ? ' active' : '')}
+            data-combat-type={t === 'All' ? undefined : t}
             onClick={() => selectTab(t)}
             disabled={t !== 'All' && counts[t] === 0}
           >
