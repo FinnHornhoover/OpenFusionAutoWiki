@@ -93,6 +93,7 @@ function normalizeNano(
     nanoType: raw.NanoType ?? '',
     nanoTypeId: raw.NanoTypeID ?? 0,
     awardLevel: levelFromComment(comment),
+    obtainable: false,
     powers,
     missionsRewarding: back?.rewards ?? [],
     missionsRequiring: back?.required ?? [],
@@ -100,7 +101,7 @@ function normalizeNano(
 }
 
 function indexEntry(n: Nano): NanoIndexEntry {
-  return { id: n.id, name: n.name, icon: n.icon, nanoType: n.nanoType, awardLevel: n.awardLevel };
+  return { id: n.id, name: n.name, icon: n.icon, nanoType: n.nanoType, awardLevel: n.awardLevel, obtainable: n.obtainable };
 }
 
 export async function normalizeNanos(
@@ -118,6 +119,49 @@ export async function normalizeNanos(
     .map((n) => normalizeNano(n, iconMap, nanoMissions))
     .filter((n) => n.id > 0)
     .sort((a, b) => a.id - b.id);
+
+  const playerEntry = zip.getEntry('info/player_info.json');
+  const players = playerEntry
+    ? JSON.parse(playerEntry.getData().toString('utf8')) as Record<string, {
+      Level?: number;
+      NanosUnlocked?: Record<string, { ID?: number }>;
+    }>
+    : {};
+  const unlocked = new Set(Object.values(players).flatMap((player) =>
+    Object.values(player.NanosUnlocked ?? {}).map((nano) => nano.ID)));
+  const capsuleNameKey = (name: string) => name.toLowerCase()
+    .replace(/^p\.?\s*bubblegum$/, 'princess bubblegum').replace(/[^a-z0-9]/g, '');
+  const capsuleNanos = new Set<string>();
+  const itemEntry = zip.getEntry('info/item_info.json');
+  if (itemEntry) {
+    const items = JSON.parse(itemEntry.getData().toString('utf8')) as Record<string, { TypeID?: number; Name?: string }>;
+    for (const item of Object.values(items)) {
+      if (item.TypeID !== 9) continue;
+      const match = /^(?:Nano\s+(.+)|(.+)\s+Nano)\s+Capsule$/i.exec(item.Name ?? '');
+      if (match) capsuleNanos.add(capsuleNameKey(match[1] ?? match[2]));
+    }
+  }
+  for (const nano of nanos) {
+    nano.obtainable = unlocked.has(nano.id) || capsuleNanos.has(capsuleNameKey(nano.name))
+      || nano.name.trim().toLowerCase() === 'unstable nano';
+  }
+
+  // Original builds lack level text. Their player rows describe unlocks before
+  // reaching the next level, so use the earliest unlock row's level plus one.
+  if (!nanos.some((nano) => /L(?:VL|EVEL)\s*\d+/i.test(nano.comment))) {
+    if (playerEntry) {
+      const unlockLevels = new Map<number, number>();
+      for (const player of Object.values(players)) {
+        if (player.Level == null) continue;
+        for (const nano of Object.values(player.NanosUnlocked ?? {})) {
+          if (nano.ID == null || nano.ID <= 0) continue;
+          const level = player.Level + 1;
+          unlockLevels.set(nano.ID, Math.min(unlockLevels.get(nano.ID) ?? level, level));
+        }
+      }
+      for (const nano of nanos) nano.awardLevel = unlockLevels.get(nano.id) ?? 0;
+    }
+  }
 
   const linked = nanos.filter((n) => n.missionsRewarding.length > 0 || n.missionsRequiring.length > 0).length;
 

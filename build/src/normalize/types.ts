@@ -852,6 +852,7 @@ export interface Nano {
   nanoTypeId: number;
   /** Lowest level among missions that reward this nano (0 when unawarded). */
   awardLevel: number;
+  obtainable: boolean;
   powers: NanoPower[];
 
   missionsRewarding: Ref[];
@@ -865,6 +866,7 @@ export interface NanoIndexEntry {
   icon: string;
   nanoType: string;
   awardLevel: number;
+  obtainable: boolean;
 }
 
 export interface ItemSetItem extends Ref {

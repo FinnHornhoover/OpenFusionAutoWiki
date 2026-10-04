@@ -752,6 +752,7 @@ export interface Nano {
   nanoType: string;
   nanoTypeId: number;
   awardLevel: number;
+  obtainable?: boolean;
   powers: NanoPower[];
 
   missionsRewarding: Ref[];
@@ -765,6 +766,7 @@ export interface NanoIndexEntry {
   icon: string;
   nanoType: string;
   awardLevel: number;
+  obtainable?: boolean;
 }
 
 export interface PlayerStatsRow {

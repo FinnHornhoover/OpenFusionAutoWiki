@@ -32,6 +32,9 @@ export default function NanoIndex({ build, rows, loading }: Props) {
   const activeTab = tabFromParam(searchParams.get('type'));
   const [q, setQ] = useState('');
   const [page, setPage] = useState(0);
+  const [hideUnobtainable, setHideUnobtainable] = useState(true);
+  const hasNameFilter = q.trim().length > 0;
+  const effectiveHideUnobtainable = hideUnobtainable && !hasNameFilter;
   const showSkeleton = useDelayedFlag(loading);
 
   const visibleRows = useMemo(() => rows.filter((r) => r.id > 0), [rows]);
@@ -39,21 +42,23 @@ export default function NanoIndex({ build, rows, loading }: Props) {
   const counts = useMemo(() => {
     const acc: Record<NanoTab, number> = { All: 0, Adaptium: 0, Blastons: 0, Cosmix: 0 };
     for (const r of visibleRows) {
+      if (effectiveHideUnobtainable && r.obtainable === false) continue;
       acc.All++;
       if ((NANO_TYPE_TABS as readonly string[]).includes(r.nanoType)) {
         acc[r.nanoType as NanoTab]++;
       }
     }
     return acc;
-  }, [visibleRows]);
+  }, [visibleRows, effectiveHideUnobtainable]);
 
   const filtered = useMemo(() => {
     const needle = q.trim().toLowerCase();
     let pool = visibleRows;
+    if (effectiveHideUnobtainable) pool = pool.filter((r) => r.obtainable !== false);
     if (activeTab !== 'All') pool = pool.filter((r) => r.nanoType === activeTab);
     if (needle) pool = pool.filter((r) => r.name.toLowerCase().includes(needle));
     return pool.slice().sort((a, b) => a.id - b.id);
-  }, [visibleRows, q, activeTab]);
+  }, [visibleRows, q, activeTab, effectiveHideUnobtainable]);
 
   const renderedRows = filtered.slice(0, (page + 1) * PAGE_SIZE);
   const hasMore = renderedRows.length < filtered.length;
@@ -95,6 +100,15 @@ export default function NanoIndex({ build, rows, loading }: Props) {
           style={{ width: '100%', maxWidth: 360 }}
           aria-label="Filter nanos"
         />
+        <label className="checkbox">
+          <input
+            type="checkbox"
+            checked={effectiveHideUnobtainable}
+            disabled={hasNameFilter}
+            onChange={(e) => { setHideUnobtainable(e.target.checked); setPage(0); }}
+          />
+          <span>Hide unobtainable</span>
+        </label>
       </div>
 
       {loading && showSkeleton && <EntityIndexSkeleton />}
@@ -112,7 +126,7 @@ export default function NanoIndex({ build, rows, loading }: Props) {
               </thead>
               <tbody>
                 {renderedRows.map((r) => (
-                  <tr key={r.id}>
+                  <tr key={r.id} className={r.obtainable === false ? 'entity-index-row-muted' : undefined}>
                     <td>
                       <div className="entity-index-name">
                         {r.icon
@@ -121,7 +135,7 @@ export default function NanoIndex({ build, rows, loading }: Props) {
                         <Link className="entity-index-link" to={`/${build}/nanos/${r.routeId ?? r.id}`}>{r.name}</Link>
                       </div>
                     </td>
-                    <td>{r.awardLevel > 0 ? r.awardLevel : <span className="muted">—</span>}</td>
+                    <td>{r.awardLevel ?? 0}</td>
                     <td>{r.nanoType || <span className="muted">—</span>}</td>
                   </tr>
                 ))}
