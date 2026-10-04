@@ -8,6 +8,7 @@ import Icon from '../components/Icon';
 import InlineMeta from '../components/InlineMeta';
 import MapSpot from '../components/MapSpot';
 import SimilarItems from '../components/SimilarItems';
+import { formatDurationSeconds } from '../data/formatTime';
 
 # {props.data.name}
 
@@ -190,7 +191,7 @@ import SimilarItems from '../components/SimilarItems';
                   <tr>
                     <th>Egg</th>
                     <th>Location</th>
-                    <th>Drop chance</th>
+                    <th>Respawn time</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -212,7 +213,7 @@ import SimilarItems from '../components/SimilarItems';
                           />
                         ) : <span className="muted">-</span>}
                       </td>
-                      <td><DropChance data={s} leadingSeparator={false} /></td>
+                      <td>{s.respawnSeconds != null ? s.respawnSeconds === 0 ? '0 seconds' : formatDurationSeconds(s.respawnSeconds) : <span className="muted">-</span>}</td>
                     </tr>
                   ))}
                 </tbody>

@@ -119,6 +119,7 @@ interface RawAreaEggType {
   Effect?: string;
   EffectIcon?: string;
   EffectDuration?: number;
+  RespawnSeconds?: number;
 }
 interface RawAreaInstanceWarp {
   ToAreaZone?: string;
@@ -525,6 +526,7 @@ function buildAreaEggs(
   for (const inst of Object.values(eggs ?? {})) {
     if (!inst || typeof inst !== 'object') continue;
     const meta = eggTypes?.[String(inst.TypeID)];
+    const respawnSeconds = meta?.RespawnSeconds;
     const crate = meta?.Crate;
     let crateItem: Ref | null = null;
     if (crate && crate.ItemID) {
@@ -537,6 +539,7 @@ function buildAreaEggs(
       effectName: meta?.Effect ?? '',
       effectIcon: iconFor(meta?.EffectIcon ?? '', iconMap),
       effectDuration: meta?.EffectDuration ?? 0,
+      respawnSeconds: typeof respawnSeconds === 'number' && Number.isFinite(respawnSeconds) && respawnSeconds >= 0 ? respawnSeconds : null,
       x: inst.X ?? 0,
       y: inst.Y ?? 0,
       z: inst.Z ?? 0,

@@ -289,6 +289,7 @@ export type ItemSource =
       eggId: string;
       eggName: string;
       eggComment: string;
+      respawnSeconds: number | null;
       areaZone: string;
       areaId: string;
       instanceID: number;
@@ -712,6 +713,7 @@ export interface AreaMissionStartEntry {
 
 /** A single egg/crate location in the area. */
 export interface AreaEggEntry {
+  respawnSeconds: number | null;
   typeName: string;          // e.g., "14Lv Item shiny"
   typeComment: string;        // "Item", "Nano", …
   crateItem: Ref | null;      // item dispensed (when known)

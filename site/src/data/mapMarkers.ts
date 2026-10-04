@@ -26,6 +26,7 @@ export interface MapMarker {
   routeKeys?: string[];
   hoverIcon?: string;
   hoverItemIcon?: boolean;
+  hoverLabels?: string[];
 }
 
 export interface MapRouteLine {
@@ -131,6 +132,12 @@ function mapWarpKey(warp: AreaInstanceWarp): string | null {
 
 function areaLabel(name: string): string {
   return name.split(' - ')[0];
+}
+
+function mapTime(seconds: number | null | undefined): string {
+  if (seconds == null || !Number.isFinite(seconds) || seconds < 0) return '--:--';
+  const rounded = Math.round(seconds);
+  return `${String(Math.floor(rounded / 60)).padStart(2, '0')}:${String(rounded % 60).padStart(2, '0')}`;
 }
 
 const SLIDER_ROUTE_LABEL = 'Marquee Row ↔ Peach Creek Estates';
@@ -286,10 +293,15 @@ export function buildAreaMapMarkers(area: Area, build: string): MapMarker[] {
   }
 
   area.eggs.forEach((e, i) => {
+    const rewardName = e.crateItem ? e.crateItem.name || 'Crate' : e.effectName || 'Power';
+    const hoverLabels = e.crateItem
+      ? [rewardName, `Resp: ${mapTime(e.respawnSeconds)}`]
+      : [rewardName, `Dur: ${mapTime(e.effectDuration)}`, `Resp: ${mapTime(e.respawnSeconds)}`];
     markers.push({
       id: `egg-${i}`,
       kind: 'egg',
-      label: e.crateItem ? e.crateItem.name || 'Crate' : e.effectName || 'Power',
+      label: hoverLabels.join(', '),
+      hoverLabels,
       x: e.x,
       y: e.y,
       icon: '/minimap/mapicons/world_egg_shiny_npc.png',

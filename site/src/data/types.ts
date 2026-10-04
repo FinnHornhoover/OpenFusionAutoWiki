@@ -245,7 +245,7 @@ export type ItemSource =
   | { kind: 'mission'; mission: Ref; npc: Ref | null; areaZone: string; selectionNeeded: boolean }
   | ({ kind: 'mission-crate'; mission: Ref; npc: Ref | null; areaZone: string; selectionNeeded: boolean } & DropChance)
   | { kind: 'vendor'; npc: Ref; price: number; areaZone: string }
-  | ({ kind: 'egg'; eggId: string; eggName: string; eggComment: string; areaZone: string; areaId: string; instanceID: number; instanceName: string; x: number; y: number; z: number } & DropChance)
+  | ({ kind: 'egg'; eggId: string; eggName: string; eggComment: string; respawnSeconds?: number | null; areaZone: string; areaId: string; instanceID: number; instanceName: string; x: number; y: number; z: number } & DropChance)
   | { kind: 'character-creation'; gender: string; genderId: number }
   | ({ kind: 'racing'; npc: Ref | null; infectedZone: Ref | null; instanceName: string; areaZone: string; requiredScore: number; requiredStars: number } & DropChance)
   | { kind: 'code'; code: string; ref: Ref }
@@ -627,6 +627,7 @@ export interface AreaMissionStartEntry {
 }
 
 export interface AreaEggEntry {
+  respawnSeconds?: number | null;
   typeName: string;
   typeComment: string;
   crateItem: Ref | null;

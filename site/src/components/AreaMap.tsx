@@ -149,7 +149,7 @@ export default function AreaMap({ area, build, size = 960 }: AreaMapProps) {
   const visibleRoutes = outgoingRoutes.filter((route) => visibleKinds[route.kind]);
   const hoveredMarker = visibleMarkers.find((marker) => marker.id === hoverMarkerId);
   const markerRouteLabels = hoveredMarker
-    ? hoveredMarker.kind === 'egg' ? [hoveredMarker.label]
+    ? hoveredMarker.kind === 'egg' ? hoveredMarker.hoverLabels ?? [hoveredMarker.label]
       : [...new Set(visibleRoutes.filter((route) => route.routeKeys.some((key) => hoverPaths.includes(key))).flatMap((route) => route.markerLabels ?? [route.label]))]
     : [];
 

@@ -79,6 +79,7 @@ interface RawVendorSource {
 interface RawEggSource {
   AreaZone?: string;
   EggID?: string;
+  EggTypeID?: number;
   EggName?: string;
   EggComment?: string;
   InstanceID?: number;
@@ -241,6 +242,7 @@ function normalizeSource(
   entry: RawSourceEntry,
   iconMap: IconMap,
   instanceNames: InstanceNameIndex,
+  eggRespawns: ReadonlyMap<number, number>,
 ): ItemSource | null {
   const s = entry.Source ?? {};
   switch (entry.SourceType) {
@@ -303,6 +305,7 @@ function normalizeSource(
         eggId: e.EggID ?? '',
         eggName: e.EggName ?? '',
         eggComment: e.EggComment ?? '',
+        respawnSeconds: eggRespawns.get(e.EggTypeID ?? -1) ?? null,
         areaZone: e.AreaZone ?? '',
         areaId: e.AreaZone ? slugify(e.AreaZone) : '',
         instanceID: e.InstanceID ?? 0,
@@ -392,11 +395,12 @@ function normalizeItem(
   iconMap: IconMap,
   instanceNames: InstanceNameIndex,
   playerPrice: number,
+  eggRespawns: ReadonlyMap<number, number>,
 ): Item {
   const seen = new Set<string>();
   const sources: ItemSource[] = [];
   for (const entry of rawSources) {
-    const s = normalizeSource(entry, iconMap, instanceNames);
+    const s = normalizeSource(entry, iconMap, instanceNames, eggRespawns);
     if (!s) continue;
     const key = sourceDedupKey(s);
     if (seen.has(key)) continue;
@@ -485,6 +489,16 @@ export async function normalizeItems(
   if (!itemEntry) return { count: 0, chunks: 0, sourceCount: 0, mobItems };
 
   const rawItems = JSON.parse(itemEntry.getData().toString('utf8')) as Record<string, RawItem>;
+  const eggRespawns = new Map<number, number>();
+  const eggTypeEntry = zip.getEntry('info/egg_type_info.json');
+  if (eggTypeEntry) {
+    const eggTypes = JSON.parse(eggTypeEntry.getData().toString('utf8')) as Record<string, { ID?: number; RespawnSeconds?: number }>;
+    for (const [id, egg] of Object.entries(eggTypes)) {
+      if (Number.isFinite(egg.RespawnSeconds) && egg.RespawnSeconds! >= 0) {
+        eggRespawns.set(egg.ID ?? Number(id), egg.RespawnSeconds!);
+      }
+    }
+  }
 
   // Source info: keys are "TypeID::ItemID::Name". Build a lookup by "TypeID::ItemID".
   const sourceEntry = zip.getEntry('info/item_source_info.json');
@@ -517,7 +531,7 @@ export async function normalizeItems(
     const crateDrops = crateDropsByKey.get(key) ?? [];
     const containingCrates = containingCratesByKey.get(key) ?? [];
     const playerPrice = playerPrices.get(standardizeItemName(raw.Name)) ?? 0;
-    return normalizeItem(raw, sources, crateDrops, containingCrates, iconMap, instanceNames, playerPrice);
+    return normalizeItem(raw, sources, crateDrops, containingCrates, iconMap, instanceNames, playerPrice, eggRespawns);
   });
 
   // Sort: by typeId then itemId for deterministic output.

@@ -134,7 +134,7 @@ export default function WorldMap() {
   const bossPaths = useMemo(() => visibleKinds['world-boss'] ? buildWorldBossPaths(areas) : [], [areas, visibleKinds]);
   const hoveredMarker = visibleMarkers.find((marker) => marker.id === hoverMarkerId);
   const markerRouteLabels = hoveredMarker
-    ? hoveredMarker.kind === 'egg' ? [hoveredMarker.label]
+    ? hoveredMarker.kind === 'egg' ? hoveredMarker.hoverLabels ?? [hoveredMarker.label]
       : [...new Set(routes.filter((route) => route.routeKeys.some((key) => hoverRoutes.includes(key))).flatMap((route) => route.markerLabels ?? [route.label]))]
     : [];
   const markerScreenX = hoveredMarker ? offset.x + hoveredMarker.px * zoom : 0;
