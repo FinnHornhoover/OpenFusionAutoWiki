@@ -52,19 +52,25 @@ export default function MissionIndex({ build, rows, loading }: Props) {
   const activeDifficulties = useMemo(() => parseCsvParam(searchParams.get('difficulty')), [searchParams]);
   const [q, setQ] = useState('');
   const [page, setPage] = useState(0);
+  const [hideOutOfGame, setHideOutOfGame] = useState(true);
+  const hasNameFilter = q.trim().length > 0;
+  const effectiveHideOutOfGame = hideOutOfGame && !hasNameFilter;
   const showSkeleton = useDelayedFlag(loading);
+  const visibleRows = useMemo(() => effectiveHideOutOfGame
+    ? rows.filter((row) => row.inGame !== false)
+    : rows, [rows, effectiveHideOutOfGame]);
 
   const levelOptions = useMemo(() => {
-    return [...new Set(rows.map((r) => r.level).filter((level) => level > 0))].sort((a, b) => a - b);
-  }, [rows]);
+    return [...new Set(visibleRows.map((r) => r.level).filter((level) => level > 0))].sort((a, b) => a - b);
+  }, [visibleRows]);
 
   const difficultyOptions = useMemo(() => {
-    return [...new Set(rows.map((r) => r.difficulty).filter(Boolean))].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
-  }, [rows]);
+    return [...new Set(visibleRows.map((r) => r.difficulty).filter(Boolean))].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+  }, [visibleRows]);
 
   const counts = useMemo(() => {
     const acc: Record<MissionTab, number> = { All: 0, Normal: 0, Guide: 0, Nano: 0 };
-    for (const r of rows) {
+    for (const r of visibleRows) {
       if (activeLevels.size > 0 && !activeLevels.has(String(r.level))) continue;
       if (activeDifficulties.size > 0 && !activeDifficulties.has(r.difficulty)) continue;
       acc.All++;
@@ -73,35 +79,35 @@ export default function MissionIndex({ build, rows, loading }: Props) {
       }
     }
     return acc;
-  }, [rows, activeDifficulties, activeLevels]);
+  }, [visibleRows, activeDifficulties, activeLevels]);
 
   const levelCounts = useMemo(() => {
     const acc = new Map<number, number>();
     for (const level of levelOptions) acc.set(level, 0);
-    for (const r of rows) {
+    for (const r of visibleRows) {
       if (activeTab !== 'All' && r.type !== activeTab) continue;
       if (activeDifficulties.size > 0 && !activeDifficulties.has(r.difficulty)) continue;
       if (r.level > 0) acc.set(r.level, (acc.get(r.level) ?? 0) + 1);
     }
     return acc;
-  }, [activeDifficulties, activeTab, levelOptions, rows]);
+  }, [activeDifficulties, activeTab, levelOptions, visibleRows]);
 
   const difficultyCounts = useMemo(() => {
     const acc = new Map<string, number>();
     for (const difficulty of difficultyOptions) acc.set(difficulty, 0);
     let all = 0;
-    for (const r of rows) {
+    for (const r of visibleRows) {
       if (activeTab !== 'All' && r.type !== activeTab) continue;
       if (activeLevels.size > 0 && !activeLevels.has(String(r.level))) continue;
       all++;
       if (r.difficulty) acc.set(r.difficulty, (acc.get(r.difficulty) ?? 0) + 1);
     }
     return { all, byDifficulty: acc };
-  }, [activeLevels, activeTab, difficultyOptions, rows]);
+  }, [activeLevels, activeTab, difficultyOptions, visibleRows]);
 
   const filtered = useMemo(() => {
     const needle = q.trim().toLowerCase();
-    let pool = rows;
+    let pool = visibleRows;
     if (activeTab !== 'All') pool = pool.filter((r) => r.type === activeTab);
     if (activeLevels.size > 0) pool = pool.filter((r) => activeLevels.has(String(r.level)));
     if (activeDifficulties.size > 0) pool = pool.filter((r) => activeDifficulties.has(r.difficulty));
@@ -113,7 +119,7 @@ export default function MissionIndex({ build, rows, loading }: Props) {
       if (ra !== rb) return ra - rb;
       return a.name.localeCompare(b.name);
     });
-  }, [rows, q, activeTab, activeDifficulties, activeLevels]);
+  }, [visibleRows, q, activeTab, activeDifficulties, activeLevels]);
 
   const renderedRows = filtered.slice(0, (page + 1) * PAGE_SIZE);
   const hasMore = renderedRows.length < filtered.length;
@@ -211,6 +217,15 @@ export default function MissionIndex({ build, rows, loading }: Props) {
               ))}
             </div>
         </IndexFilterDropdown>
+        <label className="checkbox">
+          <input
+            type="checkbox"
+            checked={effectiveHideOutOfGame}
+            disabled={hasNameFilter}
+            onChange={(e) => { setHideOutOfGame(e.target.checked); setPage(0); }}
+          />
+          <span>Hide out-of-game</span>
+        </label>
       </div>
       {loading && showSkeleton && <EntityIndexSkeleton />}
       {!loading && filtered.length === 0 && <p className="muted">No matches.</p>}
