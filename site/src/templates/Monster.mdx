@@ -13,7 +13,7 @@ import { formatDurationSeconds } from '../data/formatTime';
   {props.data.icon ? <div className="entity-header-icon"><Icon src={props.data.icon} alt={props.data.name} size={192} /></div> : null}
   <div className="entity-meta muted">
     {props.data.worldBoss && <span className="badge badge-category">World Boss</span>}
-    {props.data.colorType && <span className="badge badge-category">{props.data.colorType}</span>}
+    {props.data.colorType && <span className="badge badge-category" data-combat-type={props.data.colorType}>{props.data.colorType}</span>}
     {props.data.level > 0 && <span className="badge badge-category">Level {props.data.level}</span>}
     {props.data.inGame === false && <span className="badge badge-warn">cut from final build</span>}
     {props.data.locations.length > 0 && (

@@ -1581,6 +1581,21 @@ details.dropdown > .dropdown-body {
   border: 1px solid var(--color-border);
   color: var(--color-text);
 }
+.badge-category[data-combat-type="Adaptium"] {
+  background: #2563eb;
+  border-color: #2563eb;
+  color: #fff;
+}
+.badge-category[data-combat-type="Blastons"] {
+  background: #c92f40;
+  border-color: #c92f40;
+  color: #fff;
+}
+.badge-category[data-combat-type="Cosmix"] {
+  background: #f1c40f;
+  border-color: #f1c40f;
+  color: #221a00;
+}
 .badge-warn {
   background: rgba(230, 57, 70, 0.15);
   color: var(--color-danger);
