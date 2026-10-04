@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useIndexSort } from '../../data/useIndexSort';
 import { Link } from 'react-router-dom';
 
 import EntityIndexSkeleton from '../../components/EntityIndexSkeleton';
@@ -29,13 +30,17 @@ export default function InstanceIndex({ build, rows, loading }: Props) {
     return pool.slice().sort((a, b) => a.id - b.id);
   }, [rows, q, hideOutOfGame]);
 
-  const renderedRows = filtered.slice(0, (page + 1) * PAGE_SIZE);
+  const { sortedRows, sortHeader, resetSortButton } = useIndexSort(filtered, {
+    id: r => r.id, name: r => r.name, infectedZone: r => r.infectedZone?.name ?? null,
+  }, () => setPage(0));
+  const renderedRows = sortedRows.slice(0, (page + 1) * PAGE_SIZE);
   const hasMore = renderedRows.length < filtered.length;
 
   return (
     <>
       <p className="muted">{filtered.length.toLocaleString()} of {rows.length.toLocaleString()}</p>
       <div className="index-controls">
+        {resetSortButton}
         <input
           type="search"
           placeholder="Filter by name…"
@@ -62,9 +67,9 @@ export default function InstanceIndex({ build, rows, loading }: Props) {
             <table className="location-table source-table entity-index-table">
               <thead>
                 <tr>
-                  <th>ID</th>
-                  <th>Instance</th>
-                  <th>Infected zone</th>
+                  {sortHeader('id', 'ID')}
+                  {sortHeader('name', 'Instance')}
+                  {sortHeader('infectedZone', 'Infected zone')}
                 </tr>
               </thead>
               <tbody>

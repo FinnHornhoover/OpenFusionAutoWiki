@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useIndexSort } from '../../data/useIndexSort';
 import { Link, useSearchParams } from 'react-router-dom';
 
 import EntityIndexSkeleton from '../../components/EntityIndexSkeleton';
@@ -89,7 +90,10 @@ export default function MobIndex({ build, rows, loading }: Props) {
     });
   }, [rows, q, activeTab, activeLevels, hideOutOfGame]);
 
-  const renderedRows = filtered.slice(0, (page + 1) * PAGE_SIZE);
+  const { sortedRows, sortHeader, resetSortButton } = useIndexSort(filtered, {
+    name: r => r.name, level: r => r.level, hp: r => r.standardHP, type: r => r.colorType,
+  }, () => setPage(0));
+  const renderedRows = sortedRows.slice(0, (page + 1) * PAGE_SIZE);
   const hasMore = renderedRows.length < filtered.length;
 
   function updateParam(name: string, value: string | null) {
@@ -134,6 +138,7 @@ export default function MobIndex({ build, rows, loading }: Props) {
       </nav>
 
       <div className="index-controls">
+        {resetSortButton}
         <input
           type="search"
           placeholder="Filter by name…"
@@ -176,10 +181,10 @@ export default function MobIndex({ build, rows, loading }: Props) {
             <table className="location-table source-table entity-index-table">
               <thead>
                 <tr>
-                  <th>Monster</th>
-                  <th>Level</th>
-                  <th>HP</th>
-                  <th>Type</th>
+                  {sortHeader('name', 'Monster')}
+                  {sortHeader('level', 'Level')}
+                  {sortHeader('hp', 'HP')}
+                  {sortHeader('type', 'Type')}
                 </tr>
               </thead>
               <tbody>

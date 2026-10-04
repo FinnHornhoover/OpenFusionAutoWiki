@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useIndexSort } from '../../data/useIndexSort';
 import { Link, useSearchParams } from 'react-router-dom';
 
 import EntityIndexSkeleton from '../../components/EntityIndexSkeleton';
@@ -168,7 +169,10 @@ export default function NpcIndex({ build, rows, loading }: Props) {
     });
   }, [rows, q, activeTab, hideOutOfGame]);
 
-  const renderedRows = filtered.slice(0, (page + 1) * PAGE_SIZE);
+  const { sortedRows, sortHeader, resetSortButton } = useIndexSort(filtered, {
+    id: r => Math.min(...visibleNpcMembers(r, hideOutOfGame).map(member => member.id)), name: r => r.name, category: r => npcCategory(r, hideOutOfGame),
+  }, () => setPage(0));
+  const renderedRows = sortedRows.slice(0, (page + 1) * PAGE_SIZE);
   const hasMore = renderedRows.length < filtered.length;
 
   function selectTab(t: NpcTab) {
@@ -200,6 +204,7 @@ export default function NpcIndex({ build, rows, loading }: Props) {
       </nav>
 
       <div className="index-controls">
+        {resetSortButton}
         <input
           type="search"
           placeholder="Filter by name…"
@@ -226,9 +231,9 @@ export default function NpcIndex({ build, rows, loading }: Props) {
             <table className="location-table source-table entity-index-table">
               <thead>
                 <tr>
-                  <th>ID</th>
-                  <th>NPC</th>
-                  <th>Category</th>
+                  {sortHeader('id', 'ID')}
+                  {sortHeader('name', 'NPC')}
+                  {sortHeader('category', 'Category')}
                 </tr>
               </thead>
               <tbody>

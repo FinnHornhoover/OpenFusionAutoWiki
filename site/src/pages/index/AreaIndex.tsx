@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useIndexSort } from '../../data/useIndexSort';
 import { Link, useSearchParams } from 'react-router-dom';
 
 import EntityIndexSkeleton from '../../components/EntityIndexSkeleton';
@@ -49,7 +50,10 @@ export default function AreaIndex({ build, rows, loading }: Props) {
     return pool.slice().sort((a, b) => a.zoneName.localeCompare(b.zoneName) || a.name.localeCompare(b.name));
   }, [rows, q, activeZone]);
 
-  const renderedRows = filtered.slice(0, (page + 1) * PAGE_SIZE);
+  const { sortedRows, sortHeader, resetSortButton } = useIndexSort(filtered, {
+    name: r => r.zoneName ? `${r.name} - ${r.zoneName}` : r.name,
+  }, () => setPage(0));
+  const renderedRows = sortedRows.slice(0, (page + 1) * PAGE_SIZE);
   const hasMore = renderedRows.length < filtered.length;
 
   function selectZone(z: string) {
@@ -81,6 +85,7 @@ export default function AreaIndex({ build, rows, loading }: Props) {
       </nav>
 
       <div className="index-controls">
+        {resetSortButton}
         <input
           type="search"
           placeholder="Filter by name…"
@@ -99,7 +104,7 @@ export default function AreaIndex({ build, rows, loading }: Props) {
             <table className="location-table source-table area-index-table">
               <thead>
                 <tr>
-                  <th>Area</th>
+                  {sortHeader('name', 'Area')}
                 </tr>
               </thead>
               <tbody>

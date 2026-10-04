@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useIndexSort } from '../../data/useIndexSort';
 import { Link, useSearchParams } from 'react-router-dom';
 
 import EntityIndexSkeleton from '../../components/EntityIndexSkeleton';
@@ -60,7 +61,10 @@ export default function NanoIndex({ build, rows, loading }: Props) {
     return pool.slice().sort((a, b) => a.id - b.id);
   }, [visibleRows, q, activeTab, effectiveHideUnobtainable]);
 
-  const renderedRows = filtered.slice(0, (page + 1) * PAGE_SIZE);
+  const { sortedRows, sortHeader, resetSortButton } = useIndexSort(filtered, {
+    name: r => r.name, level: r => r.awardLevel ?? 0, type: r => r.nanoType,
+  }, () => setPage(0));
+  const renderedRows = sortedRows.slice(0, (page + 1) * PAGE_SIZE);
   const hasMore = renderedRows.length < filtered.length;
 
   function selectTab(t: NanoTab) {
@@ -93,6 +97,7 @@ export default function NanoIndex({ build, rows, loading }: Props) {
       </nav>
 
       <div className="index-controls">
+        {resetSortButton}
         <input
           type="search"
           placeholder="Filter by name…"
@@ -120,9 +125,9 @@ export default function NanoIndex({ build, rows, loading }: Props) {
             <table className="location-table source-table entity-index-table">
               <thead>
                 <tr>
-                  <th>Nano</th>
-                  <th>Level</th>
-                  <th>Type</th>
+                  {sortHeader('name', 'Nano')}
+                  {sortHeader('level', 'Level')}
+                  {sortHeader('type', 'Type')}
                 </tr>
               </thead>
               <tbody>

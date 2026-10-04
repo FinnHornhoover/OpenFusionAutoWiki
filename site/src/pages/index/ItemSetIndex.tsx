@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useIndexSort } from '../../data/useIndexSort';
 import { Link } from 'react-router-dom';
 
 import EntityIndexSkeleton from '../../components/EntityIndexSkeleton';
@@ -27,13 +28,17 @@ export default function ItemSetIndex({ build, rows, loading }: Props) {
     return pool.slice().sort((a, b) => a.name.localeCompare(b.name) || a.id - b.id);
   }, [rows, q]);
 
-  const renderedRows = filtered.slice(0, (page + 1) * PAGE_SIZE);
+  const { sortedRows, sortHeader, resetSortButton } = useIndexSort(filtered, {
+    name: r => r.name,
+  }, () => setPage(0));
+  const renderedRows = sortedRows.slice(0, (page + 1) * PAGE_SIZE);
   const hasMore = renderedRows.length < filtered.length;
 
   return (
     <>
       <p className="muted">{filtered.length.toLocaleString()} of {rows.length.toLocaleString()}</p>
       <div className="index-controls">
+        {resetSortButton}
         <input
           type="search"
           placeholder="Filter by set name..."
@@ -52,7 +57,7 @@ export default function ItemSetIndex({ build, rows, loading }: Props) {
             <table className="location-table source-table entity-index-table code-index-table">
               <thead>
                 <tr>
-                  <th>Set</th>
+                  {sortHeader('name', 'Set')}
                 </tr>
               </thead>
               <tbody>

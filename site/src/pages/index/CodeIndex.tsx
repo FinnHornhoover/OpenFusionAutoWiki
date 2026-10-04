@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useIndexSort } from '../../data/useIndexSort';
 import { Link } from 'react-router-dom';
 
 import EntityIndexSkeleton from '../../components/EntityIndexSkeleton';
@@ -27,13 +28,17 @@ export default function CodeIndex({ build, rows, loading }: Props) {
     return pool.slice().sort((a, b) => a.code.localeCompare(b.code));
   }, [rows, q]);
 
-  const renderedRows = filtered.slice(0, (page + 1) * PAGE_SIZE);
+  const { sortedRows, sortHeader, resetSortButton } = useIndexSort(filtered, {
+    code: r => r.code,
+  }, () => setPage(0));
+  const renderedRows = sortedRows.slice(0, (page + 1) * PAGE_SIZE);
   const hasMore = renderedRows.length < filtered.length;
 
   return (
     <>
       <p className="muted">{filtered.length.toLocaleString()} of {rows.length.toLocaleString()}</p>
       <div className="index-controls">
+        {resetSortButton}
         <input
           type="search"
           placeholder="Filter by code or item..."
@@ -50,7 +55,7 @@ export default function CodeIndex({ build, rows, loading }: Props) {
         <>
           <div className="table-scroll">
             <table className="location-table source-table entity-index-table code-index-table">
-              <thead><tr><th>Code</th></tr></thead>
+              <thead><tr>{sortHeader('code', 'Code')}</tr></thead>
               <tbody>
                 {renderedRows.map((r) => (
                   <tr key={r.id}>

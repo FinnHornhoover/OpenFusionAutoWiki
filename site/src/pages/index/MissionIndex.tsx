@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useIndexSort } from '../../data/useIndexSort';
 import { Link, useSearchParams } from 'react-router-dom';
 
 import EntityIndexSkeleton from '../../components/EntityIndexSkeleton';
@@ -121,7 +122,10 @@ export default function MissionIndex({ build, rows, loading }: Props) {
     });
   }, [visibleRows, q, activeTab, activeDifficulties, activeLevels]);
 
-  const renderedRows = filtered.slice(0, (page + 1) * PAGE_SIZE);
+  const { sortedRows, sortHeader, resetSortButton } = useIndexSort(filtered, {
+    name: r => r.name, level: r => r.level, difficulty: r => r.difficulty, type: r => missionTypeRank(r.type),
+  }, () => setPage(0));
+  const renderedRows = sortedRows.slice(0, (page + 1) * PAGE_SIZE);
   const hasMore = renderedRows.length < filtered.length;
 
   function updateParam(name: string, value: string | null) {
@@ -193,6 +197,7 @@ export default function MissionIndex({ build, rows, loading }: Props) {
       </nav>
 
       <div className="index-controls">
+        {resetSortButton}
         <input
           type="search"
           placeholder="Filter by name…"
@@ -235,10 +240,10 @@ export default function MissionIndex({ build, rows, loading }: Props) {
             <table className="location-table source-table entity-index-table">
               <thead>
                 <tr>
-                  <th>Mission</th>
-                  <th>Level</th>
-                  <th>Difficulty</th>
-                  <th>Type</th>
+                  {sortHeader('name', 'Mission')}
+                  {sortHeader('level', 'Level')}
+                  {sortHeader('difficulty', 'Difficulty')}
+                  {sortHeader('type', 'Type')}
                 </tr>
               </thead>
               <tbody>
