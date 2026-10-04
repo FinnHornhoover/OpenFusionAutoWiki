@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 
 import EntityIndexSkeleton from '../../components/EntityIndexSkeleton';
+import EntityLink from '../../components/EntityLink';
 import InfiniteScroll from '../../components/InfiniteScroll';
 import type { ItemSetIndexEntry } from '../../data/types';
 import { useDelayedFlag } from '../../data/useDelayedFlag';
@@ -48,18 +49,29 @@ export default function ItemSetIndex({ build, rows, loading }: Props) {
       {!loading && filtered.length > 0 && (
         <>
           <div className="table-scroll">
-            <table className="location-table source-table entity-index-table">
+            <table className="location-table source-table entity-index-table code-index-table">
               <thead>
                 <tr>
                   <th>Set</th>
-                  <th>Items</th>
                 </tr>
               </thead>
               <tbody>
                 {renderedRows.map((r) => (
                   <tr key={r.id}>
-                    <td><Link className="entity-index-link" to={`/${build}/item-sets/${r.routeId ?? r.id}`}>{r.name}</Link></td>
-                    <td>{r.itemCount.toLocaleString()}</td>
+                    <td>
+                      <div className="item-set-index-heading">
+                        <Link className="entity-index-link" to={`/${build}/item-sets/${r.routeId ?? r.id}`}>{r.name}</Link>
+                        <span className="muted">{r.itemCount.toLocaleString()} items</span>
+                      </div>
+                      {(r.items?.length ?? 0) > 0 && <div className="code-index-items">
+                        {(r.items ?? []).slice(0, 5).map((item) => <EntityLink key={item.id} entity={item} iconSize={64} />)}
+                        {r.itemCount > 5 && <Link
+                          className="item-set-index-more"
+                          to={`/${build}/item-sets/${r.routeId ?? r.id}`}
+                          aria-label={`Show all ${r.itemCount} items in ${r.name}`}
+                        >…</Link>}
+                      </div>}
+                    </td>
                   </tr>
                 ))}
               </tbody>

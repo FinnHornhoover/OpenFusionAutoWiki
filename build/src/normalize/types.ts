@@ -884,6 +884,7 @@ export interface ItemSetIndexEntry {
   routeId?: string;
   name: string;
   itemCount: number;
+  items: Ref[];
 }
 
 // ---- Player stats -----------------------------------------------------------

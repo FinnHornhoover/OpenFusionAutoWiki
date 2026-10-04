@@ -86,6 +86,7 @@ function indexEntry(set: ItemSet): ItemSetIndexEntry {
     id: set.id,
     name: set.name,
     itemCount: set.items.length,
+    items: set.items.slice(0, 5).map(({ type, id, name, icon }) => ({ type, id, name, icon })),
   };
 }
 
