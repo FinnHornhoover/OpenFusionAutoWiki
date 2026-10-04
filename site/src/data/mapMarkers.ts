@@ -32,6 +32,7 @@ export interface MapRouteLine {
   label: string;
   moveType: string;
   points: Array<{ x: number; y: number }>;
+  bidirectional?: boolean;
 }
 
 function bossPathKey(mobId: Ref['id'], points: Array<{ x: number; y: number }>): string {
@@ -125,19 +126,51 @@ function mapWarpKey(warp: AreaInstanceWarp): string | null {
   return `warp:${warp.id}:${from.instanceID}:${from.x},${from.y}:${to.instanceID}:${to.x},${to.y}`;
 }
 
+function areaLabel(name: string): string {
+  return name.split(' - ')[0];
+}
+
+function warpRouteLabel(warp: AreaInstanceWarp, bidirectional = false): string {
+  const source = warp.entryLocation && warp.entryLocation.instanceID !== 0
+    ? warp.entryLocation.instanceName || `Instance ${warp.entryLocation.instanceID}`
+    : areaLabel(warp.entryLocation?.areaZone || 'World');
+  const destination = warp.instanceID !== 0
+    ? warp.instanceName || warp.instance.name || `Instance ${warp.instanceID}`
+    : areaLabel(warp.exitLocation?.areaZone || 'World');
+  return `${source} ${bidirectional ? '↔' : '→'} ${destination}`;
+}
+
+function hasReturnTransport(route: AreaTransport, start: { x: number; y: number }, end: { x: number; y: number }, areas: Area[]): boolean {
+  const slider = route.moveType.toLowerCase().includes('slider');
+  const near = (a: { x: number; y: number }, b: { x: number; y: number }) => Math.hypot(a.x - b.x, a.y - b.y) <= 2500;
+  return areas.some((area) => area.transportation.some((other) => {
+    if (other.moveType !== route.moveType) return false;
+    return other.stops.some((stop, index) => {
+      if (!slider && index !== 0) return false;
+      const destination = slider ? other.stops[index + 1] : other.stops.at(-1);
+      if (!destination) return false;
+      const opposite = (end.x - start.x) * (destination.x - stop.x) + (end.y - start.y) * (destination.y - stop.y) < 0;
+      return opposite && near(stop, end) && near(destination, start);
+    });
+  }));
+}
+
 export function buildWorldWarpRoutes(areas: Area[]): MapRouteLine[] {
   const routes = new Map<string, MapRouteLine>();
   const instances = new Map<string, [number, number]>();
+  const warps = new Map<string, AreaInstanceWarp>();
   for (const area of areas) {
     for (const warp of area.instanceWarps) {
       const key = mapWarpKey(warp);
       if (!key) continue;
+      warps.set(key, warp);
       const points = [warp.entryLocation!, warp.exitLocation!].map(({ x, y }) => ({ x, y }));
       const endpoints = [warp.entryLocation!, warp.exitLocation!];
       instances.set(key, [endpoints[0].instanceID, endpoints[1].instanceID]);
       const geometryKey = endpoints.map((p) => `${p.instanceID}:${p.x},${p.y}`).sort().join(';');
       const existing = routes.get(geometryKey);
       if (existing) {
+        if (existing.points[0].x === points[1].x && existing.points[0].y === points[1].y) existing.bidirectional = true;
         if (!existing.routeKeys.includes(key)) existing.routeKeys.push(key);
       } else {
         routes.set(geometryKey, { key, routeKeys: [key], label: warpLabel(warp.npc?.name ?? '', warp.instance.name), moveType: 'Warp', points });
@@ -177,11 +210,13 @@ export function buildWorldWarpRoutes(areas: Area[]): MapRouteLine[] {
     paired.add(b);
     merged.push({
       ...lines[a],
+      bidirectional: true,
       routeKeys: [...new Set([...lines[a].routeKeys, ...lines[b].routeKeys])],
       points: [lines[a].points[0], lines[b].points[0]],
     });
   }
-  return [...merged, ...lines.filter((_, index) => !paired.has(index))];
+  return [...merged, ...lines.filter((_, index) => !paired.has(index))]
+    .map((line) => ({ ...line, label: warpRouteLabel(warps.get(line.key)!, line.bidirectional) }));
 }
 
 export function buildAreaMapMarkers(area: Area, build: string): MapMarker[] {
@@ -355,9 +390,55 @@ export function buildWorldTransportRoutes(areas: Area[]): MapRouteLine[] {
       if (existing) {
         existing.routeKeys.push(key);
       } else {
-        routes.set(geometryKey, { key, routeKeys: [key], label: route.routeName, moveType, points });
+        const start = route.stops[0];
+        const end = route.stops.at(-1);
+        const bidirectional = Boolean(start && end && hasReturnTransport(route, start, end, areas));
+        const label = start && end
+          ? `${areaLabel(start.areaZone || route.routeName)} ${bidirectional ? '↔' : '→'} ${areaLabel(end.areaZone || route.routeName)}`
+          : route.routeName;
+        routes.set(geometryKey, { key, routeKeys: [key], label, bidirectional, moveType, points });
       }
     }
   }
   return [...routes.values()];
+}
+
+export function buildAreaOutgoingRoutes(area: Area, allAreas: Area[] = [area]): Array<MapRouteLine & { kind: 'transport' | 'instance-warp'; destination: string }> {
+  const routes: Array<MapRouteLine & { kind: 'transport' | 'instance-warp'; destination: string }> = [];
+  for (const route of area.transportation) {
+    const slider = route.moveType.toLowerCase().includes('slider');
+    route.stops.forEach((stop, index) => {
+      if (!stop.isHere || (!slider && index !== 0)) return;
+      const destination = slider ? route.stops[index + 1] : route.stops.at(-1);
+      if (!destination || destination === stop) return;
+      const authored = route.routePoints ?? [];
+      const start = authored.findIndex((p) => p.x === stop.x && p.y === stop.y);
+      const end = authored.findIndex((p, i) => i > start && p.x === destination.x && p.y === destination.y);
+      const points = slider
+        ? start >= 0 && end > start ? authored.slice(start, end + 1) : [stop, destination]
+        : authored.length > 1 ? authored : route.stops;
+      const bidirectional = hasReturnTransport(route, stop, destination, allAreas);
+      const destinationName = destination.areaZone || route.routeName;
+      routes.push({
+        key: `${routeKey(route)}:outgoing:${index}`,
+        routeKeys: [routeKey(route)],
+        label: `${areaLabel(stop.areaZone || area.fullName)} ${bidirectional ? '↔' : '→'} ${areaLabel(destinationName)}`,
+        bidirectional,
+        moveType: route.moveType === 'SCAMPER' && route.startNpc?.name.includes('Woosh') ? 'Woosh' : route.moveType,
+        points,
+        kind: 'transport',
+        destination: destinationName,
+      });
+    });
+  }
+  const localKeys = new Set(area.instanceWarps.map(mapWarpKey).filter(Boolean));
+  for (const path of buildWorldWarpRoutes(allAreas)) {
+    if (!path.routeKeys.some((key) => localKeys.has(key))) continue;
+    const warp = area.instanceWarps.find((w) => path.routeKeys.includes(mapWarpKey(w) ?? ''));
+    const destination = warp && warp.instanceID !== 0
+      ? warp.instanceName || warp.instance.name || `Instance ${warp.instanceID}`
+      : areaLabel(warp?.exitLocation?.areaZone || warp?.instance.name || path.label);
+    routes.push({ ...path, label: warp ? warpRouteLabel(warp, path.bidirectional) : path.label, kind: 'instance-warp', destination });
+  }
+  return routes;
 }

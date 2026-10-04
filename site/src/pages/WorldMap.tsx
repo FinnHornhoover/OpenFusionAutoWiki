@@ -1,6 +1,7 @@
 import { type CSSProperties, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import ErrorState from '../components/ErrorState';
+import MapRouteTooltip from '../components/MapRouteTooltip';
 import { MINIMAP_PX, worldToPx } from '../data/minimapCoords';
 import { buildWorldMapMarkers, buildWorldTransportRoutes, buildWorldWarpRoutes, buildWorldBossPaths, MAP_MARKER_KIND_LABELS, MAP_MARKER_KINDS, type MapMarker, type MapMarkerKind } from '../data/mapMarkers';
 import type { Area } from '../data/types';
@@ -86,6 +87,8 @@ export default function WorldMap() {
   const [zoom, setZoom] = useState(INITIAL_WORLD_MAP_ZOOM);
   const [viewportSize, setViewportSize] = useState({ width: 0, height: 0 });
   const [hoverRoutes, setHoverRoutes] = useState<string[]>([]);
+  const [hoverRoute, setHoverRoute] = useState<{ key: string; x: number; y: number } | null>(null);
+  const [hoverMarkerId, setHoverMarkerId] = useState<string | null>(null);
   const [visibleKinds, setVisibleKinds] = useState<VisibleMarkerKinds>(() => defaultVisibleMarkerKinds());
   const viewportRef = useRef<HTMLDivElement | null>(null);
   const zoomRef = useRef(zoom);
@@ -129,6 +132,12 @@ export default function WorldMap() {
     ...(visibleKinds['instance-warp'] ? buildWorldWarpRoutes(areas) : []),
   ], [areas, visibleKinds.transport, visibleKinds['instance-warp']]);
   const bossPaths = useMemo(() => visibleKinds['world-boss'] ? buildWorldBossPaths(areas) : [], [areas, visibleKinds]);
+  const hoveredMarker = visibleMarkers.find((marker) => marker.id === hoverMarkerId);
+  const markerRouteLabels = hoveredMarker
+    ? [...new Set(routes.filter((route) => route.routeKeys.some((key) => hoverRoutes.includes(key))).map((route) => route.label))]
+    : [];
+  const markerScreenX = hoveredMarker ? offset.x + hoveredMarker.px * zoom : 0;
+  const markerScreenY = hoveredMarker ? offset.y + hoveredMarker.py * zoom : 0;
   const markerScale = 1 / zoom;
 
   useEffect(() => {
@@ -178,6 +187,8 @@ export default function WorldMap() {
 
   function toggleMarkerKind(kind: MapMarkerKind) {
     setVisibleKinds((prev) => ({ ...prev, [kind]: !prev[kind] }));
+    setHoverRoute(null);
+    setHoverMarkerId(null);
     if ((kind === 'transport' || kind === 'world-boss' || kind === 'instance-warp') && visibleKinds[kind]) setHoverRoutes([]);
   }
 
@@ -212,6 +223,7 @@ export default function WorldMap() {
           className="world-map-viewport"
           onWheel={(event) => {
             event.preventDefault();
+            setHoverRoute(null);
             const rect = event.currentTarget.getBoundingClientRect();
             const nextZoom = clampZoom(zoom * (event.deltaY < 0 ? 1.2 : 1 / 1.2));
             const cursorX = event.clientX - rect.left;
@@ -288,7 +300,7 @@ export default function WorldMap() {
             <svg
               className="world-map-routes"
               style={{ width: MINIMAP_PX * zoom, height: MINIMAP_PX * zoom, transform: `scale(${1 / zoom})` }}
-              aria-hidden
+              aria-label="Warp and transportation routes"
             >
               {bossPaths.map((path) => (
                 <polyline
@@ -302,16 +314,53 @@ export default function WorldMap() {
                   <title>{path.label} patrol</title>
                 </polyline>
               ))}
-              {routes.map((route) => (
-                <polyline
-                  key={route.key}
-                  className={`world-map-route world-map-route-${routeClass(route.moveType)} ${route.routeKeys.some((key) => hoverRoutes.includes(key)) ? 'is-active' : ''}`}
-                  points={route.points.map((p) => {
+              {routes.map((route) => {
+                const points = route.points.map((p) => {
                     const pos = worldToPx(p.x, p.y);
                     return `${pos.px * zoom},${pos.py * zoom}`;
-                  }).join(' ')}
-                />
-              ))}
+                }).join(' ');
+                const active = route.routeKeys.some((key) => hoverRoutes.includes(key));
+                return <g key={route.key}>
+                  <polyline
+                    className={`world-map-route world-map-route-${routeClass(route.moveType)}${active ? ' is-active' : ''}`}
+                    points={points}
+                    style={{ pointerEvents: 'none' }}
+                  />
+                  <polyline
+                    className="map-route-hitbox"
+                    points={points}
+                    tabIndex={0}
+                    role="img"
+                    aria-label={route.label}
+                    onMouseEnter={() => { setHoverMarkerId(null); setHoverRoutes(route.routeKeys); }}
+                    onMouseMove={(event) => {
+                      if (activePointers.current.size) return;
+                      const rect = viewportRef.current?.getBoundingClientRect();
+                      if (rect) setHoverRoute({ key: route.key, x: event.clientX - rect.left - offset.x, y: event.clientY - rect.top - offset.y });
+                    }}
+                    onMouseLeave={() => { setHoverRoutes([]); setHoverRoute(null); }}
+                    onFocus={() => {
+                      setHoverMarkerId(null);
+                      setHoverRoutes(route.routeKeys);
+                      setHoverRoute({ key: route.key, x: -offset.x + viewportSize.width / 2, y: -offset.y + 35 });
+                    }}
+                    onBlur={() => { setHoverRoutes([]); setHoverRoute(null); }}
+                  />
+                </g>;
+              })}
+              {hoverRoute && (() => {
+                const route = routes.find((r) => r.key === hoverRoute.key);
+                if (!route) return null;
+                const x = Math.max(-offset.x + 12, Math.min(-offset.x + viewportSize.width - 12, hoverRoute.x));
+                const y = Math.max(-offset.y + 22, Math.min(-offset.y + viewportSize.height - 12, hoverRoute.y - 12));
+                return <text
+                  className="map-route-label"
+                  x={x}
+                  y={y}
+                  textAnchor={x > -offset.x + viewportSize.width / 2 ? 'end' : 'start'}
+                  style={{ fontSize: 13, strokeWidth: 4 }}
+                >{route.label}</text>;
+              })()}
             </svg>
             {visibleMarkers.map((marker) => {
               return (
@@ -321,10 +370,11 @@ export default function WorldMap() {
                   className={`world-map-marker world-map-marker-${marker.kind}`}
                   style={{ left: marker.px, top: marker.py, width: WORLD_MARKER_SCREEN_SIZE, height: WORLD_MARKER_SCREEN_SIZE, '--world-marker-scale': markerScale } as CSSProperties}
                   aria-label={marker.label}
-                  onMouseEnter={() => setHoverRoutes(marker.routeKeys ?? (marker.routeKey ? [marker.routeKey] : []))}
-                  onMouseLeave={() => setHoverRoutes([])}
-                  onFocus={() => setHoverRoutes(marker.routeKeys ?? (marker.routeKey ? [marker.routeKey] : []))}
-                  onBlur={() => setHoverRoutes([])}
+                  aria-describedby={marker.id === hoverMarkerId && markerRouteLabels.length > 0 ? 'world-map-hover-routes' : undefined}
+                  onMouseEnter={() => { setHoverMarkerId(marker.id); setHoverRoute(null); setHoverRoutes(marker.routeKeys ?? (marker.routeKey ? [marker.routeKey] : [])); }}
+                  onMouseLeave={() => { setHoverMarkerId(null); setHoverRoutes([]); }}
+                  onFocus={() => { setHoverMarkerId(marker.id); setHoverRoute(null); setHoverRoutes(marker.routeKeys ?? (marker.routeKey ? [marker.routeKey] : [])); }}
+                  onBlur={() => { setHoverMarkerId(null); setHoverRoutes([]); }}
                 >
                   <img src={marker.icon} alt="" draggable={false} />
                   <span className="world-map-marker-tooltip">{marker.label}</span>
@@ -332,6 +382,16 @@ export default function WorldMap() {
               );
             })}
           </div>
+          {hoveredMarker && markerRouteLabels.length > 0 && (
+            <MapRouteTooltip
+              id="world-map-hover-routes"
+              labels={markerRouteLabels}
+              x={markerScreenX}
+              y={markerScreenY}
+              viewportWidth={viewportSize.width}
+              viewportHeight={viewportSize.height}
+            />
+          )}
         </div>
       )}
     </section>
