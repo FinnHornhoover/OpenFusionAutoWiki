@@ -1,11 +1,13 @@
 import dagre from 'dagre';
 import { useMemo, useState } from 'react';
-import type { GuideEmail, MissionTask, TaskMessage } from '../data/types';
+import type { MissionTask, TaskJournal, TaskMessage } from '../data/types';
 import Dropdown from './Dropdown';
 import EntityLink from './EntityLink';
 import InlineMeta from './InlineMeta';
 import MapSpot from './MapSpot';
 import { missionWaypointIcon } from '../data/mapMarkers';
+import { missionJournal, taskJournal } from '../data/missionJournal';
+import JournalPanel from './JournalPanel';
 
 function formatTimeLimit(seconds: number): string | null {
   if (!seconds || seconds <= 0) return null;
@@ -35,50 +37,31 @@ function successBoundaryIds(tasks: MissionTask[]): { startTaskId: number | null;
 
 function MessageSection({ label, msg }: { label: string; msg: TaskMessage | null }) {
   if (!msg) return null;
-  const j = msg.journal;
-  const hasJournal = j.detailedMission || j.detailedTask || j.missionSummary || j.missionCompleteSummary;
-  if (!msg.text && !msg.sender && !msg.bubble && !hasJournal) return null;
+  const entries = msg.text && msg.text === msg.emailText
+    ? [{ kind: 'Popup & email', text: msg.text, speaker: msg.sender }]
+    : [
+      { kind: 'Popup', text: msg.text, speaker: msg.sender },
+      { kind: 'Email', text: msg.emailText, speaker: msg.sender },
+    ];
+  if (msg.bubble?.text) entries.push({ kind: 'Speech bubble', text: msg.bubble.text, speaker: msg.bubble.sender });
   return (
-    <div className="task-message">
-      <h4>{label}</h4>
-      {msg.sender && <p className="task-message-from"><span>From</span><EntityLink entity={msg.sender} /></p>}
-      {msg.text && <blockquote>{msg.text}</blockquote>}
-      {msg.bubble && (msg.bubble.sender || msg.bubble.text) && (
-        <p className="dialog-bubble">
-          {msg.bubble.sender && <EntityLink entity={msg.bubble.sender} withIcon={false} />}
-          {msg.bubble.sender && msg.bubble.text && ': '}
-          {msg.bubble.text && <em>"{msg.bubble.text}"</em>}
-        </p>
-      )}
-      {hasJournal && (
-        <table className="task-journal-text">
-          <tbody>
-            {j.detailedMission && <tr><th scope="row">Mission detail</th><td>{j.detailedMission}</td></tr>}
-            {j.detailedTask && <tr><th scope="row">Task detail</th><td>{j.detailedTask}</td></tr>}
-            {j.missionSummary && <tr><th scope="row">Summary</th><td>{j.missionSummary}</td></tr>}
-            {j.missionCompleteSummary && <tr><th scope="row">On complete</th><td>{j.missionCompleteSummary}</td></tr>}
-          </tbody>
-        </table>
-      )}
-    </div>
+    <>
+      {entries.filter((entry) => entry.text).map((entry) => (
+        <JournalPanel key={entry.kind} title={label} summary={entry.kind} speaker={entry.speaker}>
+          <p>{entry.text}</p>
+        </JournalPanel>
+      ))}
+    </>
   );
 }
 
-function GuideEmailsSection({ emails }: { emails: GuideEmail[] }) {
-  if (!emails.length) return null;
+function JournalSection({ journal, missionSummary }: { journal: TaskJournal | null; missionSummary: string }) {
+  const summary = journal?.missionSummary !== missionSummary ? journal?.missionSummary : '';
+  if (!journal?.detailedTask && !summary) return null;
   return (
-    <div className="guide-emails">
-      <h4>Guide email{emails.length === 1 ? '' : 's'}</h4>
-      {emails.map((e, i) => (
-        <article key={i} className="guide-email">
-          <header className="guide-email-from">
-            <span>From</span>
-            {e.senderRef ? <EntityLink entity={e.senderRef} /> : <strong>{e.sender || 'Unknown'}</strong>}
-          </header>
-          <blockquote>{e.body}</blockquote>
-        </article>
-      ))}
-    </div>
+    <JournalPanel title="Mission details" summary={summary}>
+      {journal?.detailedTask && <p>{journal.detailedTask}</p>}
+    </JournalPanel>
   );
 }
 
@@ -255,9 +238,15 @@ function TaskGraph({ tasks, startTaskId, endTaskId }: { tasks: MissionTask[]; st
   );
 }
 
-function TaskItem({ task, index, startTaskId, endTaskId }: { task: MissionTask; index: number; startTaskId: number | null; endTaskId: number | null }) {
+function TaskItem({ task, index, startTaskId, endTaskId, missionSummary }: { task: MissionTask; index: number; startTaskId: number | null; endTaskId: number | null; missionSummary: string }) {
   const timeLimit = formatTimeLimit(task.timeLimitSeconds);
   const waypointLabel = task.type === 'Talk' ? 'Talk' : 'Go to';
+  const journal = taskJournal(task);
+  const monsterItemIds = new Set(task.monsterRequirements
+    .filter((monster) => monster.questItem && monster.questItemNeededCount > 0)
+    .map((monster) => monster.questItemId));
+  const otherItemRequirements = (task.questItemRequirements ?? [])
+    .filter((item) => !monsterItemIds.has(item.id));
   return (
     <Dropdown
       open={index === 0}
@@ -344,6 +333,16 @@ function TaskItem({ task, index, startTaskId, endTaskId }: { task: MissionTask; 
               </td>
             </tr>
           )}
+          {otherItemRequirements.length > 0 && (
+            <tr>
+              <th scope="row">{task.type === 'Delivery' ? 'Deliver' : 'Collect'}</th>
+              <td>
+                <ul className="task-ref-list">
+                  {otherItemRequirements.map((item) => <li key={item.id}><strong>{item.count}x</strong> {item.name}</li>)}
+                </ul>
+              </td>
+            </tr>
+          )}
           {task.escortNPC && <tr><th scope="row">Escort</th><td><EntityLink entity={task.escortNPC} /></td></tr>}
           {timeLimit && <tr><th scope="row">Time limit</th><td>{timeLimit}</td></tr>}
           {task.requiredInstance && <tr><th scope="row">Inside</th><td><EntityLink entity={task.requiredInstance} /></td></tr>}
@@ -351,10 +350,10 @@ function TaskItem({ task, index, startTaskId, endTaskId }: { task: MissionTask; 
           {task.onFailObjective && <tr className={'task-transition-row' + (!task.onEndObjective ? ' task-transition-start' : '')}><th scope="row">On Fail</th><td>{task.onFailObjective}</td></tr>}
         </tbody>
       </table>
+      <JournalSection journal={journal} missionSummary={missionSummary} />
       <MessageSection label="On start" msg={task.messages.start} />
       <MessageSection label="On complete" msg={task.messages.end} />
       <MessageSection label="On fail" msg={task.messages.fail} />
-      <GuideEmailsSection emails={task.guideEmails} />
     </Dropdown>
   );
 }
@@ -375,6 +374,7 @@ export default function TaskList({ tasks }: TaskListProps) {
   const failRepeatCount = tasks.filter((task) => task.state === 'FailRepeatTask').length;
   const unreachableCount = tasks.filter((task) => task.state === 'UnreachableTask').length;
   const { startTaskId, endTaskId } = successBoundaryIds(visibleTasks);
+  const { summary: missionSummary } = missionJournal(tasks);
   return (
     <div className="task-list">
       <TaskGraph tasks={visibleTasks} startTaskId={startTaskId} endTaskId={endTaskId} />
@@ -394,7 +394,7 @@ export default function TaskList({ tasks }: TaskListProps) {
           )}
         </div>
       )}
-      {visibleTasks.map((t, i) => <TaskItem key={t.id} task={t} index={i} startTaskId={startTaskId} endTaskId={endTaskId} />)}
+      {visibleTasks.map((t, i) => <TaskItem key={t.id} task={t} index={i} startTaskId={startTaskId} endTaskId={endTaskId} missionSummary={missionSummary} />)}
     </div>
   );
 }

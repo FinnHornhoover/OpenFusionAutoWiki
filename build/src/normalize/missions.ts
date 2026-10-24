@@ -21,19 +21,24 @@ import type {
   MissionIndexEntry,
   MissionTask,
   Ref,
+  TaskJournal,
   TaskMessage,
 } from './types.js';
 
-interface RawTaskMessage {
-  DialogBubble?: string;
-  DialogBubbleNPCID?: number;
-  DialogBubbleNPCIcon?: string;
-  DialogBubbleNPCName?: string;
+interface RawTaskJournal {
   JournalDetailedMissionCompleteDescription?: string;
   JournalDetailedMissionDescription?: string;
   JournalDetailedTaskDescription?: string;
   JournalMissionCompleteSummary?: string;
   JournalMissionSummary?: string;
+}
+
+interface RawTaskMessage extends RawTaskJournal {
+  DialogBubble?: string;
+  DialogBubbleNPCID?: number;
+  DialogBubbleNPCIcon?: string;
+  DialogBubbleNPCName?: string;
+  EmailText?: string;
   SendNPCID?: number;
   SendNPCIcon?: string;
   SendNPCName?: string;
@@ -50,6 +55,7 @@ interface RawTask {
   EscortNPCIcon?: string;
   EscortNPCName?: string;
   GuideEmails?: Record<string, string>;
+  Journal?: RawTaskJournal;
   MessageOnEnd?: RawTaskMessage;
   MessageOnFail?: RawTaskMessage;
   MessageOnStart?: RawTaskMessage;
@@ -57,6 +63,11 @@ interface RawTask {
   OnEndTaskObjective?: string;
   OnFailNextTaskID?: number;
   OnFailTaskObjective?: string;
+  QuestItemRequirements?: Record<string, {
+    QuestItemID?: number;
+    QuestItem?: string;
+    QuestItemNeededCount?: number;
+  }>;
   QuestItemMonsterRequirements?: Record<string, {
     KillCount?: number;
     QuestItem?: string;
@@ -185,17 +196,31 @@ interface RawMission {
   Tasks?: Record<string, RawTask>;
 }
 
-function normalizeMessage(raw: RawTaskMessage | undefined, iconMap: IconMap): TaskMessage | null {
+function normalizeJournal(raw: RawTaskJournal | undefined): TaskJournal | null {
   if (!raw) return null;
-  const type = (raw.Type ?? 'None').trim();
-  const sender = npcRef(raw.SendNPCID ?? 0, raw.SendNPCName ?? '', raw.SendNPCIcon ?? '', iconMap);
   const journal = {
     detailedMission: raw.JournalDetailedMissionDescription ?? '',
     detailedTask: raw.JournalDetailedTaskDescription ?? '',
     missionSummary: raw.JournalMissionSummary ?? '',
     missionCompleteSummary: raw.JournalMissionCompleteSummary ?? '',
+    detailedMissionComplete: raw.JournalDetailedMissionCompleteDescription ?? '',
   };
-  const text = (raw.Text ?? '').trim();
+  return Object.values(journal).some((text) => text.trim()) ? journal : null;
+}
+
+function normalizeMessage(raw: RawTaskMessage | undefined, iconMap: IconMap, isStart = false): TaskMessage | null {
+  if (!raw) return null;
+  // Old artifacts have ungated Text and no EmailText. Apply the client rules
+  // when reading them, without ever displaying unused RawText.
+  const typeId = raw.TypeID ?? ({ PopUp: 2, Email: 4, PopUpAndEmail: 6 }[raw.Type ?? ''] ?? 0);
+  const popupText = raw.Text ?? '';
+  const text = (typeId & 2) && popupText.length > 1 ? popupText.trim() : '';
+  const emailText = isStart && (typeId === 4 || typeId === 6)
+    ? (raw.EmailText ?? raw.Text ?? '').trim()
+    : '';
+  const sender = text || emailText
+    ? npcRef(raw.SendNPCID ?? 0, raw.SendNPCName ?? '', raw.SendNPCIcon ?? '', iconMap)
+    : null;
   const bubbleText = (raw.DialogBubble ?? '').trim();
   const bubbleNpc = npcRef(
     raw.DialogBubbleNPCID ?? 0,
@@ -203,17 +228,9 @@ function normalizeMessage(raw: RawTaskMessage | undefined, iconMap: IconMap): Ta
     raw.DialogBubbleNPCIcon ?? '',
     iconMap,
   );
-  const bubble = bubbleText || bubbleNpc ? { sender: bubbleNpc, text: bubbleText } : null;
-  const anyContent =
-    text ||
-    bubble ||
-    journal.detailedMission ||
-    journal.detailedTask ||
-    journal.missionSummary ||
-    journal.missionCompleteSummary ||
-    sender;
-  if (!anyContent && type === 'None') return null;
-  return { sender, text, bubble, journal };
+  const bubble = (raw.DialogBubble ?? '').length > 1 && bubbleText && bubbleNpc ? { sender: bubbleNpc, text: bubbleText } : null;
+  if (!text && !emailText && !bubble) return null;
+  return { sender, text, emailText, bubble };
 }
 
 function normalizeGuideEmails(raw: RawTask, npcNameIndex: NpcNameIndex, guideNpcRefs: Map<string, Ref>): GuideEmail[] {
@@ -291,9 +308,18 @@ function normalizeTask(
       iconMap,
     ),
     requiredInstance: instanceRef(raw.RequiredInstanceID ?? 0, raw.RequiredInstance ?? ''),
+    // Never fall back to end/fail journals: old exports may reference an
+    // unrelated mission there, while the client always uses the start journal.
+    journal: normalizeJournal(raw.Journal ?? raw.MessageOnStart),
+    questItemRequirements: Object.entries(raw.QuestItemRequirements ?? {})
+      .map(([key, value]) => {
+        const { id, name } = parseCompoundKey(key);
+        return { id: value.QuestItemID ?? id, name: value.QuestItem ?? name, count: value.QuestItemNeededCount ?? 0 };
+      })
+      .filter((item) => item.id > 0 && item.count > 0),
     monsterRequirements,
     messages: {
-      start: normalizeMessage(raw.MessageOnStart, iconMap),
+      start: normalizeMessage(raw.MessageOnStart, iconMap, true),
       end: normalizeMessage(raw.MessageOnEnd, iconMap),
       fail: normalizeMessage(raw.MessageOnFail, iconMap),
     },

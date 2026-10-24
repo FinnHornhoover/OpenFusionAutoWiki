@@ -72,6 +72,8 @@ export interface MissionTask {
   } | null;
   escortNPC: Ref | null;
   requiredInstance: Ref | null;
+  journal: TaskJournal | null;
+  questItemRequirements: Array<{ id: number; name: string; count: number }>;
   monsterRequirements: Array<{
     ref: Ref;
     killCount: number;
@@ -102,17 +104,20 @@ export interface MissionTask {
 export interface TaskMessage {
   sender: Ref | null;
   text: string;
+  emailText: string;
   /** Optional in-world dialog bubble (separate NPC + line from the popup text). */
   bubble: { sender: Ref | null; text: string } | null;
-  journal: {
-    detailedMission: string;
-    detailedTask: string;
-    missionSummary: string;
-    missionCompleteSummary: string;
-  };
 }
 
-/** Guide message shown during a task. senderRef is set only for unambiguous NPC names. */
+export interface TaskJournal {
+  detailedMission: string;
+  detailedTask: string;
+  missionSummary: string;
+  missionCompleteSummary: string;
+  detailedMissionComplete: string;
+}
+
+/** Mission-availability email. senderRef is set only for unambiguous NPC names. */
 export interface GuideEmail {
   sender: string;
   senderRef: Ref | null;

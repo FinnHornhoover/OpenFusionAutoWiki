@@ -67,6 +67,9 @@ export interface MissionTask {
   } | null;
   escortNPC: Ref | null;
   requiredInstance: Ref | null;
+  /** Optional until previously generated data has been rebuilt. */
+  journal?: TaskJournal | null;
+  questItemRequirements?: Array<{ id: number; name: string; count: number }>;
   monsterRequirements: Array<{
     ref: Ref;
     killCount: number;
@@ -97,13 +100,18 @@ export interface MissionTask {
 export interface TaskMessage {
   sender: Ref | null;
   text: string;
+  emailText?: string;
   bubble: { sender: Ref | null; text: string } | null;
-  journal: {
-    detailedMission: string;
-    detailedTask: string;
-    missionSummary: string;
-    missionCompleteSummary: string;
-  };
+  /** Legacy generated chunks stored the journal in each event. */
+  journal?: Omit<TaskJournal, 'detailedMissionComplete'>;
+}
+
+export interface TaskJournal {
+  detailedMission: string;
+  detailedTask: string;
+  missionSummary: string;
+  missionCompleteSummary: string;
+  detailedMissionComplete: string;
 }
 
 export interface GuideEmail {

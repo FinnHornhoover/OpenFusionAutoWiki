@@ -3,6 +3,8 @@ import EntityLink from '../components/EntityLink';
 import RewardBox from '../components/RewardBox';
 import MissionRequirementGraph from '../components/MissionRequirementGraph';
 import TaskList from '../components/TaskList';
+import MissionJournal from '../components/MissionJournal';
+import MissionOfferEmails from '../components/MissionOfferEmails';
 
 # {props.data.name}
 
@@ -56,6 +58,10 @@ import TaskList from '../components/TaskList';
   </Dropdown>
 )}
 
+<MissionOfferEmails tasks={props.data.tasks} />
+
+<MissionJournal tasks={props.data.tasks} mode="offer" speaker={props.data.journalNPC ?? props.data.startNPC} />
+
 <Dropdown summary="Rewards" open>
   <RewardBox rewards={props.data.rewards} />
 </Dropdown>
@@ -73,6 +79,8 @@ import TaskList from '../components/TaskList';
 ## Tasks
 
 <TaskList tasks={props.data.tasks} />
+
+<MissionJournal tasks={props.data.tasks} mode="completion" speaker={props.data.journalNPC ?? props.data.endNPC} />
 
 {props.data.barkers.length > 0 && (
   <Dropdown summary={`NPC barkers (${props.data.barkers.length})`}>
