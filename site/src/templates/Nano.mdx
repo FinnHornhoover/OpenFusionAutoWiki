@@ -1,3 +1,4 @@
+import ModelPreview from '../components/ModelPreview';
 import Dropdown from '../components/Dropdown';
 import EntityLink from '../components/EntityLink';
 import Icon from '../components/Icon';
@@ -13,6 +14,8 @@ import { formatDurationSeconds } from '../data/formatTime';
     {props.data.obtainable === false && <span className="badge badge-warn">unobtainable</span>}
   </div>
 </div>
+
+<ModelPreview build={props.build} type="nanos" id={props.data.id} name={props.data.name} />
 
 {props.data.comment && (
   <blockquote className="npc-comment">{props.data.comment}</blockquote>

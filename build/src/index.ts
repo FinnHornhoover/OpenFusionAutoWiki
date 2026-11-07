@@ -30,6 +30,7 @@ import { writeSitemapAndRobots } from './normalize/sitemap.js';
 import { DATA_OUT } from './paths.js';
 import { log } from './log.js';
 import { fetchPlayerPrices } from './priceGuide.js';
+import { buildPreviews } from './objects/build.js';
 
 async function writeBuildMeta(slug: string, builtTypes: string[]): Promise<void> {
   const dir = join(DATA_OUT, slug);
@@ -192,6 +193,7 @@ async function main(): Promise<void> {
   const sitemap = await writeSitemapAndRobots(slugs);
   log.done(`sitemap: ${sitemap.totalUrls.toLocaleString()} URLs across ${slugs.length} per-build sitemaps; base=${sitemap.base}`);
 
+  await buildPreviews(release, downloaded);
   log.done('build complete');
 }
 

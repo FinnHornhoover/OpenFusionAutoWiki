@@ -1,3 +1,4 @@
+import ModelPreview from '../components/ModelPreview';
 import Currency from '../components/Currency';
 import Dropdown from '../components/Dropdown';
 import TransportCost from '../components/TransportCost';
@@ -21,6 +22,8 @@ import { transportIcon } from '../data/mapMarkers';
     )}
   </div>
 </div>
+
+<ModelPreview build={props.build} type="npcs" id={props.data.id} name={props.data.name} />
 
 {props.data.comment.trim() && (
   <blockquote className="npc-comment">"{props.data.comment.trim()}"</blockquote>

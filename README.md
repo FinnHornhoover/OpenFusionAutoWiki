@@ -4,6 +4,8 @@ Generated wiki for FusionFall. It reads ZIP assets from [FFInfoPacks](https://gi
 
 ## Local development
 
+Use Node.js 22 or newer.
+
 ```bash
 npm install
 npm run build:data    # download FFInfoPacks ZIPs + normalize (cached)
@@ -33,6 +35,49 @@ GOOGLE_SERVICE_ACCOUNT_JSON=...
 ## Deployment (Cloudflare Pages)
 
 The workflow at [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) deploys to Cloudflare Pages on pushes to `main`.
+
+### 3D previews (R2)
+
+Models, textures and animations share a content-addressed R2 pool across builds
+and releases. Entity recipes stay with the Pages data. The viewer loads on demand;
+missing client models retain their normal icon-only pages.
+Outfit previews include sets with one item per slot; collections containing
+alternatives need a picker in a later iteration.
+The viewer opens in a modal (full viewport on small screens), with grouped
+animations, seeking, speed and loop controls. Vehicle motions, other weapon styles,
+partial layers and body-shape controls are excluded from public animation choices.
+Only selected clips and required composition controls enter the shared asset pool.
+
+After feature completion, enable production previews:
+
+1. Create a Standard R2 bucket and connect `assets.<your-domain>` to it.
+2. Allow CORS `GET`/`HEAD` from the wiki's origin. Add a cache rule making all
+   assets on that hostname eligible for caching (including `.glb` and `.bin`).
+3. Set repository variables `FFWIKI_OBJECTS_URL=https://assets.<your-domain>`
+   and `R2_BUCKET=<bucket-name>`.
+4. Set secrets `R2_ACCESS_KEY_ID` and `R2_SECRET_ACCESS_KEY` using an R2 API token
+   with Object Read & Write permission for that bucket. The existing
+   `CLOUDFLARE_ACCOUNT_ID` supplies the account.
+
+The workflow uses the matching FFObjectPacks release tag and validates format and
+revision. Fixed builds reuse the non-fixed assets with their own table data.
+It uploads new assets before deploying Pages, retains assets for older deployments,
+and skips objects already present. `npm run upload:objects` runs publication alone.
+
+For local iteration after generating wiki data, with extracted Format 4 packs:
+
+```bash
+FFWIKI_RELEASE=release-41 \
+FFWIKI_OBJECT_PACKS=/tmp/ff-format4/packs \
+FFWIKI_BUILDS=beta-20100104,beta-20111013,retrobution npm run build:previews
+npm run dev
+```
+
+Local overrides use `/objects` and do not enforce release revision matching.
+The development server serves `.cache/objects/pool` without copying assets into
+Pages. Regenerate data before starting the server. Preview coverage is recorded
+in `site/public/data/<build>/previews/coverage.json`.
+Next: vehicles, outfit picker, areas, coverage fixes, then production rollout.
 
 ### Cloudflare Pages config files
 

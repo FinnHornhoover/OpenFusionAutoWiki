@@ -32,11 +32,10 @@ export interface DownloadedAsset {
  * Fetch the metadata for the latest FFInfoPacks release.
  * Override with FFWIKI_RELEASE=<tag> to pin (e.g., "release-26").
  */
-export async function fetchRelease(): Promise<Release> {
-  const pinned = process.env.FFWIKI_RELEASE?.trim();
+export async function fetchRelease(repository = GH_REPO, pinned = process.env.FFWIKI_RELEASE?.trim()): Promise<Release> {
   const url = pinned
-    ? `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/releases/tags/${pinned}`
-    : `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/releases/latest`;
+    ? `https://api.github.com/repos/${GH_OWNER}/${repository}/releases/tags/${pinned}`
+    : `https://api.github.com/repos/${GH_OWNER}/${repository}/releases/latest`;
 
   const headers: Record<string, string> = {
     'User-Agent': 'openfusion-auto-wiki/0.0 (build pipeline)',
@@ -72,7 +71,7 @@ async function fileExistsWithSize(path: string, expected: number): Promise<boole
   }
 }
 
-async function downloadOne(asset: ReleaseAsset, destDir: string): Promise<DownloadedAsset> {
+export async function downloadOne(asset: ReleaseAsset, destDir: string): Promise<DownloadedAsset> {
   const finalPath = join(destDir, asset.name);
 
   if (await fileExistsWithSize(finalPath, asset.size)) {

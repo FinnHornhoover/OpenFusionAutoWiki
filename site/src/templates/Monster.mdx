@@ -1,3 +1,4 @@
+import ModelPreview from '../components/ModelPreview';
 import Currency from '../components/Currency';
 import Dropdown from '../components/Dropdown';
 import DropChance from '../components/DropChance';
@@ -21,6 +22,8 @@ import { formatDurationSeconds } from '../data/formatTime';
     )}
   </div>
 </div>
+
+<ModelPreview build={props.build} type="monsters" id={props.data.id} name={props.data.name} />
 
 {props.data.comment && (
   <blockquote className="npc-comment">{props.data.comment}</blockquote>

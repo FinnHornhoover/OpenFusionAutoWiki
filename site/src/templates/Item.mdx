@@ -1,3 +1,4 @@
+import ModelPreview from '../components/ModelPreview';
 import Currency from '../components/Currency';
 import { Link } from 'react-router-dom';
 
@@ -22,6 +23,8 @@ import { formatDurationSeconds } from '../data/formatTime';
     {!props.data.obtainable && <span className="badge badge-warn">unobtainable</span>}
   </div>
 </div>
+
+<ModelPreview build={props.build} type="items" id={props.data.id} name={props.data.name} />
 
 {props.data.description && (
   <blockquote className="npc-comment">{props.data.description}</blockquote>
