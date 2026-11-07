@@ -35,6 +35,13 @@ export function weaponStyle(equipType) {
   }
 }
 
+/** @param {number} equipType @returns {import('./objects').VehicleAnimationStyle | undefined} */
+export function vehicleStyle(equipType) {
+  if (equipType === 1) return 'board';
+  if (equipType === 2 || equipType === 3) return 'scooter';
+  return undefined;
+}
+
 /** @param {string} name @returns {AnimationChoice['group']} */
 function groupOf(name) {
   if (/^(stand\d*|idle\d*|staying|inven|nif-default)$/.test(name)) return 'Idle';
@@ -75,16 +82,24 @@ export function animationChoices(clips, context) {
     if (name.includes('@')) continue;
     if (/^(height|shape)(?:_add)?$/.test(name) || /(?:upper|uppper|_add|_additive)$/.test(name)) continue;
     if (avatar) {
-      if (/^(board_|scooter_|mount\d|rope)/.test(name)) continue;
-      const prefix = weaponPrefixes.find((value) => name.startsWith(value));
-      if (prefix) {
-        if (prefix !== weapon) continue;
+      if (context.vehicle) {
+        const prefix = `${context.vehicle}_`;
+        if (!name.startsWith(prefix)) continue;
         name = name.slice(prefix.length);
-      } else if (weaponPrefixes.includes(weapon) && available.has(weapon + name) && /^(stand|run|jump|turn|ready|attack|wound|dodge)/.test(name)) {
-        continue;
+        // Steering clips are additive layers in cnAvatarAnimation.
+        if (/^turn(left|right)$/.test(name)) continue;
+      } else {
+        if (/^(board_|scooter_|mount\d|rope)/.test(name)) continue;
+        const prefix = weaponPrefixes.find((value) => name.startsWith(value));
+        if (prefix) {
+          if (prefix !== weapon) continue;
+          name = name.slice(prefix.length);
+        } else if (weaponPrefixes.includes(weapon) && available.has(weapon + name) && /^(stand|run|jump|turn|ready|attack|wound|dodge)/.test(name)) {
+          continue;
+        }
+        if (weapon === 'unarmed' && /^(attack|readyspell|spellomni|swordguard|sheath)/.test(name)) continue;
+        if (name === 'swordguard' && weapon !== 'stick') continue;
       }
-      if (weapon === 'unarmed' && /^(attack|readyspell|spellomni|swordguard|sheath)/.test(name)) continue;
-      if (name === 'swordguard' && weapon !== 'stick') continue;
     }
     choices.push({ name: clip.name, label: labelOf(name), group: groupOf(name), duration: clip.duration });
   }
@@ -93,7 +108,7 @@ export function animationChoices(clips, context) {
 
 /** @param {AnimationChoice[]} choices @param {AnimationContext} context @param {string} [requested] @returns {string} */
 export function preferredAnimation(choices, context, requested) {
-  const prefix = context.kind === 'avatar' && weaponPrefixes.includes(context.weapon ?? '') ? context.weapon : '';
+  const prefix = context.kind === 'avatar' ? context.vehicle ? `${context.vehicle}_` : weaponPrefixes.includes(context.weapon ?? '') ? context.weapon : '' : '';
   const preferred = [prefix ? `${prefix}stand1` : '', requested, 'stand1', 'stand', 'idle', 'nif-default'];
   return preferred.find((name) => name && choices.some((choice) => choice.name === name)) ?? choices[0]?.name ?? '';
 }

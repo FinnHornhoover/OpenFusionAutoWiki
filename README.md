@@ -44,8 +44,11 @@ missing client models retain their normal icon-only pages.
 Outfit previews include sets with one item per slot; collections containing
 alternatives need a picker in a later iteration.
 The viewer opens in a modal (full viewport on small screens), with grouped
-animations, seeking, speed and loop controls. Vehicle motions, other weapon styles,
-partial layers and body-shape controls are excluded from public animation choices.
+animations, seeking and play/pause controls. Playback loops at 1× with a 0.2-second
+hold on the final pose. Animation choices follow the equipped weapon or vehicle;
+partial layers and body-shape controls stay internal.
+Vehicle pages show mounted boy/girl previews with board or scooter rider motions;
+vehicle models retain their own default animations and texture variants.
 Only selected clips and required composition controls enter the shared asset pool.
 
 After feature completion, enable production previews:
@@ -77,7 +80,7 @@ Local overrides use `/objects` and do not enforce release revision matching.
 The development server serves `.cache/objects/pool` without copying assets into
 Pages. Regenerate data before starting the server. Preview coverage is recorded
 in `site/public/data/<build>/previews/coverage.json`.
-Next: vehicles, outfit picker, areas, coverage fixes, then production rollout.
+Next: outfit picker, areas, coverage fixes, then production rollout.
 
 ### Cloudflare Pages config files
 

@@ -1,13 +1,13 @@
 import type { Color, Gender, ModelPart, ModelPreview, Mount, PartSlot, PreviewType, PreviewVariant } from '../../../shared/objects.js';
 import { Pack } from './pack.js';
-import { weaponStyle } from '../../../shared/animations.js';
+import { vehicleStyle, weaponStyle } from '../../../shared/animations.js';
 
 type Row = Record<string, string | number>;
 interface Table { [field: string]: Row[] }
 export type Xdt = Record<string, Table>;
 interface Palette { skin: { r: number; g: number; b: number; a: number }[]; hair: Palette['skin'] }
-const ITEM_TABLES = ['Weapon', 'Shirts', 'Pants', 'Shoes', 'Hat', 'Glass', 'Back'];
-export const ITEM_SLOTS: Record<number, PartSlot> = { 0: 'weapon', 1: 'shirt', 2: 'pants', 3: 'shoes', 4: 'hat', 5: 'glasses', 6: 'back' };
+const ITEM_TABLES = [[0, 'Weapon'], [1, 'Shirts'], [2, 'Pants'], [3, 'Shoes'], [4, 'Hat'], [5, 'Glass'], [6, 'Back'], [10, 'Vehicle']] as const;
+export const ITEM_SLOTS: Record<number, PartSlot> = { 0: 'weapon', 1: 'shirt', 2: 'pants', 3: 'shoes', 4: 'hat', 5: 'glasses', 6: 'back', 10: 'vehicle' };
 const SLOTS = ['face', 'hair', 'shirt', 'pants', 'shoes'] as const;
 type Slot = typeof SLOTS[number];
 const SLOT_TABLE: Record<Slot, string> = { face: 'Face', hair: 'Head', shirt: 'Shirts', pants: 'Pants', shoes: 'Shoes' };
@@ -145,18 +145,24 @@ export class Recipes {
       if (model) result.nanos.push({ id: Number(row.m_iNanoNumber), variants: [{ label: 'Model', model, idle: 'stand', animationContext: { kind: 'nano' } }] });
     }
 
-    ITEM_TABLES.forEach((tableName, type) => {
+    ITEM_TABLES.forEach(([type, tableName]) => {
       const table = this.xdt[`m_p${tableName}ItemTable`];
       for (const row of table?.m_pItemData ?? []) {
         if (!Number(row.m_iItemNumber)) continue;
+        const vehicle = type === 10 ? vehicleStyle(Number(row.m_iEquipType)) : undefined;
+        if (type === 10 && !vehicle) { this.missing.add(`vehicle-style:${row.m_iEquipType}`); continue; }
         const variants: PreviewVariant[] = [];
         for (const gender of ['m', 'f'] as const) {
           if (Number(row.m_iReqSex) && Number(row.m_iReqSex) !== (gender === 'm' ? 1 : 2)) continue;
           const mesh = table.m_pItemMeshData[Number(row.m_iMesh)];
           const slot = ({ 1: 'shirt', 2: 'pants', 3: 'shoes' } as Record<number, Slot>)[type];
           const worn = !!slot || type === 6 && row.m_iEquipType === 1;
-          const mount: Mount | undefined = ({ 0: 'right-hand', 4: 'hat', 5: 'glasses', 6: 'back' } as Record<number, Mount>)[type];
-          const item = this.meshPart(mesh, gender, worn ? 'worn' : 'attached', mount);
+          const mount: Mount | undefined = ({ 0: 'right-hand', 4: 'hat', 5: 'glasses', 6: 'back', 10: 'vehicle' } as Record<number, Mount>)[type];
+          // LoadVehicle uses the M fields for both rider genders.
+          const vehicleName = mesh?.m_pstrMMeshModelString;
+          const item = type === 10
+            ? valid(vehicleName) ? this.part([`wear/${vehicleName}.nif`], 'attached', mesh.m_pstrMTextureString, undefined, 'vehicle') : undefined
+            : this.meshPart(mesh, gender, worn ? 'worn' : 'attached', mount);
           if (!item) continue;
           item.slot = ITEM_SLOTS[type];
           const replacements: Partial<Record<Slot, ModelPart | null>> = slot ? { [slot]: item } : {};
@@ -169,6 +175,7 @@ export class Recipes {
           const avatar = this.avatar(gender, replacements);
           if (!avatar) continue;
           if (type === 0) avatar.animationContext = { kind: 'avatar', weapon: weaponStyle(Number(row.m_iEquipType)) };
+          if (vehicle) { avatar.animationContext = { kind: 'avatar', vehicle }; avatar.idle = `${vehicle}_stand1`; }
           if (type === 4 && [3, 4, 5].includes(Number(row.m_iEquipType))) avatar.hiddenSlots = ['glasses'];
           if (!slot) avatar.parts!.push(item);
           variants.push(avatar);

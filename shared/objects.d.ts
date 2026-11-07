@@ -1,12 +1,14 @@
 export type Gender = 'm' | 'f';
 export type PreviewType = 'monsters' | 'nanos' | 'npcs' | 'items' | 'item-sets';
 export type Color = [number, number, number, number];
-export type Mount = 'hat' | 'glasses' | 'back' | 'left-hand' | 'right-hand';
-export type PartSlot = 'face' | 'hair' | 'shirt' | 'pants' | 'shoes' | 'hat' | 'glasses' | 'back' | 'weapon';
+export type Mount = 'hat' | 'glasses' | 'back' | 'left-hand' | 'right-hand' | 'vehicle';
+export type PartSlot = 'face' | 'hair' | 'shirt' | 'pants' | 'shoes' | 'hat' | 'glasses' | 'back' | 'weapon' | 'vehicle';
 export type WeaponAnimationStyle = 'unarmed' | 'plain' | 'stick' | 'pistol' | 'rifle' | 'rocket' | 'bomb';
+export type VehicleAnimationStyle = 'board' | 'scooter';
 export interface AnimationContext {
   kind: 'avatar' | 'creature' | 'npc' | 'nano';
   weapon?: WeaponAnimationStyle;
+  vehicle?: VehicleAnimationStyle;
 }
 export interface AnimationChoice {
   name: string;

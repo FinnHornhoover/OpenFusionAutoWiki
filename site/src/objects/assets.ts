@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { GLTFLoader, type GLTF } from 'three/addons/loaders/GLTFLoader.js';
 import { dress, type Dressing } from 'ff-three/materials';
 import type { Color, ModelPart, PreviewVariant } from '../../../shared/objects';
+import { dressFusionMatter, repairWrenchAlpha } from './materials';
 
 export interface NodeDef {
   name?: string;
@@ -111,8 +112,9 @@ export async function dressModel(model: LoadedModel, part: ModelPart, variant: P
       const name = source.name.toLowerCase();
       const worn = part.mode === 'worn';
       const sub = name.includes('sub');
-      const texture = sub ? secondary : primary;
-      if ((worn || index === 0) && !(worn && name.includes('override')) && texture) {
+      const vehicle = part.mount === 'vehicle';
+      const texture = vehicle ? primary : sub ? secondary : primary;
+      if ((worn || index === 0) && !(worn && name.includes('override')) && (worn || name.includes('main') || sub) && texture) {
         (material as THREE.MeshStandardMaterial).map = texture;
         // ff-three checks this legacy field before the standard map.
         delete material.userData.main_texture_index;
@@ -131,6 +133,8 @@ export async function dressModel(model: LoadedModel, part: ModelPart, variant: P
     sources.forEach((source) => source.dispose());
   });
   model.dressing = await dress(model.gltf.scene, model.gltf.parser, { env });
+  dressFusionMatter(model.dressing, env);
+  repairWrenchAlpha(model.dressing);
   for (const mesh of model.dressing.meshes) {
     for (const child of mesh.children) {
       if (child instanceof THREE.Mesh && child.material instanceof THREE.ShaderMaterial && child.material.name === 'ff:outline') {
@@ -140,13 +144,27 @@ export async function dressModel(model: LoadedModel, part: ModelPart, variant: P
   }
 }
 
-const MOUNTS = { hat: 'Bip01 helmet01', glasses: 'Bip01 glass01', back: 'Bip01 back01', 'left-hand': 'Bip01 Lweapon01', 'right-hand': 'Bip01 Rweapon01' };
+const MOUNTS = { hat: 'Bip01 helmet01', glasses: 'Bip01 glass01', back: 'Bip01 back01', 'left-hand': 'Bip01 Lweapon01', 'right-hand': 'Bip01 Rweapon01', vehicle: 'vehicle' };
 
 export function compose(actor: LoadedModel, garment: LoadedModel, part: ModelPart, variant: PreviewVariant): void {
   if (part.mode === 'attached') {
     const index = actor.data.nodes.findIndex((node) => node.name === MOUNTS[part.mount!]);
     const target = actor.nodes.get(index);
     if (!target) throw new Error(`Missing attachment mount: ${part.mount}`);
+    if (part.mount === 'vehicle') {
+      // LoadVehicle instantiates at the mount's world pose, then reparents
+      // while preserving world scale. Transform the entire exported prefab
+      // so detached skinned renderers stay with their skeleton too.
+      const root = garment.gltf.scene.children[0];
+      root.updateMatrix();
+      target.updateWorldMatrix(true, false);
+      const rotation = target.getWorldQuaternion(new THREE.Quaternion()).multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(Math.PI / 2, 0, 0)));
+      const world = new THREE.Matrix4().compose(target.getWorldPosition(new THREE.Vector3()), rotation, root.scale.clone());
+      garment.gltf.scene.matrix.copy(target.matrixWorld).invert().multiply(world).multiply(root.matrix.clone().invert());
+      garment.gltf.scene.matrixAutoUpdate = false;
+      target.add(garment.gltf.scene);
+      return;
+    }
     target.scale.set(1, 1, 1);
     // Unity instantiates the prefab root under the mount with these local TRS.
     const root = garment.gltf.scene.children[0];

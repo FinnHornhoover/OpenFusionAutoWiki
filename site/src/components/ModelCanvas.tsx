@@ -2,7 +2,7 @@ import { useEffect, useId, useRef, useState } from 'react';
 import type { AnimationChoice, PreviewVariant } from '../../../shared/objects';
 import { mountViewer, type PlaybackState, type Viewer } from '../objects/viewer';
 
-const INITIAL: PlaybackState = { time: 0, duration: 0, paused: false, speed: 1, loop: true };
+const INITIAL: PlaybackState = { time: 0, duration: 0, paused: false };
 
 function clock(seconds: number): string {
   const tenths = Math.round(Math.max(0, seconds) * 10);
@@ -72,12 +72,10 @@ export default function ModelCanvas({ variant, baseUrl }: { variant: PreviewVari
     viewer.current?.pause(true);
   };
   const endScrub = (): void => {
-    const state = playbackRef.current;
-    if (resumeAfterScrub.current && (state.loop || state.time < state.duration)) viewer.current?.pause(false);
+    if (resumeAfterScrub.current) viewer.current?.pause(false);
     resumeAfterScrub.current = null;
   };
   const groups = [...new Set(choices.map((choice) => choice.group))];
-  const ended = playback.duration > 0 && playback.time >= playback.duration;
 
   return (
     <div className={`model-canvas${ready ? ' model-canvas-ready' : ''}`}>
@@ -103,15 +101,8 @@ export default function ModelCanvas({ variant, baseUrl }: { variant: PreviewVari
         </>}
         {hasMotion && <>
           <div className="model-preview-transport">
-            <button onClick={() => viewer.current?.pause(!playback.paused)}>{playback.paused ? ended ? 'Replay' : 'Play' : 'Pause'}</button>
-            <button onClick={() => { viewer.current?.seek(0); viewer.current?.pause(false); }}>Restart</button>
+            <button onClick={() => viewer.current?.pause(!playback.paused)}>{playback.paused ? 'Play' : 'Pause'}</button>
             <button onClick={() => viewer.current?.reset()}>Reset view</button>
-          </div>
-          <div className="model-preview-settings">
-            <label>Speed <select className="styled-select" aria-label="Playback speed" value={playback.speed} onChange={(event) => viewer.current?.speed(Number(event.target.value))}>
-              {[0.25, 0.5, 1, 1.5, 2].map((speed) => <option key={speed} value={speed}>{speed}×</option>)}
-            </select></label>
-            {choices.length > 0 && <label className="model-preview-loop"><input type="checkbox" checked={playback.loop} onChange={(event) => viewer.current?.loop(event.target.checked)} /> Loop</label>}
           </div>
           {loadingAnimation && <span className="muted" role="status">Loading animation…</span>}
           {animationError && <p role="alert">{animationError} <button onClick={() => { select(selected); animationSelect.current?.focus({ preventScroll: true }); }}>Retry animation</button></p>}

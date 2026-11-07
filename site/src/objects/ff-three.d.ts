@@ -7,6 +7,7 @@ declare module 'ff-three/materials' {
     dispose(): void;
   }
   export function dress(root: Object3D, parser: GLTFParser, options: { env: Record<string, IUniform>; outlines?: boolean }): Promise<Dressing>;
+  export function outlineMaterial(options: { extras: Record<string, unknown> }): Material;
 }
 
 declare module 'ff-three' {

@@ -29,6 +29,11 @@ interface Texture {
   file?: string;
 }
 
+interface PrefabDocument {
+  extras?: { clips?: Record<string, string> };
+  nodes?: { extras?: { animation?: { enabled: boolean; play_automatically: boolean; default: number | null; clips: { file?: string }[] } } }[];
+}
+
 export interface Rig {
   script_type: string;
   data: {
@@ -44,6 +49,7 @@ export class Pack {
   private models = new Map<string, Model[]>();
   private prefabs = new Map<string, Prefab>();
   private clipCatalogs = new Map<string, { name: string; duration: number }[]>();
+  private prefabDocuments = new Map<string, PrefabDocument>();
   private textures = new Map<string, Texture[]>();
   private graphs = new Map<string, Graph>();
   private textureSources = new Map<number, string>();
@@ -111,8 +117,7 @@ export class Pack {
   animationClips(file: string): { name: string; duration: number }[] {
     const cached = this.clipCatalogs.get(file);
     if (cached) return cached;
-    const bytes = this.read(file);
-    const data = JSON.parse(bytes.subarray(20, 20 + bytes.readUInt32LE(12)).toString('utf8')) as { extras?: { clips?: Record<string, string> } };
+    const data = this.prefabDocument(file);
     const durations = new Map(this.prefabs.get(file)?.clips.map((clip) => [clip.file, clip.duration]) ?? []);
     // The GLB disambiguates clips with the same name on different bindings.
     // Match durations by file, preserving those exported aliases.
@@ -121,6 +126,29 @@ export class Pack {
     }));
     this.clipCatalogs.set(file, clips);
     return clips;
+  }
+
+  automaticAnimation(file: string): string | null {
+    const data = this.prefabDocument(file);
+    for (const node of data.nodes ?? []) {
+      const animation = node.extras?.animation;
+      if (!animation?.enabled || !animation.play_automatically || animation.default === null) continue;
+      const uri = animation.clips[animation.default]?.file;
+      if (!uri) continue;
+      const key = Object.entries(data.extras?.clips ?? {}).find(([, value]) => value === uri)?.[0];
+      if (key) return key;
+    }
+    return null;
+  }
+
+  private prefabDocument(file: string): PrefabDocument {
+    let data = this.prefabDocuments.get(file);
+    if (!data) {
+      const bytes = this.read(file);
+      data = JSON.parse(bytes.subarray(20, 20 + bytes.readUInt32LE(12)).toString('utf8')) as PrefabDocument;
+      this.prefabDocuments.set(file, data);
+    }
+    return data;
   }
 
   msgpack<T>(relative: string): T {

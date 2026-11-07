@@ -2,10 +2,12 @@ import * as THREE from 'three';
 import { GLTFLoader, type GLTF } from 'three/addons/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { createEnvironment } from 'ff-three';
-import type { AnimationChoice, PreviewVariant } from '../../../shared/objects';
+import type { AnimationChoice, ModelPart, PreviewVariant } from '../../../shared/objects';
 import { animationChoices, preferredAnimation } from '../../../shared/animations.js';
 import { compose, disposeTexture, disposeTree, dressModel, loadModel, type LoadedModel } from './assets';
 import { ModelAnimation } from './animation';
+
+const LOOP_DELAY = 0.2;
 
 export interface Viewer {
   animations: AnimationChoice[];
@@ -14,8 +16,6 @@ export interface Viewer {
   play(name: string): Promise<void>;
   pause(paused: boolean): void;
   seek(time: number): void;
-  speed(value: number): void;
-  loop(value: boolean): void;
   reset(): void;
   dispose(): void;
 }
@@ -24,8 +24,6 @@ export interface PlaybackState {
   time: number;
   duration: number;
   paused: boolean;
-  speed: number;
-  loop: boolean;
 }
 
 interface ViewerOptions {
@@ -49,8 +47,6 @@ export async function mountViewer(container: HTMLElement, variant: PreviewVarian
   const animations: ModelAnimation[] = [];
   let disposed = false;
   let paused = options.paused ?? false;
-  let speed = 1;
-  let loop = true;
   let lastReported = 0;
   let visible = true;
   let frame = 0;
@@ -105,9 +101,8 @@ export async function mountViewer(container: HTMLElement, variant: PreviewVarian
     actor.gltf.scene.scale.setScalar(variant.scale ?? 1);
     await dressModel(actor, variant.model, variant, baseUrl, env, textures);
     scene.add(actor.gltf.scene);
-    for (const part of variant.parts ?? []) {
-      const garment = await load(part.model);
-      await dressModel(garment, part, variant, baseUrl, env, textures);
+    const vehicles: { part: ModelPart; model: LoadedModel }[] = [];
+    const attach = async (garment: LoadedModel, part: ModelPart): Promise<void> => {
       compose(actor, garment, part, variant);
       if (part.mode === 'attached' && part.autoAnimation !== null) {
         const animation = new ModelAnimation(garment, loadClip, actor.gltf.scene);
@@ -115,6 +110,12 @@ export async function mountViewer(container: HTMLElement, variant: PreviewVarian
         const name = part.autoAnimation ?? animation.names.find((n) => n === 'nif-default') ?? animation.names[0];
         if (name) await animation.play(name);
       }
+    };
+    for (const part of variant.parts ?? []) {
+      const garment = await load(part.model);
+      await dressModel(garment, part, variant, baseUrl, env, textures);
+      if (part.mount === 'vehicle') vehicles.push({ part, model: garment });
+      else await attach(garment, part);
     }
     const context = variant.animationContext ?? { kind: variant.gender ? 'avatar' : 'creature' };
     const choices = variant.animations ?? animationChoices(Object.keys(actor.data.extras?.clips ?? {}).map((name) => ({ name, duration: 1 })), context);
@@ -125,6 +126,7 @@ export async function mountViewer(container: HTMLElement, variant: PreviewVarian
     if (variant.height !== undefined) await animation.proportions('height', variant.height);
     if (variant.shape !== undefined) await animation.proportions('shape', variant.shape);
     animation.update(0);
+    for (const vehicle of vehicles) await attach(vehicle.model, vehicle.part);
     if (disposed || signal.aborted) throw new DOMException('Aborted', 'AbortError');
     const hasMotion = animations.some((item) => item.playback.duration > 0) || models.some((model) =>
       model.dressing?.meshes.some((mesh) => ['fusion', 'water'].includes(mesh.userData.ffInfo?.family)));
@@ -153,7 +155,7 @@ export async function mountViewer(container: HTMLElement, variant: PreviewVarian
       renderer.render(scene, camera);
     };
     reset();
-    const report = (): void => options.onPlayback?.({ ...animation.playback, paused, speed, loop });
+    const report = (): void => options.onPlayback?.({ ...animation.playback, paused });
     const seek = (time: number): void => {
       animation.seek(time);
       for (const item of animations) if (item !== animation) item.seek(item.playback.duration > 0 ? time % item.playback.duration : 0);
@@ -167,9 +169,8 @@ export async function mountViewer(container: HTMLElement, variant: PreviewVarian
       const delta = previous ? Math.min((time - previous) / 1000, 0.1) : 0;
       previous = time;
       if (!paused) {
-        animations.forEach((item) => item.update(delta * speed, item === animation ? loop : true));
-        env.time.value += delta * speed;
-        if (!loop && animation.playback.duration > 0 && animation.playback.time >= animation.playback.duration) paused = true;
+        animations.forEach((item) => item.update(delta, item === animation ? LOOP_DELAY : 0));
+        env.time.value += delta;
       }
       renderer.render(scene, camera);
       if (time - lastReported >= 100 || paused) { report(); lastReported = time; }
@@ -202,14 +203,11 @@ export async function mountViewer(container: HTMLElement, variant: PreviewVarian
       play: (name) => animation.play(name).then((changed) => { if (changed) { seek(0); invalidate(); } }),
       seek: (time) => { seek(time); invalidate(); },
       pause: (value) => {
-        if (!value && !loop && animation.playback.time >= animation.playback.duration) seek(0);
         paused = value;
         previous = 0;
         report();
         invalidate();
       },
-      speed: (value) => { speed = Math.max(0.25, Math.min(value, 2)); report(); },
-      loop: (value) => { loop = value; report(); },
       reset, dispose,
     };
   } catch (error) {

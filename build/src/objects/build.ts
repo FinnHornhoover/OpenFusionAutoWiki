@@ -50,7 +50,10 @@ function setRecipes(slug: string, items: ModelPreview[]): ModelPreview[] {
         parts.set(slots[i], part);
       }
       const weapon = slots.indexOf('weapon');
-      return [{ ...base, animationContext: weapon >= 0 ? worn[weapon]!.animationContext : base.animationContext, parts: [...parts.values()] }];
+      const vehicle = slots.indexOf('vehicle');
+      if (vehicle >= 0) parts.delete('weapon');
+      const pose = vehicle >= 0 ? worn[vehicle]! : weapon >= 0 ? worn[weapon]! : base;
+      return [{ ...base, animationContext: pose.animationContext, idle: pose.idle, parts: [...parts.values()] }];
     });
     if (variants.length) result.push({ id: set.id, variants });
   }
@@ -124,7 +127,8 @@ export async function buildPreviews(release: Release, downloaded: DownloadedAsse
               pool.stageAnimations(pack, part.model, names);
             } else if (part.mode === 'attached') {
               const clips = pack.animationClips(part.model).filter((clip) => clip.duration > 0);
-              part.autoAnimation = clips.find((clip) => clip.name === 'nif-default')?.name ?? clips.map((clip) => clip.name).sort()[0] ?? null;
+              part.autoAnimation = part.mount === 'vehicle' ? pack.automaticAnimation(part.model)
+                : clips.find((clip) => clip.name === 'nif-default')?.name ?? clips.map((clip) => clip.name).sort()[0] ?? null;
               if (part.autoAnimation) pool.stageAnimations(pack, part.model, [part.autoAnimation]);
             }
             if (part.primary) pool.add(pack, part.primary);

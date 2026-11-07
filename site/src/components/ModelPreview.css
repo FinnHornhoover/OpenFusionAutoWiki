@@ -21,10 +21,8 @@
 .model-preview-timeline label { justify-content: space-between; font-size: .8rem; }
 .model-preview-timeline output { font-variant-numeric: tabular-nums; white-space: nowrap; }
 .model-preview-timeline input { width: 100%; min-height: 44px; margin: 0; accent-color: var(--color-accent); }
-.model-preview-transport, .model-preview-settings { display: flex; align-items: center; flex-wrap: wrap; gap: .6rem; }
+.model-preview-transport { display: flex; align-items: center; flex-wrap: wrap; gap: .6rem; }
 .model-preview-transport button { flex: 1; }
-.model-preview-loop { min-height: 44px; }
-.model-preview-loop input { width: 1.2rem; height: 1.2rem; accent-color: var(--color-accent); }
 .model-preview-help { margin: 0; }
 .model-preview-error { align-self: center; }
 @media (max-width: 900px) {
@@ -41,7 +39,6 @@
   .model-preview-controls { flex: none; align-items: stretch; gap: .5rem; overflow: visible; }
   .model-preview-animation { flex-direction: row; }
   .model-preview-animation select { flex: 1; }
-  .model-preview-settings { justify-content: space-between; }
 }
 @media (max-height: 500px) and (min-width: 600px) {
   .model-canvas-ready { display: grid; grid-template-columns: minmax(0, 1fr) 17rem; }
