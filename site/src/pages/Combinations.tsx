@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import EntityLink from '../components/EntityLink';
 import Icon from '../components/Icon';
+import ItemSearch from '../components/ItemSearch';
 import ErrorState from '../components/ErrorState';
 import { combinationCostPercentile, compatible, optimizeCombination, statsDonor } from '../data/combinations';
 import type { CombinationData, CombinationItem, CombinationStep } from '../data/combinations';
@@ -15,7 +16,7 @@ const rarities = ['Common', 'Uncommon', 'Rare', 'Ultra Rare'];
 const money = (value: number) => <Currency amount={Math.ceil(value)} />;
 const itemRef = (item: CombinationItem) => ({ type: 'item' as const, id: item.id, name: item.name, icon: item.icon });
 const itemType = (item: CombinationItem) => item.typeId === 0 ? item.weaponType : ['Weapon', 'Body', 'Legs', 'Shoes'][item.typeId];
-const itemLabel = (item: CombinationItem) => item.name + ' — Lv' + item.level + ' ' + item.rarity + ' · ' + itemType(item) + ' · ' + item.gender + (item.obtainable ? '' : ' · Unobtainable');
+const itemDescription = (item: CombinationItem) => 'Lv' + item.level + ' · ' + item.rarity + ' · ' + itemType(item) + ' · ' + item.gender + (item.obtainable ? '' : ' · Unobtainable');
 
 function CombinationItemLink({ item, combined = false, showMeta = false, iconSize = 96, separateIcon = false }: { item: CombinationItem; combined?: boolean; showMeta?: boolean; iconSize?: number; separateIcon?: boolean }) {
   if (!separateIcon) return <div className="combination-item-link"><EntityLink entity={itemRef(item)} iconSize={iconSize} /></div>;
@@ -43,54 +44,6 @@ function StatIcons({ item, available = true }: { item: CombinationItem; availabl
       <dd>{available ? stat.value.toLocaleString() : '—'}</dd>
     </div>)}
   </dl>;
-}
-
-function StylePicker({ items, selected, onSelect }: { items: CombinationItem[]; selected: CombinationItem; onSelect: (item: CombinationItem) => void }) {
-  const [query, setQuery] = useState(selected.name);
-  const [open, setOpen] = useState(false);
-  const [active, setActive] = useState(0);
-  const list = useRef<HTMLDivElement>(null);
-  const matches = useMemo(() => {
-    const text = query.trim().toLowerCase();
-    const tokens = text.split(/\s+/).filter(Boolean);
-    return items.filter(item => tokens.every(token => itemLabel(item).toLowerCase().includes(token)))
-      .map(item => ({ item, score: !text ? (item.id === selected.id ? 0 : 1) : item.name.toLowerCase() === text ? 0 : item.name.toLowerCase().startsWith(text) ? 1 : item.name.toLowerCase().includes(text) ? 2 : 3 }))
-      .sort((a, b) => a.score - b.score || a.item.name.localeCompare(b.item.name))
-      .slice(0, 50).map(match => match.item);
-  }, [items, query, selected.id]);
-  useEffect(() => {
-    if (open) list.current?.querySelector('[data-active="true"]')?.scrollIntoView({ block: 'nearest' });
-  }, [active, open]);
-  function choose(item: CombinationItem) {
-    setQuery(item.name);
-    setOpen(false);
-    onSelect(item);
-  }
-  return <div className="combination-picker" onBlur={event => {
-    if (!event.currentTarget.contains(event.relatedTarget)) { setOpen(false); setQuery(selected.name); }
-  }}>
-    <input id="combination-search" role="combobox" aria-label="Style item" aria-autocomplete="list"
-      aria-expanded={open} aria-controls="combination-options" aria-activedescendant={open && matches[active] ? 'combination-option-' + matches[active].id : undefined}
-      autoComplete="off" placeholder="Search items" value={query}
-      onFocus={() => { setQuery(''); setActive(0); setOpen(true); }}
-      onChange={event => { setQuery(event.target.value); setActive(0); setOpen(true); }}
-      onKeyDown={event => {
-        if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
-          event.preventDefault(); setOpen(true);
-          setActive(value => Math.max(0, Math.min(matches.length - 1, value + (event.key === 'ArrowDown' ? 1 : -1))));
-        } else if (event.key === 'Enter' && open && matches[active]) { event.preventDefault(); choose(matches[active]); }
-        else if (event.key === 'Escape') { setOpen(false); setQuery(selected.name); }
-      }} />
-    {open && <div className="combination-options" id="combination-options" role="listbox" aria-label="Matching style items" ref={list}>
-      {matches.map((item, index) => <button type="button" role="option" tabIndex={-1} id={'combination-option-' + item.id}
-        aria-selected={selected.id === item.id} data-active={active === index} key={item.id}
-        onMouseDown={event => event.preventDefault()} onClick={() => choose(item)}>
-        <Icon src={item.icon} size={64} className="icon-item" />
-        <span><strong>{item.name}</strong><small>Lv{item.level} · {item.rarity} · {itemType(item)} · {item.gender}{!item.obtainable && ' · Unobtainable'}</small></span>
-      </button>)}
-      {!matches.length && <p role="status">No matching items.</p>}
-    </div>}
-  </div>;
 }
 
 function StepCard({ step: originalStep, number, style }: { step: CombinationStep; number: number; style: CombinationItem }) {
@@ -192,7 +145,7 @@ function Calculator({ data, academyLevelZeroBonus }: { data: CombinationData; ac
     <div className="combination-controls">
       <section className="combination-section" aria-labelledby="combination-style-heading">
         <h2 id="combination-style-heading">Style</h2>
-        <StylePicker key={style.id} items={data.items} selected={style} onSelect={item => setParams({ style: item.id }, { replace: true })} />
+        <ItemSearch key={style.id} label="Style item" items={data.items} selected={style} describe={itemDescription} onSelect={item => setParams({ style: item.id }, { replace: true })} />
         <div className="combination-preview">
           <CombinationItemLink item={style} combined={Boolean(result?.steps.length)} showMeta separateIcon />
         </div>

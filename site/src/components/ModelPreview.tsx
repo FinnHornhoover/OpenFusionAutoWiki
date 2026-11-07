@@ -1,25 +1,12 @@
 import { lazy, Suspense, useEffect, useId, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
 import type { ModelPreview as Recipe, PreviewMeta, PreviewType } from '../../../shared/objects';
 import { chunkFor } from '../data/useEntity';
-import { LruCache } from '../data/lruCache';
+import { previewJson as json } from '../objects/data';
 import './ModelPreview.css';
 import ModelDialog from './ModelDialog';
 
 const ModelCanvas = lazy(() => import('./ModelCanvas'));
-const cache = new LruCache<string, Promise<unknown>>(32);
-
-function json<T>(url: string): Promise<T | null> {
-  let promise = cache.get(url);
-  if (!promise) {
-    promise = fetch(url).then((response) => {
-      if (response.status === 404) return null;
-      if (!response.ok) throw new Error(`Preview data failed (${response.status})`);
-      return response.json();
-    }).catch(() => { cache.delete(url); return null; });
-    cache.set(url, promise);
-  }
-  return promise as Promise<T | null>;
-}
 
 export default function ModelPreview({ build, type, id, name }: { build?: string; type: PreviewType; id: number | string; name?: string }) {
   const key = `${build}/${type}/${id}`;
@@ -50,11 +37,11 @@ export default function ModelPreview({ build, type, id, name }: { build?: string
   return (
     <div className="model-preview">
       <button ref={opener} className="model-preview-open" aria-haspopup="dialog" onClick={() => setActiveKey(key)}>View in 3D</button>
+      {type !== 'items' && loaded.recipe.outfit && <Link className="model-preview-outfit-link" to={`/${build}/outfits?items=${encodeURIComponent(loaded.recipe.outfit.selected.join(','))}`}>Open in outfit picker</Link>}
       {activeKey === key && (
         <ModelDialog titleId={titleId} returnFocus={opener} onClose={() => setActiveKey('')}>
           <div className="model-preview-heading">
             <h2 id={titleId}>{name ?? '3D preview'}</h2>
-            {variants.length > 1 && <label>Character <select className="styled-select" aria-label="Character" value={variant} onChange={(event) => setVariant(Number(event.target.value))}>{variants.map((v, i) => <option key={i} value={i}>{v.label}</option>)}</select></label>}
             <button className="model-preview-close" aria-label="Close 3D preview" onClick={() => setActiveKey('')}>Close</button>
           </div>
           <div className="model-preview-body">
@@ -62,6 +49,10 @@ export default function ModelPreview({ build, type, id, name }: { build?: string
               <ModelCanvas key={`${key}/${variant}`} variant={variants[variant]} baseUrl={loaded.meta.baseUrl} />
             </Suspense>
           </div>
+          {(variants.length > 1 || type === 'items' && loaded.recipe.outfit) && <div className="model-preview-footer">
+            {variants.length > 1 && <label>Character <select className="styled-select" aria-label="Character" value={variant} onChange={(event) => setVariant(Number(event.target.value))}>{variants.map((v, i) => <option key={i} value={i}>{v.label}</option>)}</select></label>}
+            {type === 'items' && loaded.recipe.outfit && <Link className="model-preview-action" to={`/${build}/outfits?items=${encodeURIComponent(String(loaded.recipe.id))}`}>Open in Outfit Picker</Link>}
+          </div>}
         </ModelDialog>
       )}
     </div>

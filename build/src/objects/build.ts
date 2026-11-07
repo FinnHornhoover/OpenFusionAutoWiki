@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, wri
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import AdmZip from 'adm-zip';
-import type { ModelPreview, PreviewMeta, PreviewType } from '../../../shared/objects.js';
+import type { ModelPreview, OutfitCatalog, PreviewMeta, PreviewType, PreviewVariant } from '../../../shared/objects.js';
 import { chunkOf, writeChunks } from '../chunk.js';
 import { downloadAll, downloadOne, fetchRelease, type DownloadedAsset, type Release } from '../download.js';
 import { slugForZip } from '../manifest.js';
@@ -10,8 +10,9 @@ import { CACHE_DIR, DATA_OUT, FFINFO_CACHE } from '../paths.js';
 import { log } from '../log.js';
 import { Pack } from './pack.js';
 import { AssetPool } from './pool.js';
-import { ITEM_SLOTS, Recipes, type Xdt } from './recipes.js';
+import { Recipes, type Xdt } from './recipes.js';
 import { animationChoices } from '../../../shared/animations.js';
+import { composeOutfit } from '../../../shared/outfits.js';
 
 export const OBJECTS_CACHE = join(CACHE_DIR, 'objects');
 export const POOL_DIR = join(OBJECTS_CACHE, 'pool');
@@ -26,38 +27,25 @@ function keyOf(type: PreviewType, row: ModelPreview): number {
   return chunkOf(Number(row.id));
 }
 
-function setRecipes(slug: string, items: ModelPreview[]): ModelPreview[] {
+function setRecipes(slug: string, items: ModelPreview[], defaults: PreviewVariant[]): ModelPreview[] {
   const path = join(DATA_OUT, slug, 'item-sets', '0.json');
   if (!existsSync(path)) return [];
   const sets = JSON.parse(readFileSync(path, 'utf8')) as Record<string, { id: string; items: { id: string }[] }>;
-  const byId = new Map(items.map((row) => [row.id, row]));
-  const result: ModelPreview[] = [];
-  for (const set of Object.values(sets)) {
-    const slots = set.items.map((item) => ITEM_SLOTS[Number(item.id.split('-')[0])]);
-    // Collections with alternatives in one slot need an outfit picker. Keep
-    // this first slice to sets that describe a single wearable combination.
-    if (slots.some((slot) => !slot) || new Set(slots).size !== slots.length) continue;
-    const variants = (['m', 'f'] as const).flatMap((gender) => {
-      const worn = set.items.map((item) => byId.get(item.id)?.variants.find((v) => v.gender === gender));
-      if (worn.some((v) => !v) || !worn.length) return [];
-      const hat = slots.indexOf('hat');
-      const base = worn[hat >= 0 ? hat : 0]!;
-      const parts = new Map(base.parts!.map((part) => [part.slot!, part]));
-      for (let i = 0; i < worn.length; i++) {
-        if (base.hiddenSlots?.includes(slots[i])) continue;
-        const part = worn[i]!.parts!.find((part) => part.slot === slots[i]);
-        if (!part) return [];
-        parts.set(slots[i], part);
-      }
-      const weapon = slots.indexOf('weapon');
-      const vehicle = slots.indexOf('vehicle');
-      if (vehicle >= 0) parts.delete('weapon');
-      const pose = vehicle >= 0 ? worn[vehicle]! : weapon >= 0 ? worn[weapon]! : base;
-      return [{ ...base, animationContext: pose.animationContext, idle: pose.idle, parts: [...parts.values()] }];
+  const byId = new Map(items.map((row) => [String(row.id), row]));
+  return Object.values(sets).flatMap((set) => {
+    const selected = set.items.map((item) => item.id).filter((id) => byId.has(id));
+    const variants = defaults.flatMap((base) => {
+      const slots = new Set<string>();
+      const worn = selected.flatMap((id) => {
+        const variant = byId.get(id)?.variants.find((v) => v.gender === base.gender);
+        if (!variant?.outfitSlot || slots.has(variant.outfitSlot)) return [];
+        slots.add(variant.outfitSlot);
+        return [variant];
+      });
+      return worn.length ? [composeOutfit(base, worn)] : [];
     });
-    if (variants.length) result.push({ id: set.id, variants });
-  }
-  return result;
+    return variants.length ? [{ id: set.id, variants, outfit: { selected } }] : [];
+  });
 }
 
 export async function buildPreviews(release: Release, downloaded: DownloadedAsset[]): Promise<void> {
@@ -105,36 +93,51 @@ export async function buildPreviews(release: Release, downloaded: DownloadedAsse
       if (!xdtEntry) throw new Error(`${slug}: missing xdt.json`);
       const recipes = new Recipes(pack, JSON.parse(xdtEntry.getData().toString('utf8')) as Xdt);
       const entities = recipes.entities();
-      entities['item-sets'] = setRecipes(slug, entities.items);
+      const itemIndex = JSON.parse(readFileSync(join(DATA_OUT, slug, 'index', 'items.json'), 'utf8')) as { id: string; name: string; icon: string; contentLevel: number; rarity: string; gender: string; type: string; displayType?: string; obtainable: boolean }[];
+      const itemInfo = new Map(itemIndex.map((item) => [String(item.id), item]));
+      entities.items = entities.items.filter((item) => itemInfo.has(String(item.id)));
+      const defaults = recipes.avatars();
+      entities['item-sets'] = setRecipes(slug, entities.items, defaults);
       const directory = join(DATA_OUT, slug, 'previews');
       rmSync(directory, { recursive: true, force: true });
       mkdirSync(directory, { recursive: true });
       const types: PreviewType[] = [];
+      const stage = (variant: PreviewVariant): void => {
+        const context = variant.animationContext ?? { kind: variant.gender ? 'avatar' : 'creature' };
+        variant.animations = animationChoices(pack.animationClips(variant.model.model), context);
+        for (const part of [variant.model, ...variant.parts ?? []]) {
+          pool.add(pack, part.model);
+          if (part === variant.model) {
+            const names = variant.animations.map((clip) => clip.name);
+            if (variant.height !== undefined) names.push('height', 'height_Add');
+            if (variant.shape !== undefined) names.push('shape', 'shape_Add');
+            pool.stageAnimations(pack, part.model, names);
+          } else if (part.mode === 'attached') {
+            const clips = pack.animationClips(part.model).filter((clip) => clip.duration > 0);
+            part.autoAnimation = part.mount === 'vehicle' ? pack.automaticAnimation(part.model)
+              : clips.find((clip) => clip.name === 'nif-default')?.name ?? clips.map((clip) => clip.name).sort()[0] ?? null;
+            if (part.autoAnimation) pool.stageAnimations(pack, part.model, [part.autoAnimation]);
+          }
+          if (part.primary) pool.add(pack, part.primary);
+          if (part.secondary) pool.add(pack, part.secondary);
+        }
+      };
+      defaults.forEach(stage);
+      const catalog: OutfitCatalog = {
+        defaults,
+        items: entities.items.map((item) => {
+          const info = itemInfo.get(String(item.id))!;
+          return { id: String(item.id), name: info.name, slot: item.variants[0].outfitSlot!, genders: item.variants.map((v) => v.gender!), icon: info.icon, level: info.contentLevel, rarity: info.rarity, gender: info.gender, type: info.displayType ?? info.type, obtainable: info.obtainable };
+        })
+          .sort((a, b) => a.name.localeCompare(b.name, 'en', { numeric: true }) || a.id.localeCompare(b.id)),
+      };
+      writeFileSync(join(directory, 'outfits.json'), JSON.stringify(catalog));
       for (const type of Object.keys(entities) as PreviewType[]) {
         const index = JSON.parse(readFileSync(join(DATA_OUT, slug, 'index', `${type}.json`), 'utf8')) as { id: number | string; members?: { id: number }[] }[];
         const ids = new Set(index.flatMap((row) => [String(row.id), ...row.members?.map((member) => String(member.id)) ?? []]));
         entities[type] = entities[type].filter((row) => ids.has(String(row.id)));
         if (!entities[type].length) continue;
-        for (const recipe of entities[type]) for (const variant of recipe.variants) {
-          const context = variant.animationContext ?? { kind: variant.gender ? 'avatar' : 'creature' };
-          variant.animations = animationChoices(pack.animationClips(variant.model.model), context);
-          for (const part of [variant.model, ...variant.parts ?? []]) {
-            pool.add(pack, part.model);
-            if (part === variant.model) {
-              const names = variant.animations.map((clip) => clip.name);
-              if (variant.height !== undefined) names.push('height', 'height_Add');
-              if (variant.shape !== undefined) names.push('shape', 'shape_Add');
-              pool.stageAnimations(pack, part.model, names);
-            } else if (part.mode === 'attached') {
-              const clips = pack.animationClips(part.model).filter((clip) => clip.duration > 0);
-              part.autoAnimation = part.mount === 'vehicle' ? pack.automaticAnimation(part.model)
-                : clips.find((clip) => clip.name === 'nif-default')?.name ?? clips.map((clip) => clip.name).sort()[0] ?? null;
-              if (part.autoAnimation) pool.stageAnimations(pack, part.model, [part.autoAnimation]);
-            }
-            if (part.primary) pool.add(pack, part.primary);
-            if (part.secondary) pool.add(pack, part.secondary);
-          }
-        }
+        for (const recipe of entities[type]) recipe.variants.forEach(stage);
         types.push(type);
         await writeChunks(slug, `previews/${type}`, entities[type], (row) => ({ url: row.id, chunk: keyOf(type, row) }));
       }

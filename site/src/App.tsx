@@ -10,6 +10,7 @@ import NotFound from './pages/NotFound';
 import PlayerStats from './pages/PlayerStats';
 import WorldMap from './pages/WorldMap';
 import Combinations from './pages/Combinations';
+import Outfits from './pages/Outfits';
 
 export default function App() {
   const isWorldMap = useMatch('/:build/map');
@@ -26,6 +27,7 @@ export default function App() {
           <Route path="/" element={<Home />} />
           <Route path="/:build" element={<BuildHome />} />
           <Route path="/:build/combinations" element={<Combinations />} />
+          <Route path="/:build/outfits" element={<Outfits />} />
           <Route path="/:build/map" element={<WorldMap />} />
           <Route path="/:build/player-stats" element={<PlayerStats />} />
           <Route path="/:build/:type" element={<EntityIndex />} />

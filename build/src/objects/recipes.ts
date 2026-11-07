@@ -85,6 +85,10 @@ export class Recipes {
     return { label: gender === 'm' ? 'Boy' : 'Girl', model, gender, parts, skin: this.palette('skin', 10), hair: this.palette('hair', 2), height: 0.5, shape: 0.5, idle: 'stand', animationContext: { kind: 'avatar', weapon: 'unarmed' } };
   }
 
+  avatars(): PreviewVariant[] {
+    return (['m', 'f'] as const).flatMap((gender) => this.avatar(gender) ?? []);
+  }
+
   private hnpc(row: Row): PreviewVariant | undefined {
     const look = this.hnpcs.find((r) => r.iType === row.m_iHNpcNum);
     if (!look) return undefined;
@@ -174,13 +178,15 @@ export class Recipes {
           }
           const avatar = this.avatar(gender, replacements);
           if (!avatar) continue;
+          avatar.outfitSlot = ITEM_SLOTS[type];
           if (type === 0) avatar.animationContext = { kind: 'avatar', weapon: weaponStyle(Number(row.m_iEquipType)) };
           if (vehicle) { avatar.animationContext = { kind: 'avatar', vehicle }; avatar.idle = `${vehicle}_stand1`; }
           if (type === 4 && [3, 4, 5].includes(Number(row.m_iEquipType))) avatar.hiddenSlots = ['glasses'];
           if (!slot) avatar.parts!.push(item);
           variants.push(avatar);
         }
-        if (variants.length) result.items.push({ id: `${type}-${row.m_iItemNumber}`, variants });
+        const id = `${type}-${row.m_iItemNumber}`;
+        if (variants.length) result.items.push({ id, variants, outfit: { selected: [id] } });
       }
     });
     return result;

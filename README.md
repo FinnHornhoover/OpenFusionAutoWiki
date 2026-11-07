@@ -41,11 +41,14 @@ The workflow at [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) d
 Models, textures and animations share a content-addressed R2 pool across builds
 and releases. Entity recipes stay with the Pages data. The viewer loads on demand;
 missing client models retain their normal icon-only pages.
-Outfit previews include sets with one item per slot; collections containing
-alternatives need a picker in a later iteration.
+The Outfit Picker page has a tall viewer above animation controls, equipped-item
+cards and the same card search as Combinations. Selecting an item replaces its slot.
+Item and set pages can open it with their outfit preselected; their
+3D dialogs show the original outfit. Gender restrictions, hat cutouts and vehicle
+poses apply.
 The viewer opens in a modal (full viewport on small screens), with grouped
-animations, seeking and play/pause controls. Playback loops at 1× with a 0.2-second
-hold on the final pose. Animation choices follow the equipped weapon or vehicle;
+animations, seeking and play/pause controls. Playback loops immediately at 1×.
+Animation choices follow the equipped weapon or vehicle;
 partial layers and body-shape controls stay internal.
 Vehicle pages show mounted boy/girl previews with board or scooter rider motions;
 vehicle models retain their own default animations and texture variants.
@@ -80,7 +83,7 @@ Local overrides use `/objects` and do not enforce release revision matching.
 The development server serves `.cache/objects/pool` without copying assets into
 Pages. Regenerate data before starting the server. Preview coverage is recorded
 in `site/public/data/<build>/previews/coverage.json`.
-Next: outfit picker, areas, coverage fixes, then production rollout.
+Next: areas, coverage fixes, then production rollout.
 
 ### Cloudflare Pages config files
 

@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import type { AnimationChoice, PreviewVariant } from '../../../shared/objects';
-import { mountViewer, type PlaybackState, type Viewer } from '../objects/viewer';
+import { mountViewer, type PlaybackState, type Viewer, type ViewState } from '../objects/viewer';
 
 const INITIAL: PlaybackState = { time: 0, duration: 0, paused: false };
 
@@ -9,9 +9,10 @@ function clock(seconds: number): string {
   return `${Math.floor(tenths / 600)}:${((tenths % 600) / 10).toFixed(1).padStart(4, '0')}`;
 }
 
-export default function ModelCanvas({ variant, baseUrl }: { variant: PreviewVariant; baseUrl: string }) {
+export default function ModelCanvas({ variant, baseUrl, preserveView = false }: { variant: PreviewVariant; baseUrl: string; preserveView?: boolean }) {
   const container = useRef<HTMLDivElement>(null);
   const viewer = useRef<Viewer>();
+  const savedView = useRef<ViewState>();
   const animationSelect = useRef<HTMLSelectElement>(null);
   const animationRequest = useRef(0);
   const resumeAfterScrub = useRef<boolean | null>(null);
@@ -38,6 +39,7 @@ export default function ModelCanvas({ variant, baseUrl }: { variant: PreviewVari
     setPlayback({ ...INITIAL, paused });
     void mountViewer(container.current, variant, baseUrl, controller.signal, {
       paused,
+      view: preserveView ? savedView.current : undefined,
       onPlayback: (state) => { if (!controller.signal.aborted) { playbackRef.current = state; setPlayback(state); } },
     }).then((instance) => {
       if (controller.signal.aborted) { instance.dispose(); return; }
@@ -49,8 +51,14 @@ export default function ModelCanvas({ variant, baseUrl }: { variant: PreviewVari
     }).catch((reason: unknown) => {
       if (!controller.signal.aborted) setError(reason instanceof Error ? reason.message : 'Could not load preview');
     });
-    return () => { animationRequest.current++; controller.abort(); viewer.current?.dispose(); viewer.current = undefined; };
-  }, [variant, baseUrl, attempt]);
+    return () => {
+      if (preserveView && viewer.current) savedView.current = viewer.current.getView();
+      animationRequest.current++;
+      controller.abort();
+      viewer.current?.dispose();
+      viewer.current = undefined;
+    };
+  }, [variant, baseUrl, attempt, preserveView]);
 
   const select = (name: string): void => {
     const request = ++animationRequest.current;

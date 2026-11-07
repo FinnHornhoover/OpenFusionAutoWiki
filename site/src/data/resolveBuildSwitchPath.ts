@@ -47,7 +47,7 @@ async function resolveEntitySuffix(build: string, type: string, id: string): Pro
 
 async function resolveSuffix(build: string, suffix: string[]): Promise<string[] | null> {
   if (suffix.length === 0) return [];
-  if (suffix[0] === 'map') return suffix.length === 1 ? suffix : null;
+  if (suffix[0] === 'map' || suffix[0] === 'outfits') return suffix.length === 1 ? suffix : null;
 
   const meta = await loadMeta(build);
   const type = suffix[0];

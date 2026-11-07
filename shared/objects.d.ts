@@ -42,11 +42,31 @@ export interface PreviewVariant {
   hiddenSlots?: PartSlot[];
   animationContext?: AnimationContext;
   animations?: AnimationChoice[];
+  outfitSlot?: PartSlot;
 }
 
 export interface ModelPreview {
   id: number | string;
   variants: PreviewVariant[];
+  outfit?: { selected: string[] };
+}
+
+export interface OutfitCatalog {
+  defaults: PreviewVariant[];
+  items: OutfitItem[];
+}
+
+export interface OutfitItem {
+  id: string;
+  name: string;
+  slot: PartSlot;
+  genders: Gender[];
+  icon: string;
+  level: number;
+  rarity: string;
+  gender: string;
+  type: string;
+  obtainable: boolean;
 }
 
 export interface PreviewMeta {

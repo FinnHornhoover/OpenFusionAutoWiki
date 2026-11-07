@@ -84,7 +84,6 @@ export class ModelAnimation {
   private action?: THREE.AnimationAction;
   private materials: MaterialTrack[] = [];
   private time = 0;
-  private loopTime = 0;
   private duration = 0;
   private generation = 0;
   private disposed = false;
@@ -197,8 +196,7 @@ export class ModelAnimation {
   }
 
   seek(time: number): void {
-    this.loopTime = Math.max(0, Math.min(Number.isFinite(time) ? time : 0, this.duration));
-    this.applyTime(this.loopTime);
+    this.applyTime(time);
   }
 
   private applyTime(time: number): void {
@@ -211,10 +209,9 @@ export class ModelAnimation {
     }
   }
 
-  update(delta: number, loopDelay = 0): void {
+  update(delta: number): void {
     if (this.duration <= 0) { this.applyTime(0); return; }
-    this.loopTime = (this.loopTime + delta) % (this.duration + loopDelay);
-    this.applyTime(this.loopTime);
+    this.applyTime((this.time + delta) % this.duration);
   }
 
   dispose(): void {

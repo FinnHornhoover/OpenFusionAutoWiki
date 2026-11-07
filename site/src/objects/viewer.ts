@@ -7,8 +7,6 @@ import { animationChoices, preferredAnimation } from '../../../shared/animations
 import { compose, disposeTexture, disposeTree, dressModel, loadModel, type LoadedModel } from './assets';
 import { ModelAnimation } from './animation';
 
-const LOOP_DELAY = 0.2;
-
 export interface Viewer {
   animations: AnimationChoice[];
   hasMotion: boolean;
@@ -17,7 +15,13 @@ export interface Viewer {
   pause(paused: boolean): void;
   seek(time: number): void;
   reset(): void;
+  getView(): ViewState;
   dispose(): void;
+}
+
+export interface ViewState {
+  position: [number, number, number];
+  target: [number, number, number];
 }
 
 export interface PlaybackState {
@@ -28,6 +32,7 @@ export interface PlaybackState {
 
 interface ViewerOptions {
   paused?: boolean;
+  view?: ViewState;
   onPlayback?: (state: PlaybackState) => void;
 }
 
@@ -141,6 +146,10 @@ export async function mountViewer(container: HTMLElement, variant: PreviewVarian
       const halfFov = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
       return (Math.max(size.y / (2 * halfFov), size.x / (2 * halfFov * camera.aspect)) + size.z / 2) * 1.15;
     };
+    const width = container.clientWidth || 1;
+    const height = container.clientHeight || 1;
+    renderer.setSize(width, height);
+    camera.aspect = width / height;
     let lastFit = fitDistance();
     const reset = (): void => {
       lastFit = fitDistance();
@@ -155,6 +164,15 @@ export async function mountViewer(container: HTMLElement, variant: PreviewVarian
       renderer.render(scene, camera);
     };
     reset();
+    if (options.view) {
+      controls.target.fromArray(options.view.target);
+      camera.position.fromArray(options.view.position);
+      const distance = camera.position.distanceTo(controls.target);
+      controls.minDistance = Math.min(controls.minDistance, distance);
+      controls.maxDistance = Math.max(controls.maxDistance, distance);
+      controls.update();
+      renderer.render(scene, camera);
+    }
     const report = (): void => options.onPlayback?.({ ...animation.playback, paused });
     const seek = (time: number): void => {
       animation.seek(time);
@@ -169,7 +187,7 @@ export async function mountViewer(container: HTMLElement, variant: PreviewVarian
       const delta = previous ? Math.min((time - previous) / 1000, 0.1) : 0;
       previous = time;
       if (!paused) {
-        animations.forEach((item) => item.update(delta, item === animation ? LOOP_DELAY : 0));
+        animations.forEach((item) => item.update(delta));
         env.time.value += delta;
       }
       renderer.render(scene, camera);
@@ -208,6 +226,7 @@ export async function mountViewer(container: HTMLElement, variant: PreviewVarian
         report();
         invalidate();
       },
+      getView: () => ({ position: camera.position.toArray(), target: controls.target.toArray() }),
       reset, dispose,
     };
   } catch (error) {
