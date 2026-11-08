@@ -3,7 +3,7 @@ import type { Files } from 'ff-three/world';
 import type { AreaPlacement, AreaPopulation, PopulationKind } from '../../../shared/objects';
 import { placedModel, type PlacedModel } from './placed-model';
 
-export interface PopulationSelection { name: string; unavailable: boolean }
+export interface PopulationSelection { name: string; unavailable: boolean; loading: boolean }
 export interface PopulationLayer {
   toggle(kind: PopulationKind, show: boolean): void;
   update(delta: number): void;
@@ -16,12 +16,17 @@ export function areaPopulation(data: AreaPopulation, scene: THREE.Scene, camera:
   scene.add(group);
   const loaded = new Map<string, PlacedModel>(), pending = new Map<string, AbortController>(), failed = new Set<string>();
   const wanted = new Set<string>();
-  const limit = matchMedia('(max-width: 600px)').matches ? 16 : 40;
   const markers = new Map<PopulationKind, THREE.Points>();
   const colors = { npcs: 0x52ffff, monsters: 0xff775c, eggs: 0xffdb50 };
   const projected = new THREE.Vector3();
   let cameraPose = '';
-  let disposed = false, elapsed = 1, selection: AreaPlacement | undefined, down = [0, 0];
+  const pointers = new Set<number>();
+  let tap: { id: number; x: number; y: number } | undefined;
+  let disposed = false, elapsed = 1, selection: AreaPlacement | undefined;
+  const notify = (): void => {
+    const unavailable = !!selection && (!data.models[selection.model] || failed.has(selection.id));
+    selected(selection ? { name: selection.name, unavailable, loading: !unavailable && !loaded.has(selection.id) } : null);
+  };
   const rebuild = (): void => {
     for (const [kind, points] of markers) {
       const positions = points.geometry.getAttribute('position') as THREE.BufferAttribute;
@@ -51,12 +56,17 @@ export function areaPopulation(data: AreaPopulation, scene: THREE.Scene, camera:
     if (projected.distanceToSquared(camera.position) > 140 ** 2) return false;
     projected.project(camera);
     return Math.abs(projected.x) < 1.15 && Math.abs(projected.y) < 1.15 && projected.z > -1 && projected.z < 1;
-  }).sort((a, b) => camera.position.distanceToSquared(new THREE.Vector3().fromArray(a.position)) - camera.position.distanceToSquared(new THREE.Vector3().fromArray(b.position))).slice(0, limit);
+  }).sort((a, b) => {
+    if (a.id === selection?.id) return -1;
+    if (b.id === selection?.id) return 1;
+    return camera.position.distanceToSquared(new THREE.Vector3().fromArray(a.position)) - camera.position.distanceToSquared(new THREE.Vector3().fromArray(b.position));
+  }).slice(0, matchMedia('(max-width: 600px)').matches ? 16 : 40);
   const refresh = (): void => {
-    wanted.clear(); candidates().forEach((p) => wanted.add(p.id));
+    const nearby = candidates();
+    wanted.clear(); nearby.forEach((p) => wanted.add(p.id));
     for (const [id, model] of loaded) if (!wanted.has(id)) { model.root.removeFromParent(); model.dispose(); loaded.delete(id); }
     for (const [id, controller] of pending) if (!wanted.has(id)) controller.abort();
-    for (const placement of data.placements) {
+    for (const placement of nearby) {
       if (pending.size >= 2) break;
       if (!wanted.has(placement.id) || loaded.has(placement.id) || pending.has(placement.id)) continue;
       const controller = new AbortController();
@@ -67,38 +77,54 @@ export function areaPopulation(data: AreaPopulation, scene: THREE.Scene, camera:
         model.root.rotation.y = placement.yaw;
         group.add(model.root);
         loaded.set(placement.id, model);
+        if (selection?.id === placement.id) notify();
       }).catch((error: unknown) => {
         if (!controller.signal.aborted && !disposed) {
           failed.add(placement.id);
           console.warn(`Area model unavailable: ${placement.name}`, error);
-          if (selection?.id === placement.id) selected({ name: placement.name, unavailable: true });
+          if (selection?.id === placement.id) notify();
         }
       }).finally(() => { pending.delete(placement.id); if (!disposed) { rebuild(); elapsed = 1; invalidate(); } });
     }
     rebuild();
   };
-  const pointerDown = (event: PointerEvent): void => { down = [event.clientX, event.clientY]; };
+  const pointerDown = (event: PointerEvent): void => {
+    pointers.add(event.pointerId);
+    tap = pointers.size === 1 ? { id: event.pointerId, x: event.clientX, y: event.clientY } : undefined;
+  };
+  const pointerMove = (event: PointerEvent): void => {
+    if (tap?.id === event.pointerId && Math.hypot(event.clientX - tap.x, event.clientY - tap.y) > 6) tap = undefined;
+  };
+  const pointerCancel = (event: PointerEvent): void => { pointers.delete(event.pointerId); tap = undefined; };
   const pointerUp = (event: PointerEvent): void => {
-    if (event.button !== 0 || Math.hypot(event.clientX - down[0], event.clientY - down[1]) > 6) return;
+    pointers.delete(event.pointerId);
+    const clicked = tap?.id === event.pointerId && !pointers.size && event.button === 0 && Math.hypot(event.clientX - tap.x, event.clientY - tap.y) <= 6;
+    tap = undefined;
+    if (!clicked) return;
     const rect = canvas.getBoundingClientRect();
     let best = 15 ** 2, match: AreaPlacement | undefined;
     for (const placement of data.placements) {
       if (!enabled.has(placement.kind)) continue;
-      projected.fromArray(placement.position).project(camera);
+      projected.fromArray(placement.position);
+      projected.y += 1;
+      projected.project(camera);
       if (projected.z < -1 || projected.z > 1) continue;
       const dx = rect.left + (projected.x + 1) / 2 * rect.width - event.clientX, dy = rect.top + (1 - projected.y) / 2 * rect.height - event.clientY;
       const distance = dx * dx + dy * dy;
       if (distance < best) { best = distance; match = placement; }
     }
     selection = match;
-    selected(match ? { name: match.name, unavailable: !data.models[match.model] || failed.has(match.id) } : null);
-    if (match) focus(new THREE.Vector3().fromArray(match.position));
+    if (match && failed.delete(match.id)) files.forget();
+    notify();
+    if (match) { focus(new THREE.Vector3().fromArray(match.position)); elapsed = 1; invalidate(); }
   };
   const dispose = (): void => {
     if (disposed) return;
     disposed = true;
     canvas.removeEventListener('pointerdown', pointerDown);
     canvas.removeEventListener('pointerup', pointerUp);
+    canvas.removeEventListener('pointermove', pointerMove);
+    canvas.removeEventListener('pointercancel', pointerCancel);
     signal.removeEventListener('abort', dispose);
     pending.forEach((controller) => controller.abort());
     loaded.forEach((model) => model.dispose());
@@ -107,6 +133,8 @@ export function areaPopulation(data: AreaPopulation, scene: THREE.Scene, camera:
   };
   canvas.addEventListener('pointerdown', pointerDown);
   canvas.addEventListener('pointerup', pointerUp);
+  canvas.addEventListener('pointermove', pointerMove);
+  canvas.addEventListener('pointercancel', pointerCancel);
   signal.addEventListener('abort', dispose, { once: true });
   rebuild();
   return {

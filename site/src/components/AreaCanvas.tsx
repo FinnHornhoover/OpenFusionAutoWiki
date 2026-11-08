@@ -40,7 +40,7 @@ export default function AreaCanvas({ recipe, baseUrl, populationUrl }: { recipe:
       <button aria-pressed={effects} onClick={() => { viewer.current?.effects(!effects); setEffects(!effects); }}>Effects</button>
       <button aria-pressed={motion} onClick={() => { viewer.current?.pause(motion); setMotion(!motion); }}>Motion</button>
       {(['npcs', 'monsters', 'eggs'] as const).map((kind) => <button key={kind} aria-pressed={population[kind]} onClick={() => { viewer.current?.population(kind, !population[kind]); setPopulation((values) => ({ ...values, [kind]: !values[kind] })); }}>{kind === 'npcs' ? 'NPCs' : kind === 'monsters' ? 'Monsters' : 'Eggs'}</button>)}
-      {selection && <p role="status">{selection.name}{selection.unavailable ? ' · Model unavailable' : ''}</p>}
+      {selection && <p role="status">{selection.name}{selection.unavailable ? ' · Model unavailable' : selection.loading ? ' · Loading model…' : ''}</p>}
       <p className="muted">Drag to rotate. Scroll or pinch to zoom. Right-drag or use two fingers to pan. Tap a marker to focus.</p>
       {recipe.missing.length > 0 && <p className="muted">Some tiles are unavailable in this client cache.</p>}
     </div>}

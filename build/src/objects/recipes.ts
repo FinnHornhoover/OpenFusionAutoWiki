@@ -20,12 +20,12 @@ export class Recipes {
 
   constructor(private pack: Pack, private xdt: Xdt) {
     this.palettes = Object.values(pack.msgpack<Record<string, Palette>>('models/appearances/palettes.msgpack'));
-    this.hnpcs = Object.values(pack.msgpack<Record<string, { rows: Row[] }>>('models/appearances/hnpcs.msgpack')).flatMap((v) => v.rows);
+    this.hnpcs = Object.values(pack.msgpack<Record<string, { rows: Row[] }>>('models/appearances/hnpcs.msgpack'))[0]?.rows ?? [];
   }
 
   private texture(value: string | number | undefined, fallback = false): string | undefined {
     if (!valid(value)) return undefined;
-    const file = this.pack.texture(value) ?? (fallback ? this.pack.texture(`${value}_a`) : undefined);
+    const file = this.pack.texture(value) ?? (fallback ? this.pack.texture(`${value.replace(/\.dds$/i, '')}_a`) : undefined);
     if (!file) { this.missing.add(`texture:${value}`); return undefined; }
     return file;
   }
@@ -90,7 +90,8 @@ export class Recipes {
   }
 
   private hnpc(row: Row): PreviewVariant | undefined {
-    const look = this.hnpcs.find((r) => r.iType === row.m_iHNpcNum);
+    // The client indexes TableElement; iType controls gender and is not unique.
+    const look = this.hnpcs[Number(row.m_iHNpcNum)];
     if (!look) return undefined;
     const gender: Gender = Number(look.iType) % 2 ? 'm' : 'f';
     const actor = this.part([`actor/${gender === 'm' ? 'm' : 'w'}.kfm`], 'prefab');
