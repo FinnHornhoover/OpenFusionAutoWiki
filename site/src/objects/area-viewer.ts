@@ -2,10 +2,11 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { createEnvironment, applySceneSettings } from 'ff-three';
 import { createFiles, loadGlb, setUpScene, type SceneSetup } from 'ff-three/world';
-import type { AreaPreviewRecipe } from '../../../shared/objects';
+import type { AreaPopulation, AreaPreviewRecipe, PopulationKind } from '../../../shared/objects';
 import { disposeTree } from './assets';
 import { dressFusionMatter, repairWrenchAlpha } from './materials';
 import { sceneMotion, type SceneMotion } from './scene-motion';
+import { areaPopulation, type PopulationLayer, type PopulationSelection } from './area-population';
 
 export interface AreaViewer {
   reset(): void;
@@ -14,10 +15,11 @@ export interface AreaViewer {
   grass(visible: boolean): void;
   effects(visible: boolean): void;
   pause(paused: boolean): void;
+  population(kind: PopulationKind, show: boolean): void;
   dispose(): void;
 }
 
-export async function mountAreaViewer(container: HTMLElement, recipe: AreaPreviewRecipe, baseUrl: string, signal: AbortSignal, onStatus: (status: string) => void): Promise<AreaViewer> {
+export async function mountAreaViewer(container: HTMLElement, recipe: AreaPreviewRecipe, baseUrl: string, signal: AbortSignal, onStatus: (status: string) => void, populationUrl: string, onSelection: (value: PopulationSelection | null) => void): Promise<AreaViewer> {
   const renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
   renderer.outputColorSpace = THREE.LinearSRGBColorSpace;
@@ -39,6 +41,7 @@ export async function mountAreaViewer(container: HTMLElement, recipe: AreaPrevie
   const tiles: { setup: SceneSetup; release: () => void; motion?: SceneMotion }[] = [];
   let disposed = false, visible = true, frame = 0, previous = 0, lastRendered = 0, hasMotion = false;
   let paused = false, forceDraw = true;
+  let population: PopulationLayer | undefined;
   let resize: ResizeObserver | undefined, intersection: IntersectionObserver | undefined;
   let visibility = (): void => {};
 
@@ -55,6 +58,7 @@ export async function mountAreaViewer(container: HTMLElement, recipe: AreaPrevie
       renderer.domElement.remove();
       signal.removeEventListener('abort', dispose);
     }
+    population?.dispose();
     for (const tile of tiles) { tile.motion?.dispose(); tile.setup.dispose(); disposeTree(tile.setup.root); tile.release(); }
     files.forget();
   };
@@ -116,13 +120,40 @@ export async function mountAreaViewer(container: HTMLElement, recipe: AreaPrevie
         const delta = previous ? Math.min((time - previous) / 1000, 0.1) : 0;
         previous = time;
         if (!paused) { env.time.value += delta; tiles.forEach((tile) => tile.motion?.update(delta)); }
+        population?.update(paused ? 0 : delta);
         renderer.render(scene, camera);
         lastRendered = time;
         forceDraw = false;
       }
-      if (visible && !document.hidden && hasMotion && !paused) frame = requestAnimationFrame(draw);
+      if (!frame && visible && !document.hidden && hasMotion && !paused) frame = requestAnimationFrame(draw);
     };
     const invalidate = (): void => { forceDraw = true; if (!frame && !disposed) frame = requestAnimationFrame(draw); };
+    onStatus('Loading NPC, monster and egg placements…');
+    const response = await fetch(populationUrl, { signal });
+    if (!response.ok) throw new Error(`Area placements failed (${response.status})`);
+    const data = await response.json() as AreaPopulation;
+    signal.throwIfAborted();
+    population = areaPopulation(data, scene, camera, renderer.domElement, baseUrl, env, signal, files, invalidate, (point) => {
+      orbit.target.copy(point).add(new THREE.Vector3(0, 1.5, 0));
+      const ray = new THREE.Raycaster(), direction = new THREE.Vector3();
+      const obstacles: THREE.Object3D[] = [];
+      for (const { setup } of tiles) setup.root.traverse((object) => {
+        if (object instanceof THREE.Mesh && object.visible && !object.userData.ffSkip && !object.userData.ffGrass && !object.userData.ffEffect) obstacles.push(object);
+      });
+      let bestDistance = 0;
+      scene.updateMatrixWorld(true);
+      for (let angle = 0; angle < Math.PI * 2; angle += Math.PI / 4) {
+        direction.set(Math.sin(angle), 0.35, -Math.cos(angle)).normalize();
+        ray.set(orbit.target, direction);
+        ray.far = 18;
+        const hit = ray.intersectObjects(obstacles, false)[0];
+        const distance = Math.max(1, Math.min(18, (hit?.distance ?? 19) - 1));
+        if (distance > bestDistance) { bestDistance = distance; camera.position.copy(orbit.target).addScaledVector(direction, distance); }
+      }
+      orbit.update();
+      invalidate();
+    }, onSelection);
+    hasMotion ||= data.placements.length > 0;
     orbit.addEventListener('change', invalidate);
     reset();
     resize = new ResizeObserver(() => { size(); invalidate(); });
@@ -140,6 +171,7 @@ export async function mountAreaViewer(container: HTMLElement, recipe: AreaPrevie
       },
       grass: (show) => { tiles.forEach(({ setup }) => setup.root.traverse((object) => { if (object.userData.ffGrass) object.visible = show; })); invalidate(); },
       effects: (show) => { tiles.forEach(({ motion }) => motion?.effects.forEach((root) => { root.visible = show; })); invalidate(); },
+      population: (kind, show) => population?.toggle(kind, show),
       pause: (value) => { paused = value; previous = 0; invalidate(); },
       dispose,
     };

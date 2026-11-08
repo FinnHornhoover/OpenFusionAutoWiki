@@ -51,4 +51,5 @@
 .area-canvas { display: flex; flex-direction: column; }
 .area-canvas .model-preview-stage { flex: 1 1 0; }
 .area-preview-controls { display: flex; flex: none; flex-wrap: wrap; gap: .5rem; }
+.model-preview .area-preview-controls button[aria-pressed="false"] { color: var(--color-text-muted); border-color: var(--color-text-muted); }
 .area-preview-controls p { flex-basis: 100%; margin: 0; font-size: .875rem; }

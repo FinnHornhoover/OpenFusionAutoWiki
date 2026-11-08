@@ -83,3 +83,18 @@ export interface AreaPreviewRecipe {
   tiles: string[];
   missing: string[];
 }
+
+export type PopulationKind = 'npcs' | 'monsters' | 'eggs';
+export interface AreaPlacement {
+  id: string;
+  kind: PopulationKind;
+  model: string;
+  name: string;
+  entity: number;
+  position: [number, number, number];
+  yaw: number;
+}
+export interface AreaPopulation {
+  models: Record<string, PreviewVariant>;
+  placements: AreaPlacement[];
+}

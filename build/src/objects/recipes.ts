@@ -117,6 +117,16 @@ export class Recipes {
     return { label: 'Character', model: actor, gender, parts, skin: this.palette('skin', Number(look.iSkinColor)) ?? this.actorColor(gender, 'skin'), hair: this.palette('hair', Number(look.iHairColor)) ?? this.actorColor(gender, 'hair'), height: 1 - Number(look.iHeight) / 4, shape: Number(look.iShape) / 2, idle: 'stand', scale: Number(row.m_fScale) || 1, animationContext: { kind: 'avatar', weapon: item ? weaponStyle(Number(item.m_iEquipType)) : 'unarmed' } };
   }
 
+  egg(id: number): PreviewVariant | undefined {
+    const table = this.xdt.m_pShinyTable;
+    const row = table?.m_pShinyData.find((row) => Number(row.m_iShinyID) === id);
+    const mesh = row && table.m_pShinyMeshData[Number(row.m_iMesh)];
+    const name = mesh?.m_pstrMMeshModelString;
+    if (!mesh || !valid(name)) return undefined;
+    const model = this.part([`mob/${name}.kfm`], 'prefab', mesh.m_pstrMTextureString, mesh.m_pstrMTextureString2);
+    return model ? { label: 'Egg', model, idle: 'stand', animationContext: { kind: 'creature' } } : undefined;
+  }
+
   entities(): Record<PreviewType, ModelPreview[]> {
     const result: Record<PreviewType, ModelPreview[]> = { monsters: [], nanos: [], npcs: [], items: [], 'item-sets': [] };
     const npcs = this.xdt.m_pNpcTable;

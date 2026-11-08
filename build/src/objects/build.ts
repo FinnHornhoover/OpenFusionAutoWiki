@@ -1,3 +1,4 @@
+import { buildPopulation } from './population.js';
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -93,7 +94,8 @@ export async function buildPreviews(release: Release, downloaded: DownloadedAsse
       const zip = new AdmZip(info.path);
       const xdtEntry = zip.getEntries().find((e) => /(^|\/)xdt.json$/.test(e.entryName));
       if (!xdtEntry) throw new Error(`${slug}: missing xdt.json`);
-      const recipes = new Recipes(pack, JSON.parse(xdtEntry.getData().toString('utf8')) as Xdt);
+      const xdt = JSON.parse(xdtEntry.getData().toString('utf8')) as Xdt;
+      const recipes = new Recipes(pack, xdt);
       const entities = recipes.entities();
       const itemIndex = JSON.parse(readFileSync(join(DATA_OUT, slug, 'index', 'items.json'), 'utf8')) as { id: string; name: string; icon: string; contentLevel: number; rarity: string; gender: string; type: string; displayType?: string; obtainable: boolean }[];
       const itemInfo = new Map(itemIndex.map((item) => [String(item.id), item]));
@@ -144,6 +146,7 @@ export async function buildPreviews(release: Release, downloaded: DownloadedAsse
         await writeChunks(slug, `previews/${type}`, entities[type], (row) => ({ url: row.id, chunk: keyOf(type, row) }));
       }
       const areaCount = await areaCompiler.build(slug);
+      buildPopulation(slug, zip, xdt, recipes, pack, stage);
       const meta: PreviewMeta = { baseUrl: `${baseUrl}/v4`, types, release: release.tagName, format: 4, areas: areaCount > 0 };
       writeFileSync(join(directory, 'meta.json'), JSON.stringify(meta));
       writeFileSync(join(directory, 'coverage.json'), JSON.stringify({ counts: Object.fromEntries(types.map((type) => [type, entities[type].length])), unresolved: [...recipes.missing].sort() }));

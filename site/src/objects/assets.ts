@@ -58,6 +58,10 @@ export async function loadModel(url: string, signal: AbortSignal): Promise<Loade
   if (!response.ok) throw new Error(`Model download failed (${response.status})`);
   const gltf = await new GLTFLoader().parseAsync(await response.arrayBuffer(), new URL('.', url).href);
   if (signal.aborted) { disposeTree(gltf.scene); throw new DOMException('Aborted', 'AbortError'); }
+  return prepareModel(gltf, url);
+}
+
+export function prepareModel(gltf: GLTF, url: string): LoadedModel {
   const nodes = new Map<number, THREE.Object3D>();
   gltf.scene.traverse((object) => {
     const index = gltf.parser.associations.get(object)?.nodes;

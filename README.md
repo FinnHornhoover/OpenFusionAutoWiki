@@ -55,7 +55,9 @@ vehicle models retain their own default animations and texture variants.
 Only selected clips and required composition controls enter the shared asset pool.
 Area pages preview layered terrain, grass, animated scenery, moving platforms and
 mesh effects, with orbit, pan and overhead views. Particle effects need additional
-ObjectPacks data; NPC, egg and monster placements are a later step.
+ObjectPacks data. NPCs, monsters and eggs use InfoPacks spawn positions and facing.
+Overview markers focus nearby idle models on tap; category toggles and bounded
+loading keep mobile views usable. Patrols and combat are not simulated.
 Tiles and terrain buffers share the R2 pool; terrain shader textures use lossless
 PNG to preserve blend weights through the browser decoder.
 

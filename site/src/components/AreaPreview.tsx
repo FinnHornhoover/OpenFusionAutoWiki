@@ -28,7 +28,7 @@ export default function AreaPreview({ build, id, name }: { build?: string; id: s
     <button ref={opener} className="model-preview-open" aria-haspopup="dialog" onClick={() => setActive(key)}>View area in 3D</button>
     {active === key && <ModelDialog titleId={title} returnFocus={opener} onClose={() => setActive('')}>
       <div className="model-preview-heading"><h2 id={title}>{name}</h2><button className="model-preview-close" aria-label="Close 3D preview" onClick={() => setActive('')}>Close</button></div>
-      <div className="model-preview-body"><Suspense fallback={<p role="status">Loading viewer…</p>}><AreaCanvas recipe={loaded.recipe} baseUrl={loaded.meta.baseUrl} /></Suspense></div>
+      <div className="model-preview-body"><Suspense fallback={<p role="status">Loading viewer…</p>}><AreaCanvas recipe={loaded.recipe} baseUrl={loaded.meta.baseUrl} populationUrl={`/data/${build}/previews/population/${id}.json`} /></Suspense></div>
     </ModelDialog>}
   </div>;
 }
