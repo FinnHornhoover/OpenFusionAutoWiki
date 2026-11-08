@@ -7,7 +7,7 @@ import ItemSearch from './ItemSearch';
 import Icon from './Icon';
 const ModelCanvas = lazy(() => import('./ModelCanvas'));
 
-const SLOTS: [PartSlot, string][] = [['hat', 'Head'], ['glasses', 'Face accessory'], ['shirt', 'Body'], ['pants', 'Legs'], ['shoes', 'Shoes'], ['back', 'Back'], ['weapon', 'Weapon'], ['vehicle', 'Vehicle']];
+const SLOTS: [PartSlot, string][] = [['shirt', 'Body'], ['pants', 'Legs'], ['shoes', 'Shoes'], ['weapon', 'Weapon'], ['hat', 'Head'], ['glasses', 'Face accessory'], ['back', 'Back'], ['vehicle', 'Vehicle']];
 const CLOTHING = new Set<PartSlot>(['shirt', 'pants', 'shoes']);
 const describe = (item: OutfitItem): string => `Lv${item.level} · ${item.rarity}`;
 const searchText = (item: OutfitItem): string => `${describe(item)} · ${item.type} · ${item.gender}${item.obtainable ? '' : ' · Unobtainable'}`;

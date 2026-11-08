@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, wri
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import AdmZip from 'adm-zip';
-import type { ModelPreview, OutfitCatalog, PreviewMeta, PreviewType, PreviewVariant } from '../../../shared/objects.js';
+import type { Gender, ModelPreview, OutfitCatalog, PreviewMeta, PreviewType, PreviewVariant } from '../../../shared/objects.js';
 import { chunkOf, writeChunks } from '../chunk.js';
 import { downloadAll, downloadOne, fetchRelease, type DownloadedAsset, type Release } from '../download.js';
 import { slugForZip } from '../manifest.js';
@@ -36,17 +36,23 @@ function setRecipes(slug: string, items: ModelPreview[], defaults: PreviewVarian
   const byId = new Map(items.map((row) => [String(row.id), row]));
   return Object.values(sets).flatMap((set) => {
     const selected = set.items.map((item) => item.id).filter((id) => byId.has(id));
-    const variants = defaults.flatMap((base) => {
+    const byGender: Partial<Record<Gender, string[]>> = {};
+    const composed = defaults.map((base) => {
       const slots = new Set<string>();
+      const equipped: string[] = [];
       const worn = selected.flatMap((id) => {
         const variant = byId.get(id)?.variants.find((v) => v.gender === base.gender);
         if (!variant?.outfitSlot || slots.has(variant.outfitSlot)) return [];
         slots.add(variant.outfitSlot);
+        equipped.push(id);
         return [variant];
       });
-      return worn.length ? [composeOutfit(base, worn)] : [];
+      if (base.gender) byGender[base.gender] = equipped;
+      return composeOutfit(base, worn);
     });
-    return variants.length ? [{ id: set.id, variants, outfit: { selected } }] : [];
+    const equipped = composed.filter((variant) => byGender[variant.gender!]?.length);
+    const variants = equipped.length ? equipped : composed;
+    return variants.length ? [{ id: set.id, variants, outfit: { selected: byGender[variants[0].gender ?? 'm'] ?? [], byGender } }] : [];
   });
 }
 

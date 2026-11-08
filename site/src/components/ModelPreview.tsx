@@ -34,10 +34,13 @@ export default function ModelPreview({ build, type, id, name }: { build?: string
 
   if (loaded?.key !== key) return null;
   const variants = loaded.recipe.variants;
+  const gender = variants[variant].gender;
+  const outfit = loaded.recipe.outfit;
+  const selected = gender ? outfit?.byGender?.[gender] ?? outfit?.selected : outfit?.selected;
+  const outfitUrl = `/${build}/outfits?items=${encodeURIComponent(selected?.join(',') ?? '')}${gender ? `&gender=${gender}` : ''}`;
   return (
     <div className="model-preview">
       <button ref={opener} className="model-preview-open" aria-haspopup="dialog" onClick={() => setActiveKey(key)}>View in 3D</button>
-      {type !== 'items' && loaded.recipe.outfit && <Link className="model-preview-outfit-link" to={`/${build}/outfits?items=${encodeURIComponent(loaded.recipe.outfit.selected.join(','))}`}>Open in outfit picker</Link>}
       {activeKey === key && (
         <ModelDialog titleId={titleId} returnFocus={opener} onClose={() => setActiveKey('')}>
           <div className="model-preview-heading">
@@ -49,9 +52,9 @@ export default function ModelPreview({ build, type, id, name }: { build?: string
               <ModelCanvas key={`${key}/${variant}`} variant={variants[variant]} baseUrl={loaded.meta.baseUrl} />
             </Suspense>
           </div>
-          {(variants.length > 1 || type === 'items' && loaded.recipe.outfit) && <div className="model-preview-footer">
+          {(variants.length > 1 || outfit) && <div className="model-preview-footer">
             {variants.length > 1 && <label>Character <select className="styled-select" aria-label="Character" value={variant} onChange={(event) => setVariant(Number(event.target.value))}>{variants.map((v, i) => <option key={i} value={i}>{v.label}</option>)}</select></label>}
-            {type === 'items' && loaded.recipe.outfit && <Link className="model-preview-action" to={`/${build}/outfits?items=${encodeURIComponent(String(loaded.recipe.id))}`}>Open in Outfit Picker</Link>}
+            {outfit && <Link className="model-preview-action" to={outfitUrl}>Open in Outfit Picker</Link>}
           </div>}
         </ModelDialog>
       )}

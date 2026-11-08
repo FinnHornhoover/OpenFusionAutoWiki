@@ -48,7 +48,7 @@ export interface PreviewVariant {
 export interface ModelPreview {
   id: number | string;
   variants: PreviewVariant[];
-  outfit?: { selected: string[] };
+  outfit?: { selected: string[]; byGender?: Partial<Record<Gender, string[]>> };
 }
 
 export interface OutfitCatalog {

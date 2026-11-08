@@ -47,7 +47,6 @@
   .model-preview-controls { display: flex; flex-direction: column; align-items: stretch; overflow-y: auto; }
 }
 
-.model-preview-outfit-link { display: inline-block; margin-left: 1rem; }
 .area-canvas { display: flex; flex-direction: column; }
 .area-canvas .model-preview-stage { flex: 1 1 0; }
 .area-preview-controls { display: flex; flex: none; flex-wrap: wrap; gap: .5rem; }

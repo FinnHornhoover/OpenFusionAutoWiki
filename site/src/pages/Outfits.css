@@ -13,12 +13,13 @@
 .outfit-search h2 { font-size: 1rem; margin-bottom: .5rem; }
 .outfit-search .combination-options button { min-height: 64px; padding: var(--space-2); border: 0; border-radius: 0; background: transparent; }
 .outfit-search .combination-options button:is(:hover, [data-active="true"]) { background: var(--color-bg-subtle); }
-.outfit-slots { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
+.outfit-slots { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: repeat(4, auto); grid-auto-flow: column; gap: 1rem; }
 .outfit-slot-card { display: grid; align-content: start; gap: var(--space-3); padding: var(--space-4); background: var(--color-bg-elevated) url("/assets/modal-header-bg-dark.png") repeat; border: 1px solid var(--color-border); border-radius: var(--radius-sm); box-shadow: var(--glow-sm-both); overflow-wrap: anywhere; }
 .outfit-slot-card h3 { font-size: 1rem; margin: 0; }
 .outfit-slot-card .icon { flex-shrink: 0; }
 .outfit-slot-card .combination-item-link > div { flex: 1; min-width: 0; }
 .outfit-remove { flex-shrink: 0; }
 @media (max-width: 600px) {
+  .outfit-slots { grid-template-rows: none; grid-auto-flow: row; }
   .outfit-slots, .outfit-toolbar, .outfit-view .model-preview-controls { grid-template-columns: minmax(0, 1fr); }
 }
