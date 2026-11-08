@@ -13,6 +13,7 @@ import { AssetPool } from './pool.js';
 import { Recipes, type Xdt } from './recipes.js';
 import { animationChoices } from '../../../shared/animations.js';
 import { composeOutfit } from '../../../shared/outfits.js';
+import { AreaCompiler } from './areas.js';
 
 export const OBJECTS_CACHE = join(CACHE_DIR, 'objects');
 export const POOL_DIR = join(OBJECTS_CACHE, 'pool');
@@ -81,6 +82,7 @@ export async function buildPreviews(release: Release, downloaded: DownloadedAsse
     }
 
     const pack = new Pack(location);
+    const areaCompiler = new AreaCompiler(pack, pool);
     const revision = Number(/_r(\d+)/.exec(canonical?.asset.name ?? builds[0].asset.name)?.[1]);
     if (pack.manifest.build !== source || (!local && pack.manifest.revision !== revision)) {
       throw new Error(`${source}: ObjectPacks build/revision does not match FFInfoPacks`);
@@ -141,7 +143,8 @@ export async function buildPreviews(release: Release, downloaded: DownloadedAsse
         types.push(type);
         await writeChunks(slug, `previews/${type}`, entities[type], (row) => ({ url: row.id, chunk: keyOf(type, row) }));
       }
-      const meta: PreviewMeta = { baseUrl: `${baseUrl}/v4`, types, release: release.tagName, format: 4 };
+      const areaCount = await areaCompiler.build(slug);
+      const meta: PreviewMeta = { baseUrl: `${baseUrl}/v4`, types, release: release.tagName, format: 4, areas: areaCount > 0 };
       writeFileSync(join(directory, 'meta.json'), JSON.stringify(meta));
       writeFileSync(join(directory, 'coverage.json'), JSON.stringify({ counts: Object.fromEntries(types.map((type) => [type, entities[type].length])), unresolved: [...recipes.missing].sort() }));
       completed.add(slug);

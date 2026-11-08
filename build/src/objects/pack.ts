@@ -5,7 +5,7 @@ import { decode, decodeMulti } from '@msgpack/msgpack';
 
 export interface Prefab {
   file: string;
-  clips: { name: string; file: string; duration: number }[];
+  clips: { name: string; file: string; duration: number; object: number; binding: number }[];
   renderers: Record<string, number[]>;
 }
 
@@ -43,6 +43,14 @@ export interface Rig {
   };
 }
 
+export interface ResourceData {
+  name?: string;
+  file?: string;
+  settings?: { m_FilterMode?: number; m_WrapMode?: number };
+  [field: string]: unknown;
+}
+export type Resources = Record<string, [number, number, ResourceData]>;
+
 export class Pack {
   private archive?: AdmZip;
   private prefix = '';
@@ -54,6 +62,8 @@ export class Pack {
   private graphs = new Map<string, Graph>();
   private textureSources = new Map<number, string>();
   private rigCache?: Record<string, Rig>;
+  private resourceCache?: Resources;
+  private prefabIndex?: Record<string, Prefab>;
   readonly manifest: { format_version: number; build: string; revision: number };
 
   constructor(private location: string) {
@@ -84,7 +94,7 @@ export class Pack {
     const fields = decodeMulti(sources.subarray(1));
     if (fields.next().value !== 'assets') throw new Error('Missing source asset list');
     const assets = fields.next().value as { source: string }[];
-    const resources = this.msgpack<Record<string, [number, number, unknown]>>('metadata/resources.msgpack');
+    const resources = this.resources;
     for (const texture of this.json<Texture[]>('textures/index.json')) {
       if (!texture.file) continue;
       const asset = resources[texture.object]?.[1];
@@ -129,16 +139,21 @@ export class Pack {
   }
 
   automaticAnimation(file: string): string | null {
+    return this.automaticAnimations(file)[0] ?? null;
+  }
+
+  automaticAnimations(file: string): string[] {
     const data = this.prefabDocument(file);
+    const names = new Set<string>();
     for (const node of data.nodes ?? []) {
       const animation = node.extras?.animation;
       if (!animation?.enabled || !animation.play_automatically || animation.default === null) continue;
       const uri = animation.clips[animation.default]?.file;
       if (!uri) continue;
       const key = Object.entries(data.extras?.clips ?? {}).find(([, value]) => value === uri)?.[0];
-      if (key) return key;
+      if (key) names.add(key);
     }
-    return null;
+    return [...names];
   }
 
   private prefabDocument(file: string): PrefabDocument {
@@ -181,5 +196,13 @@ export class Pack {
 
   get rigs(): Record<string, Rig> {
     return this.rigCache ??= this.msgpack('models/rigs.msgpack');
+  }
+
+  get resources(): Resources {
+    return this.resourceCache ??= this.msgpack('metadata/resources.msgpack');
+  }
+
+  prefab(id: number): Prefab | undefined {
+    return (this.prefabIndex ??= this.json<Record<string, Prefab>>('models/prefabs/index.json'))[id];
   }
 }

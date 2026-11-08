@@ -17,7 +17,7 @@ export class AssetPool {
 
   add(pack: Pack, key: string): string {
     key = posix.normalize(key);
-    if (!/^(models\/(prefabs|buffers)|animations\/gltf|textures)\/[a-f0-9]{64}\.(glb|bin|webp)$/.test(key)) {
+    if (!/^(models\/(prefabs|geometry|buffers)|animations\/gltf|textures)\/[a-f0-9]{64}\.(glb|bin|webp)$/.test(key)) {
       throw new Error(`Expected content-addressed browser asset: ${key}`);
     }
     if (this.entries.has(key)) return key;
@@ -25,12 +25,7 @@ export class AssetPool {
     const bytes = pack.read(key);
     const sha256 = createHash('sha256').update(bytes).digest('hex');
     if (basename(key).split('.')[0] !== sha256) throw new Error(`Asset content does not match its hash: ${key}`);
-    const output = join(this.directory, key);
-    mkdirSync(dirname(output), { recursive: true });
-    if (!existsSync(output) || createHash('sha256').update(readFileSync(output)).digest('hex') !== sha256) {
-      writeFileSync(output, bytes);
-    }
-    this.entries.set(key, { key, bytes: bytes.length, sha256 });
+    this.write(key, bytes, sha256);
 
     if (key.endsWith('.glb')) {
       const size = bytes.readUInt32LE(12);
@@ -46,6 +41,23 @@ export class AssetPool {
       }
     }
     return key;
+  }
+
+  store(folder: 'areas/tiles' | 'areas/terrain' | 'models/buffers' | 'textures', bytes: Buffer, extension: 'glb' | 'bin' | 'png'): string {
+    const sha256 = createHash('sha256').update(bytes).digest('hex');
+    const key = `${folder}/${sha256}.${extension}`;
+    this.write(key, bytes, sha256);
+    return key;
+  }
+
+  private write(key: string, bytes: Buffer, sha256: string): void {
+    if (this.entries.has(key)) return;
+    const output = join(this.directory, key);
+    mkdirSync(dirname(output), { recursive: true });
+    if (!existsSync(output) || createHash('sha256').update(readFileSync(output)).digest('hex') !== sha256) {
+      writeFileSync(output, bytes);
+    }
+    this.entries.set(key, { key, bytes: bytes.length, sha256 });
   }
 
   stageAnimations(pack: Pack, model: string, names: string[]): void {

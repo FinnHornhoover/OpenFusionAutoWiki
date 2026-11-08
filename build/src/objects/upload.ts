@@ -34,7 +34,7 @@ async function upload(): Promise<void> {
     await Promise.all(Array.from({ length: Math.min(8, pending.length) }, async () => {
       while (next < pending.length) {
         const row = pending[next++];
-        const type = row.key.endsWith('.webp') ? 'image/webp' : row.key.endsWith('.glb') ? 'model/gltf-binary' : 'application/octet-stream';
+        const type = row.key.endsWith('.webp') ? 'image/webp' : row.key.endsWith('.png') ? 'image/png' : row.key.endsWith('.glb') ? 'model/gltf-binary' : 'application/octet-stream';
         await client.send(new PutObjectCommand({
           Bucket: R2_BUCKET, Key: `v4/${row.key}`, Body: readFileSync(join(POOL_DIR, row.key)),
           ContentType: type, CacheControl: 'public, max-age=31536000, immutable', Metadata: { sha256: row.sha256 },

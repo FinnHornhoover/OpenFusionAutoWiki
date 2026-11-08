@@ -74,4 +74,12 @@ export interface PreviewMeta {
   types: PreviewType[];
   release: string;
   format: number;
+  areas?: boolean;
+}
+
+export interface AreaPreviewRecipe {
+  id: string;
+  bounds: [number, number, number, number];
+  tiles: string[];
+  missing: string[];
 }

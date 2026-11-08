@@ -53,6 +53,11 @@ partial layers and body-shape controls stay internal.
 Vehicle pages show mounted boy/girl previews with board or scooter rider motions;
 vehicle models retain their own default animations and texture variants.
 Only selected clips and required composition controls enter the shared asset pool.
+Area pages preview layered terrain, grass, animated scenery, moving platforms and
+mesh effects, with orbit, pan and overhead views. Particle effects need additional
+ObjectPacks data; NPC, egg and monster placements are a later step.
+Tiles and terrain buffers share the R2 pool; terrain shader textures use lossless
+PNG to preserve blend weights through the browser decoder.
 
 After feature completion, enable production previews:
 
@@ -82,8 +87,9 @@ npm run dev
 Local overrides use `/objects` and do not enforce release revision matching.
 The development server serves `.cache/objects/pool` without copying assets into
 Pages. Regenerate data before starting the server. Preview coverage is recorded
-in `site/public/data/<build>/previews/coverage.json`.
-Next: areas, coverage fixes, then production rollout.
+in `site/public/data/<build>/previews/coverage.json`, with area diagnostics under
+`previews/areas/coverage.json`.
+Next: coverage fixes, then production rollout.
 
 ### Cloudflare Pages config files
 
