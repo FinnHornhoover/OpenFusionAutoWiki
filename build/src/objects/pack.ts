@@ -30,6 +30,7 @@ interface Texture {
 }
 
 interface PrefabDocument {
+  images?: { name?: string; uri?: string }[];
   extras?: { clips?: Record<string, string> };
   nodes?: { extras?: { animation?: { enabled: boolean; play_automatically: boolean; default: number | null; clips: { file?: string }[] } } }[];
 }
@@ -51,6 +52,8 @@ export interface ResourceData {
 }
 export type Resources = Record<string, [number, number, ResourceData]>;
 
+const textureKey = (name: string): string => `texture/${name.replace(/^texture\//i, '').replace(/\.dds$/i, '').toLowerCase()}.dds`;
+
 export class Pack {
   private archive?: AdmZip;
   private prefix = '';
@@ -59,6 +62,7 @@ export class Pack {
   private clipCatalogs = new Map<string, { name: string; duration: number }[]>();
   private prefabDocuments = new Map<string, PrefabDocument>();
   private textures = new Map<string, Texture[]>();
+  private embeddedTextures = new Map<string, Texture[]>();
   private graphs = new Map<string, Graph>();
   private textureSources = new Map<number, string>();
   private rigCache?: Record<string, Rig>;
@@ -95,13 +99,22 @@ export class Pack {
     if (fields.next().value !== 'assets') throw new Error('Missing source asset list');
     const assets = fields.next().value as { source: string }[];
     const resources = this.resources;
+    const indexed = new Set<number>();
     for (const texture of this.json<Texture[]>('textures/index.json')) {
       if (!texture.file) continue;
+      indexed.add(texture.object);
       const asset = resources[texture.object]?.[1];
       if (asset !== undefined) this.textureSources.set(texture.object, assets[asset].source);
-      for (const key of new Set([texture.source_path.toLowerCase(), `texture/${texture.name.toLowerCase()}.dds`])) {
+      for (const key of new Set([texture.source_path.toLowerCase(), textureKey(texture.name)])) {
         this.textures.set(key, [...this.textures.get(key) ?? [], texture]);
       }
+    }
+    for (const [id, [kind, asset, data]] of Object.entries(resources)) {
+      if (kind !== 28 || !data.file || !data.name || indexed.has(Number(id))) continue;
+      const texture: Texture = { object: Number(id), name: data.name, source_path: '', file: data.file };
+      this.textureSources.set(texture.object, assets[asset].source);
+      const key = textureKey(data.name);
+      this.embeddedTextures.set(key, [...this.embeddedTextures.get(key) ?? [], texture]);
     }
   }
 
@@ -179,10 +192,16 @@ export class Pack {
     return undefined;
   }
 
-  texture(name: string): string | undefined {
+  texture(name: string, prefab?: string): string | undefined {
     if (!name || name.toLowerCase() === 'null') return undefined;
-    const stem = name.replace(/^texture\//i, '').replace(/\.dds$/i, '').toLowerCase();
-    return this.textures.get(`texture/${stem}.dds`)?.sort((a, b) => this.priority(this.textureSources.get(a.object)) - this.priority(this.textureSources.get(b.object)))[0]?.file;
+    const key = textureKey(name);
+    const indexed = this.textures.get(key);
+    if (indexed?.length) return indexed.sort((a, b) => this.priority(this.textureSources.get(a.object)) - this.priority(this.textureSources.get(b.object)))[0].file;
+    if (prefab) {
+      const image = this.prefabDocument(prefab).images?.find((image) => image.name && image.uri && textureKey(image.name) === key);
+      if (image?.uri) return posix.normalize(posix.join(posix.dirname(prefab), image.uri));
+    }
+    return this.embeddedTextures.get(key)?.sort((a, b) => this.priority(this.textureSources.get(a.object)) - this.priority(this.textureSources.get(b.object)))[0]?.file;
   }
 
   private priority(source = ''): number {

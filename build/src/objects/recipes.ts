@@ -23,9 +23,9 @@ export class Recipes {
     this.hnpcs = Object.values(pack.msgpack<Record<string, { rows: Row[] }>>('models/appearances/hnpcs.msgpack'))[0]?.rows ?? [];
   }
 
-  private texture(value: string | number | undefined, fallback = false): string | undefined {
+  private texture(value: string | number | undefined, fallback = false, prefab?: string): string | undefined {
     if (!valid(value)) return undefined;
-    const file = this.pack.texture(value) ?? (fallback ? this.pack.texture(`${value.replace(/\.dds$/i, '')}_a`) : undefined);
+    const file = this.pack.texture(value, prefab) ?? (fallback ? this.pack.texture(`${value.replace(/\.dds$/i, '')}_a`, prefab) : undefined);
     if (!file) { this.missing.add(`texture:${value}`); return undefined; }
     return file;
   }
@@ -39,7 +39,7 @@ export class Recipes {
     }) : undefined;
     return {
       model: model.prefab.file, mode,
-      primary: this.texture(primary, true), secondary: this.texture(secondary), mount,
+      primary: this.texture(primary, true, model.prefab.file), secondary: this.texture(secondary, false, model.prefab.file), mount,
       renderers: renderers?.length ? renderers : undefined,
     };
   }
