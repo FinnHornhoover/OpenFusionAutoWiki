@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { previewOrbitControls } from './orbit-controls';
 import { createEnvironment, applySceneSettings } from 'ff-three';
 import { streamFiles } from './stream-files';
 import type { AreaPopulation, AreaPreviewRecipe, PopulationKind } from '../../../shared/objects';
@@ -27,7 +27,7 @@ export async function mountAreaViewer(container: HTMLElement, recipe: AreaPrevie
   container.append(renderer.domElement);
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 20000);
-  const orbit = new OrbitControls(camera, renderer.domElement);
+  const orbit = previewOrbitControls(camera, renderer.domElement);
   orbit.screenSpacePanning = false;
   orbit.maxPolarAngle = Math.PI * 0.49;
   orbit.minDistance = 5;

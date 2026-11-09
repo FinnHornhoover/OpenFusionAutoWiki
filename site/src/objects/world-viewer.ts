@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { previewOrbitControls } from './orbit-controls';
 import { createEnvironment, applySceneSettings } from 'ff-three';
 import type { AreaPopulation, WorldPreviewRecipe, WorldTile } from '../../../shared/objects';
 import type { AreaViewer } from './area-viewer';
@@ -27,7 +27,7 @@ export async function mountWorldViewer(container: HTMLElement, view: WorldView, 
   renderer.domElement.setAttribute('aria-label', 'Interactive 3D world map. Drag to rotate, right-drag or use two fingers to pan.');
   container.append(renderer.domElement);
   const scene = new THREE.Scene(), camera = new THREE.PerspectiveCamera(45, 1, 0.1, 4000);
-  const orbit = new OrbitControls(camera, renderer.domElement);
+  const orbit = previewOrbitControls(camera, renderer.domElement);
   orbit.screenSpacePanning = false; orbit.maxPolarAngle = Math.PI * 0.48;
   orbit.minDistance = 5; orbit.maxDistance = mobile ? 800 : 1100;
   const env = createEnvironment();

@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { GLTFLoader, type GLTF } from 'three/addons/loaders/GLTFLoader.js';
-import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { previewOrbitControls } from './orbit-controls';
 import { createEnvironment } from 'ff-three';
 import type { AnimationChoice, ModelPart, PreviewVariant } from '../../../shared/objects';
 import { animationChoices, preferredAnimation } from '../../../shared/animations.js';
@@ -52,7 +52,7 @@ export async function mountViewer(container: HTMLElement, variant: PreviewVarian
   container.append(renderer.domElement);
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(35, 1, 0.01, 1000);
-  const controls = new OrbitControls(camera, renderer.domElement);
+  const controls = previewOrbitControls(camera, renderer.domElement);
   controls.enablePan = false;
   const env = createEnvironment();
   const models: LoadedModel[] = [];

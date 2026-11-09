@@ -105,6 +105,7 @@ export function areaPopulation(data: AreaPopulation, scene: THREE.Scene, camera:
     if (tap?.id === event.pointerId && Math.hypot(event.clientX - tap.x, event.clientY - tap.y) > 6) tap = undefined;
   };
   const pointerCancel = (event: PointerEvent): void => { pointers.delete(event.pointerId); tap = undefined; };
+  const pointerLeave = (event: PointerEvent): void => { if (!canvas.hasPointerCapture(event.pointerId)) pointerCancel(event); };
   const pointerUp = (event: PointerEvent): void => {
     pointers.delete(event.pointerId);
     const clicked = tap?.id === event.pointerId && !pointers.size && event.button === 0 && Math.hypot(event.clientX - tap.x, event.clientY - tap.y) <= 6;
@@ -144,6 +145,8 @@ export function areaPopulation(data: AreaPopulation, scene: THREE.Scene, camera:
     canvas.removeEventListener('pointerup', pointerUp);
     canvas.removeEventListener('pointermove', pointerMove);
     canvas.removeEventListener('pointercancel', pointerCancel);
+    canvas.removeEventListener('lostpointercapture', pointerCancel);
+    canvas.removeEventListener('pointerleave', pointerLeave);
     signal.removeEventListener('abort', dispose);
     pending.forEach((controller) => controller.abort());
     loaded.forEach((model) => { model.root.removeFromParent(); model.dispose(); });
@@ -156,6 +159,8 @@ export function areaPopulation(data: AreaPopulation, scene: THREE.Scene, camera:
   canvas.addEventListener('pointerup', pointerUp);
   canvas.addEventListener('pointermove', pointerMove);
   canvas.addEventListener('pointercancel', pointerCancel);
+  canvas.addEventListener('lostpointercapture', pointerCancel);
+  canvas.addEventListener('pointerleave', pointerLeave);
   signal.addEventListener('abort', dispose, { once: true });
   rebuild();
   return {
