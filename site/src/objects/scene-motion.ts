@@ -3,7 +3,7 @@ import type { GLTF, GLTFParser } from 'three/addons/loaders/GLTFLoader.js';
 import { loadGlb, setUpScene, type Files, type SceneSetup } from 'ff-three/world';
 import { ModelAnimation } from './animation';
 import { sceneParticles, type ParticleBudget } from './particles';
-import { type LoadedModel, type ModelData, disposeTree } from './assets';
+import { type LoadedModel, type ModelData, disposeGltf } from './assets';
 import { dressEffectAlpha, dressFusionMatter, repairWrenchAlpha } from './materials';
 import { dressVfx } from './effect-material';
 
@@ -94,10 +94,9 @@ export async function sceneMotion(gltf: GLTF, setup: SceneSetup, url: string, ba
       if (!parent) continue;
       const href = new URL(`${baseUrl}/${entry.model}`, location.href).href;
       const effect = await loadGlb(href, files);
-      releases.push(effect.release);
-      let child: SceneSetup;
-      try { child = await setUpScene(effect.gltf, { env, grass: false, animate: false }); }
-      catch (error) { disposeTree(effect.gltf.scene); throw error; }
+      releases.push(() => { disposeGltf(effect.gltf); effect.release(); });
+      signal.throwIfAborted();
+      const child = await setUpScene(effect.gltf, { env, grass: false, animate: false });
       setup.adopt(child);
       const item = loadedModel(effect.gltf, href);
       collectBillboards(item);

@@ -1,5 +1,5 @@
 .outfit-view .model-canvas { display: flex; flex-direction: column; }
-.outfit-view .model-preview-stage { height: clamp(320px, 65dvh, 720px); flex: none; }
+.outfit-view .model-preview-stage { height: clamp(320px, 75svh, 720px); flex: none; }
 .outfit-view .model-preview-controls { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; max-height: none; overflow: visible; }
 .outfit-view .model-preview-animation { flex-direction: column; }
 .outfit-view .model-preview-animation select { width: 100%; }

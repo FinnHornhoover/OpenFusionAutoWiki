@@ -4,7 +4,7 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { createEnvironment } from 'ff-three';
 import type { AnimationChoice, ModelPart, PreviewVariant } from '../../../shared/objects';
 import { animationChoices, preferredAnimation } from '../../../shared/animations.js';
-import { compose, disposeTexture, disposeTree, dressModel, loadModel, type LoadedModel } from './assets';
+import { compose, disposeTexture, disposeGltf, dressModel, loadModel, type LoadedModel } from './assets';
 import { vehicleEffects, type VehicleEffects } from './vehicle-effects';
 import { weaponEffects, type WeaponPlayback } from './weapon-effects';
 import { ModelAnimation } from './animation';
@@ -41,7 +41,10 @@ interface ViewerOptions {
   onPlayback?: (state: PlaybackState) => void;
 }
 
-export async function mountViewer(container: HTMLElement, variant: PreviewVariant, baseUrl: string, signal: AbortSignal, options: ViewerOptions = {}): Promise<Viewer> {
+export async function mountViewer(container: HTMLElement, variant: PreviewVariant, baseUrl: string, parentSignal: AbortSignal, options: ViewerOptions = {}): Promise<Viewer> {
+  const controller = new AbortController();
+  const signal = AbortSignal.any([parentSignal, controller.signal]);
+  signal.throwIfAborted();
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
   renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
   renderer.outputColorSpace = THREE.LinearSRGBColorSpace;
@@ -76,6 +79,8 @@ export async function mountViewer(container: HTMLElement, variant: PreviewVarian
   const dispose = (): void => {
     if (!disposed) {
       disposed = true;
+      signal.removeEventListener('abort', dispose);
+      controller.abort();
       fireWait?.reject(new DOMException('Aborted', 'AbortError')); fireWait = undefined;
       cancelAnimationFrame(frame);
       resize?.disconnect();
@@ -85,21 +90,20 @@ export async function mountViewer(container: HTMLElement, variant: PreviewVarian
       renderer.dispose();
       renderer.forceContextLoss();
       renderer.domElement.remove();
-      signal.removeEventListener('abort', dispose);
     }
     // A decode already in progress may finish after cancellation. Revisit
     // resources on that path so late materials/textures are released too.
     vehicle?.dispose();
     weapon?.dispose();
     animations.forEach((animation) => animation.dispose());
-    models.forEach((model) => { model.dressing?.dispose(); disposeTree(model.gltf.scene); });
+    models.forEach((model) => { model.dressing?.dispose(); disposeGltf(model.gltf); });
     for (const texture of textures) disposeTexture(texture);
   };
   signal.addEventListener('abort', dispose, { once: true });
 
   const load = async (key: string): Promise<LoadedModel> => {
     const model = await loadModel(new URL(`${baseUrl}/${key}`, location.href).href, signal);
-    if (disposed) { disposeTree(model.gltf.scene); throw new DOMException('Aborted', 'AbortError'); }
+    if (disposed) { disposeGltf(model.gltf); throw new DOMException('Aborted', 'AbortError'); }
     models.push(model);
     return model;
   };
@@ -119,6 +123,7 @@ export async function mountViewer(container: HTMLElement, variant: PreviewVarian
     const actor = await load(variant.model.model);
     actor.gltf.scene.scale.setScalar(variant.scale ?? 1);
     await dressModel(actor, variant.model, variant, baseUrl, env, textures);
+    signal.throwIfAborted();
     scene.add(actor.gltf.scene);
     const vehicles: { part: ModelPart; model: LoadedModel }[] = [];
     const attach = async (garment: LoadedModel, part: ModelPart): Promise<void> => {
@@ -133,6 +138,7 @@ export async function mountViewer(container: HTMLElement, variant: PreviewVarian
     for (const part of variant.parts ?? []) {
       const garment = await load(part.model);
       await dressModel(garment, part, variant, baseUrl, env, textures);
+      signal.throwIfAborted();
       if (part.mount === 'vehicle') vehicles.push({ part, model: garment });
       else await attach(garment, part);
     }

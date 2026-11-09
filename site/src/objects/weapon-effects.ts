@@ -1,8 +1,9 @@
 import * as THREE from 'three';
-import { createFiles, loadGlb, setUpScene, type SceneSetup } from 'ff-three/world';
+import { streamFiles } from './stream-files';
+import { loadGlb, setUpScene, type SceneSetup } from 'ff-three/world';
 import type { WeaponShot } from '../../../shared/objects';
 import { sceneMotion, type SceneMotion } from './scene-motion';
-import { disposeTree } from './assets';
+import { disposeGltf } from './assets';
 import { WeaponFlight } from './weapon-flight';
 
 interface Effect {
@@ -24,24 +25,20 @@ export interface WeaponPlayback {
 }
 
 export function weaponEffects(scene: THREE.Scene, actor: THREE.Object3D, shots: WeaponShot[], findMount: (name: string) => THREE.Object3D | undefined, baseUrl: string, env: Record<string, THREE.IUniform>, camera: THREE.Camera, signal: AbortSignal, equipped?: THREE.Object3D): WeaponPlayback {
-  const files = createFiles({ concurrency: 4, fetchBytes: async (url: string) => {
-    const response = await fetch(url, { signal });
-    if (!response.ok) throw new Error(`Weapon effect download failed (${response.status})`);
-    return response.arrayBuffer();
-  } });
+  const files = streamFiles(signal, 16 * 1024 * 1024);
   const effects: Effect[] = [], origin = new THREE.Vector3(), forward = new THREE.Vector3(), rotation = new THREE.Quaternion();
   let controller: AbortController | undefined, generation = 0, elapsed = 0, current: WeaponShot | undefined, disposed = false;
   let flight: WeaponFlight | undefined, impactAt: number | undefined;
 
   const remove = (effect: Effect): void => {
     effect.borrowed.forEach((root) => root.removeFromParent());
-    effect.root.removeFromParent(); effect.motion.dispose(); effect.setup.dispose(); disposeTree(effect.setup.root); effect.release();
+    effect.root.removeFromParent(); effect.motion.dispose(); effect.setup.dispose(); effect.release();
   };
   const clear = (): void => {
     generation++; controller?.abort(); controller = undefined; effects.splice(0).forEach(remove);
     current = undefined; flight = undefined; impactAt = undefined;
   };
-  const dispose = (): void => { if (disposed) return; disposed = true; clear(); files.forget(); signal.removeEventListener('abort', dispose); };
+  const dispose = (): void => { if (disposed) return; disposed = true; clear(); files.dispose(); signal.removeEventListener('abort', dispose); };
   signal.addEventListener('abort', dispose, { once: true });
 
   const launch = (shot: WeaponShot): void => {
@@ -75,7 +72,7 @@ export function weaponEffects(scene: THREE.Scene, actor: THREE.Object3D, shots: 
         for (const [kind, entry] of [['muzzle', shot.fire], ['projectile', shot.projectile], ['impact', shot.impact]] as const) {
           if (!entry) continue;
           const url = new URL(`${baseUrl}/${entry.model}`, location.href).href, loaded = await loadGlb(url, files);
-          if (version !== generation || signal.aborted) { disposeTree(loaded.gltf.scene); loaded.release(); throw new DOMException('Aborted', 'AbortError'); }
+          if (version !== generation || signal.aborted) { disposeGltf(loaded.gltf); loaded.release(); throw new DOMException('Aborted', 'AbortError'); }
           let setup: SceneSetup | undefined, motion: SceneMotion | undefined;
           const root = new THREE.Group(); root.name = `weapon-${kind}`; root.visible = false;
           try {
@@ -84,7 +81,7 @@ export function weaponEffects(scene: THREE.Scene, actor: THREE.Object3D, shots: 
             root.add(setup.root); scene.add(root); root.updateMatrixWorld(true);
             motion = await sceneMotion(loaded.gltf, setup, url, baseUrl, env, files, pending.signal, camera, { remaining: 2000, systems: 24 }, false);
             pending.signal.throwIfAborted();
-            const effect: Effect = { root, setup, motion, release: loaded.release, kind, duration: entry.duration, borrowed: [] };
+            const effect: Effect = { root, setup, motion, release: () => { disposeGltf(loaded.gltf); loaded.release(); }, kind, duration: entry.duration, borrowed: [] };
             if (kind === 'projectile' && shot.flight.kind === 'grenade' && shot.flight.weaponModel && equipped) {
               let old: THREE.Mesh | undefined;
               for (const child of motion.effects) child.traverse((node) => { if (!old && node instanceof THREE.Mesh) old = node; });
@@ -96,7 +93,7 @@ export function weaponEffects(scene: THREE.Scene, actor: THREE.Object3D, shots: 
               }
             }
             effects.push(effect);
-          } catch (error) { root.removeFromParent(); motion?.dispose(); setup?.dispose(); disposeTree(loaded.gltf.scene); loaded.release(); throw error; }
+          } catch (error) { root.removeFromParent(); motion?.dispose(); setup?.dispose(); disposeGltf(loaded.gltf); loaded.release(); throw error; }
         }
         current = shot; elapsed = 0;
       } catch (error) { if (generation === version) { clear(); files.forget(); } throw error; }

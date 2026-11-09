@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { loadGlb, setUpScene, type Files, type SceneSetup } from 'ff-three/world';
-import { disposeTree } from './assets';
+import { disposeGltf } from './assets';
 import { dressFusionMatter, repairWrenchAlpha } from './materials';
 import { sceneMotion, type SceneMotion } from './scene-motion';
 import type { ParticleBudget } from './particles';
@@ -20,7 +20,7 @@ export async function loadAreaTile(file: string, baseUrl: string, env: Record<st
   const dispose = (): void => {
     if (disposed) return;
     disposed = true;
-    motion?.dispose(); setup?.dispose(); disposeTree(loaded.gltf.scene); loaded.release();
+    motion?.dispose(); setup?.dispose(); disposeGltf(loaded.gltf); loaded.release();
   };
   try {
     signal.throwIfAborted();

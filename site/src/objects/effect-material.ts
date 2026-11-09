@@ -8,13 +8,15 @@ import { shaderBlend } from './blend';
 export async function effectTextures(extras: EffectExtras, parser: GLTFParser): Promise<EffectTextures> {
   const slots = extras.shader === 'VFX_ScrollDistort_wMask_Gradient_Additive' ? ['_MainTex', '_MainTex2', '_NoiseTex', '_MaskTex']
     : extras.shader === 'VFX_SimpleDualScrolling_Additive' ? ['_MainTex', '_MainTex2'] : ['_MainTex'];
-  const entries = await Promise.all(slots.map(async (key) => {
+  const results = await Promise.allSettled(slots.map(async (key) => {
     const index = extras.textures?.[key]?.index;
     const texture: THREE.Texture | null = index === undefined ? null : await parser.getDependency('texture', index);
     if (texture) { texture.colorSpace = THREE.NoColorSpace; texture.needsUpdate = true; }
     return [key, texture] as const;
   }));
-  return Object.fromEntries(entries);
+  const failure = results.find((result) => result.status === 'rejected');
+  if (failure?.status === 'rejected') throw failure.reason;
+  return Object.fromEntries(results.flatMap((result) => result.status === 'fulfilled' ? [result.value] : []));
 }
 
 export async function dressVfx(dressing: Dressing, parser: GLTFParser, env: Record<string, THREE.IUniform>): Promise<void> {

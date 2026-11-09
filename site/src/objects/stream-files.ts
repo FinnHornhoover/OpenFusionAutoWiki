@@ -1,6 +1,8 @@
 import type { Files } from 'ff-three/world';
 
-export function streamFiles(signal: AbortSignal, maxBytes: number, concurrency = 4): Files {
+export function streamFiles(parentSignal: AbortSignal, maxBytes: number, concurrency = 4): Files & { dispose(): void } {
+  const controller = new AbortController();
+  const signal = AbortSignal.any([parentSignal, controller.signal]);
   const cache = new Map<string, ArrayBuffer>();
   const pending = new Map<string, Promise<ArrayBuffer>>();
   const waiting: { run(): void; reject(reason: unknown): void }[] = [];
@@ -12,6 +14,7 @@ export function streamFiles(signal: AbortSignal, maxBytes: number, concurrency =
     waiting.splice(0).forEach((item) => item.reject(signal.reason));
   }, { once: true });
   return {
+    dispose() { controller.abort(); },
     get(url) {
       if (signal.aborted) return Promise.reject(signal.reason);
       const cached = cache.get(url);
@@ -21,7 +24,7 @@ export function streamFiles(signal: AbortSignal, maxBytes: number, concurrency =
           waiting.push({ reject, run() {
             active++;
             void fetch(url, { signal }).then(async (response) => {
-              if (!response.ok) throw new Error(`Map asset download failed (${response.status})`);
+              if (!response.ok) throw new Error(`3D asset download failed (${response.status})`);
               const data = await response.arrayBuffer();
               signal.throwIfAborted();
               if (data.byteLength <= maxBytes) {

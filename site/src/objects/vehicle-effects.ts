@@ -1,7 +1,8 @@
 import * as THREE from 'three';
-import { createFiles, loadGlb, setUpScene, type SceneSetup } from 'ff-three/world';
+import { streamFiles } from './stream-files';
+import { loadGlb, setUpScene, type SceneSetup } from 'ff-three/world';
 import type { PreviewVariant } from '../../../shared/objects';
-import { disposeTree, type LoadedModel } from './assets';
+import { disposeGltf, type LoadedModel } from './assets';
 import { sceneMotion, type SceneMotion } from './scene-motion';
 
 export interface VehicleEffects {
@@ -12,19 +13,15 @@ export interface VehicleEffects {
 }
 
 export async function vehicleEffects(models: LoadedModel[], entries: NonNullable<PreviewVariant['vehicleEffects']>, actor: THREE.Object3D, speed: number, baseUrl: string, env: Record<string, THREE.IUniform>, camera: THREE.Camera, signal: AbortSignal): Promise<VehicleEffects> {
-  const files = createFiles({ concurrency: 4, fetchBytes: async (url: string) => {
-    const response = await fetch(url, { signal });
-    if (!response.ok) throw new Error(`Vehicle effect download failed (${response.status})`);
-    return response.arrayBuffer();
-  } });
+  const files = streamFiles(signal, 16 * 1024 * 1024);
   const effects: { setup: SceneSetup; release(): void; motion?: SceneMotion }[] = [], drift = new THREE.Vector3(), scale = new THREE.Vector3();
   const budget = { remaining: 2000, systems: 32 };
   let disposed = false, visible = true, movement = 0;
   const show = (): void => { effects.forEach((effect) => { effect.setup.root.visible = visible && movement !== 0; }); };
   const dispose = (): void => {
     if (!disposed) { disposed = true; signal.removeEventListener('abort', dispose); }
-    for (const effect of effects) { effect.setup.root.removeFromParent(); effect.motion?.dispose(); effect.setup.dispose(); disposeTree(effect.setup.root); effect.release(); }
-    files.forget();
+    for (const effect of effects) { effect.setup.root.removeFromParent(); effect.motion?.dispose(); effect.setup.dispose(); effect.release(); }
+    files.dispose();
   };
   signal.addEventListener('abort', dispose, { once: true });
 
@@ -38,12 +35,12 @@ export async function vehicleEffects(models: LoadedModel[], entries: NonNullable
       }
       if (!parent) continue;
       const url = new URL(`${baseUrl}/${entry.model}`, location.href).href, loaded = await loadGlb(url, files);
-      if (disposed || signal.aborted) { disposeTree(loaded.gltf.scene); loaded.release(); throw new DOMException('Aborted', 'AbortError'); }
+      if (disposed || signal.aborted) { disposeGltf(loaded.gltf); loaded.release(); throw new DOMException('Aborted', 'AbortError'); }
       let setup: SceneSetup;
       try { setup = await setUpScene(loaded.gltf, { env, grass: false, animate: true }); }
-      catch (error) { disposeTree(loaded.gltf.scene); loaded.release(); throw error; }
-      if (disposed || signal.aborted) { setup.dispose(); disposeTree(loaded.gltf.scene); loaded.release(); throw new DOMException('Aborted', 'AbortError'); }
-      const effect = { setup, release: loaded.release, motion: undefined as SceneMotion | undefined };
+      catch (error) { disposeGltf(loaded.gltf); loaded.release(); throw error; }
+      if (disposed || signal.aborted) { setup.dispose(); disposeGltf(loaded.gltf); loaded.release(); throw new DOMException('Aborted', 'AbortError'); }
+      const effect = { setup, release: () => { disposeGltf(loaded.gltf); loaded.release(); }, motion: undefined as SceneMotion | undefined };
       effects.push(effect);
       setup.root.visible = false;
       parent.getWorldScale(scale);

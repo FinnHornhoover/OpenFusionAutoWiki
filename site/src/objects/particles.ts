@@ -21,7 +21,7 @@ export async function sceneParticles(gltf: GLTF, signal: AbortSignal, budget: Pa
   const lifetimes = new Map<ParticleSystem, number>();
   budget.systems ??= 160;
   let used = 0, systemCount = 0, accumulator = 0, age = 0, disposed = false;
-  const dispose = (): void => { if (disposed) return; disposed = true; budget.remaining += used; budget.systems! += systemCount; systems.forEach((s) => { s.root.removeFromParent(); s.dispose(); }); textures.forEach(disposeTexture); meshes.forEach(disposeTree); };
+  const dispose = (): void => { if (disposed) return; disposed = true; budget.remaining += used; budget.systems! += systemCount; systems.forEach((s) => { s.root.removeFromParent(); s.dispose(); }); textures.forEach(disposeTexture); meshes.forEach((root) => disposeTree(root)); };
   try {
     for (const recipe of recipes) {
       signal.throwIfAborted();

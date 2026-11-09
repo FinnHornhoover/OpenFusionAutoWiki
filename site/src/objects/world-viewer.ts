@@ -185,7 +185,7 @@ export async function mountWorldViewer(container: HTMLElement, view: WorldView, 
     disposed = true; cancelAnimationFrame(frame); clearTimeout(timer);
     observer?.disconnect(); intersection?.disconnect(); document.removeEventListener('visibilitychange', visibility);
     signal.removeEventListener('abort', dispose); pending.forEach((controller) => controller.abort());
-    population.dispose(); removeDetail(); terrain.forEach((entry) => entry.tile.dispose()); terrain.clear(); files.forget();
+    population.dispose(); removeDetail(); terrain.forEach((entry) => entry.tile.dispose()); terrain.clear(); files.dispose();
     orbit.dispose(); renderer.dispose(); renderer.forceContextLoss(); renderer.domElement.remove();
   };
   signal.addEventListener('abort', dispose, { once: true });

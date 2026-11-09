@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { createEnvironment, applySceneSettings } from 'ff-three';
-import { createFiles } from 'ff-three/world';
+import { streamFiles } from './stream-files';
 import type { AreaPopulation, AreaPreviewRecipe, PopulationKind } from '../../../shared/objects';
 import { loadAreaTile, type AreaTile } from './area-tile';
 import { focusPopulation } from './area-camera';
@@ -32,13 +32,8 @@ export async function mountAreaViewer(container: HTMLElement, recipe: AreaPrevie
   orbit.maxPolarAngle = Math.PI * 0.49;
   orbit.minDistance = 5;
   const env = createEnvironment();
-  const files = createFiles({ concurrency: 6, fetchBytes: async (url: string) => {
-    signal.throwIfAborted();
-    const response = await fetch(url, { signal });
-    if (!response.ok) throw new Error(`Area asset download failed (${response.status})`);
-    return response.arrayBuffer();
-  } });
   const smallScreen = matchMedia('(max-width: 600px)').matches;
+  const files = streamFiles(signal, (smallScreen ? 32 : 96) * 1024 * 1024, 6);
   const particleBudget = { remaining: smallScreen ? 4000 : 12000, systems: smallScreen ? 64 : 160 };
   const tiles: AreaTile[] = [];
   let disposed = false, visible = true, frame = 0, previous = 0, lastRendered = 0, hasMotion = false;
@@ -62,7 +57,7 @@ export async function mountAreaViewer(container: HTMLElement, recipe: AreaPrevie
     }
     population?.dispose();
     tiles.forEach((tile) => tile.dispose());
-    files.forget();
+    files.dispose();
   };
   signal.addEventListener('abort', dispose, { once: true });
 

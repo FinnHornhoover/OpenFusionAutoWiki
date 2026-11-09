@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import type { AnimationChoice, PreviewVariant } from '../../../shared/objects';
 import { mountViewer, type PlaybackState, type Viewer, type ViewState } from '../objects/viewer';
+import PreviewOptionsButton from './PreviewOptionsButton';
 
 const INITIAL: PlaybackState = { time: 0, duration: 0, paused: false };
 
@@ -105,6 +106,7 @@ export default function ModelCanvas({ variant, baseUrl, preserveView = false, op
     <div className={`model-canvas${ready ? ' model-canvas-ready' : ''}`}>
       <div className="model-preview-stage" ref={container}>
         {!ready && !error && <span className="model-preview-status" role="status">Loading model…</span>}
+        {ready && <PreviewOptionsButton />}
       </div>
       {error && <p className="model-preview-error" role="alert">Preview unavailable: {error} <button onClick={() => setAttempt((n) => n + 1)}>Retry</button></p>}
       {ready && <section className="model-preview-controls" aria-label="3D viewing options">

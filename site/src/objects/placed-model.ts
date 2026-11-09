@@ -3,7 +3,7 @@ import type { GLTF } from 'three/addons/loaders/GLTFLoader.js';
 import { loadGlb, type Files } from 'ff-three/world';
 import type { PreviewVariant } from '../../../shared/objects';
 import { preferredAnimation } from '../../../shared/animations.js';
-import { compose, disposeTexture, disposeTree, dressModel, prepareModel, type LoadedModel } from './assets';
+import { compose, disposeTexture, disposeGltf, dressModel, prepareModel, type LoadedModel } from './assets';
 import { ModelAnimation } from './animation';
 
 export interface PlacedModel {
@@ -18,7 +18,7 @@ export async function placedModel(variant: PreviewVariant, baseUrl: string, env:
   const releases: (() => void)[] = [];
   const dispose = (): void => {
     players.forEach((p) => p.dispose());
-    models.forEach((m) => { m.dressing?.dispose(); disposeTree(m.gltf.scene); });
+    models.forEach((m) => { m.dressing?.dispose(); disposeGltf(m.gltf); });
     textures.forEach(disposeTexture);
     releases.splice(0).forEach((release) => release());
   };
@@ -44,9 +44,11 @@ export async function placedModel(variant: PreviewVariant, baseUrl: string, env:
     const actor = await load(variant.model.model);
     actor.gltf.scene.scale.setScalar(variant.scale ?? 1);
     await dressModel(actor, variant.model, variant, baseUrl, env, textures, true);
+    signal.throwIfAborted();
     for (const part of variant.parts ?? []) {
       const item = await load(part.model);
       await dressModel(item, part, variant, baseUrl, env, textures, true);
+      signal.throwIfAborted();
       compose(actor, item, part, variant);
       if (part.mode === 'attached' && part.autoAnimation) {
         const player = new ModelAnimation(item, loadClip, actor.gltf.scene, [part.autoAnimation]);

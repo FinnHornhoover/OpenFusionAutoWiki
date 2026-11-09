@@ -31,10 +31,9 @@ export function disposeTexture(texture: THREE.Texture): void {
   if (typeof ImageBitmap !== 'undefined' && texture.image instanceof ImageBitmap) texture.image.close();
 }
 
-export function disposeTree(root: THREE.Object3D): void {
+export function disposeTree(root: THREE.Object3D, textures = new Set<THREE.Texture>()): void {
   const geometries = new Set<THREE.BufferGeometry>();
   const materials = new Set<THREE.Material>();
-  const textures = new Set<THREE.Texture>();
   const skeletons = new Set<THREE.Skeleton>();
   root.traverse((object) => {
     if (!(object instanceof THREE.Mesh)) return;
@@ -54,11 +53,18 @@ export function disposeTree(root: THREE.Object3D): void {
   for (const texture of textures) disposeTexture(texture);
 }
 
+export function disposeGltf(gltf: GLTF): void {
+  // Dressing can replace materials and leave parser-owned textures off the tree.
+  const textures = new Set<THREE.Texture>();
+  for (const object of gltf.parser.associations.keys()) if (object instanceof THREE.Texture) textures.add(object);
+  disposeTree(gltf.scene, textures);
+}
+
 export async function loadModel(url: string, signal: AbortSignal): Promise<LoadedModel> {
   const response = await fetch(url, { signal });
   if (!response.ok) throw new Error(`Model download failed (${response.status})`);
   const gltf = await new GLTFLoader().parseAsync(await response.arrayBuffer(), new URL('.', url).href);
-  if (signal.aborted) { disposeTree(gltf.scene); throw new DOMException('Aborted', 'AbortError'); }
+  if (signal.aborted) { disposeGltf(gltf); throw new DOMException('Aborted', 'AbortError'); }
   return prepareModel(gltf, url);
 }
 
@@ -106,7 +112,11 @@ export async function dressModel(model: LoadedModel, part: ModelPart, variant: P
     textures.add(texture);
     return texture;
   };
-  const [primary, secondary] = await Promise.all([loadTexture(part.primary), loadTexture(part.secondary)]);
+  // Wait for both requests even on failure so cleanup owns every late texture.
+  const results = await Promise.allSettled([loadTexture(part.primary), loadTexture(part.secondary)]);
+  const failure = results.find((result) => result.status === 'rejected');
+  if (failure?.status === 'rejected') throw failure.reason;
+  const [primary, secondary] = results.map((result) => result.status === 'fulfilled' ? result.value : undefined);
   model.gltf.scene.traverse((object) => {
     if (!(object instanceof THREE.Mesh)) return;
     const sources = Array.isArray(object.material) ? object.material : [object.material];

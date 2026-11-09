@@ -146,9 +146,11 @@ export function areaPopulation(data: AreaPopulation, scene: THREE.Scene, camera:
     canvas.removeEventListener('pointercancel', pointerCancel);
     signal.removeEventListener('abort', dispose);
     pending.forEach((controller) => controller.abort());
-    loaded.forEach((model) => model.dispose());
+    loaded.forEach((model) => { model.root.removeFromParent(); model.dispose(); });
+    loaded.clear(); wanted.clear(); failed.clear(); pointers.clear();
     markers.forEach((points) => { points.geometry.dispose(); (points.material as THREE.Material).dispose(); });
     group.removeFromParent();
+    group.clear(); markers.clear();
   };
   canvas.addEventListener('pointerdown', pointerDown);
   canvas.addEventListener('pointerup', pointerUp);
