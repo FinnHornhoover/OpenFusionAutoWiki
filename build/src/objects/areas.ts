@@ -1,7 +1,7 @@
 import { ParticleCatalog } from './particles.js';
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
-import type { AreaPreviewRecipe } from '../../../shared/objects.js';
+import type { AreaPreviewRecipe, WorldPreviewRecipe } from '../../../shared/objects.js';
 import { DATA_OUT } from '../paths.js';
 import { log } from '../log.js';
 import { Pack, type Resources } from './pack.js';
@@ -11,7 +11,7 @@ import { SceneClips } from './scene-clips.js';
 import { Matrix4, Quaternion, Vector3 } from 'three';
 
 interface SceneEntry { file: string; asset: { source: string } }
-interface Area { id: string; x: number; y: number; width: number; height: number }
+interface Area { id: string; name: string; fullName?: string; x: number; y: number; width: number; height: number }
 interface Pointer { r: number | null }
 interface SceneGraph {
   names: string[];
@@ -21,7 +21,7 @@ interface SceneGraph {
   animations: number[];
   settings: [number, number, Record<string, unknown>][];
 }
-interface Tile { file: string; missing: string[]; stats: SceneDocument['stats'] }
+interface Tile { file: string; terrain?: string; missing: string[]; stats: SceneDocument['stats'] }
 
 export class AreaCompiler {
   private scenes = new Map<string, SceneEntry>();
@@ -70,6 +70,20 @@ export class AreaCompiler {
     mkdirSync(directory, { recursive: true });
     writeFileSync(join(directory, '0.json'), JSON.stringify(output));
     writeFileSync(join(directory, 'coverage.json'), JSON.stringify({ areas: Object.keys(output).length, tiles: this.tiles.size, stats, diagnostics }));
+    const tiles: WorldPreviewRecipe['tiles'] = [];
+    for (const [id, promise] of this.tiles) {
+      const tile = await promise;
+      if (!tile.terrain) continue;
+      const [x, y] = id.split('_').map(Number);
+      tiles.push({ id, bounds: [-(x + 1) * 512, y * 512, -x * 512, (y + 1) * 512], terrain: tile.terrain, detail: tile.file });
+    }
+    if (tiles.length) {
+      const world: WorldPreviewRecipe = {
+        bounds: [Math.min(...tiles.map((t) => t.bounds[0])), Math.min(...tiles.map((t) => t.bounds[1])), Math.max(...tiles.map((t) => t.bounds[2])), Math.max(...tiles.map((t) => t.bounds[3]))],
+        tiles, areas: areas.filter((area) => output[area.id]).map((area) => ({ id: area.id, name: area.fullName ?? area.name, bounds: output[area.id].bounds })).sort((a, b) => a.name.localeCompare(b.name)),
+      };
+      writeFileSync(join(DATA_OUT, slug, 'previews', 'world.json'), JSON.stringify(world));
+    }
     return Object.keys(output).length;
   }
 
@@ -78,6 +92,7 @@ export class AreaCompiler {
     if (graph.node_stride !== 60) throw new Error(`Unexpected scene node stride: ${scene.file}`);
     const raw = Buffer.from(graph.nodes);
     const document = new SceneDocument(this.pack, this.pool, this.materials, this.pngs);
+    const terrain = new SceneDocument(this.pack, this.pool, this.materials, this.pngs);
     const transforms = new Map<number, number>();
     const objects = new Map<number, number>();
     const parents: number[] = [], enabled: boolean[] = [];
@@ -110,8 +125,13 @@ export class AreaCompiler {
       const index = transforms.get(transform);
       if (index === undefined || !active(index) || attributes.m_Enabled === false) continue;
       if (kind === 23 && mesh != null) document.nodes[index].mesh = await document.geometry(mesh, attributes.m_Materials ?? []);
-      else if (kind === 154 && attributes.m_TerrainData?.r != null) document.nodes[index].mesh = await document.terrain(attributes.m_TerrainData.r);
-      else if (kind === 26) await this.particles.direct(document, index, renderer);
+      else if (kind === 154 && attributes.m_TerrainData?.r != null) {
+        document.nodes[index].mesh = await document.terrain(attributes.m_TerrainData.r);
+        const position = new Vector3(), rotation = new Quaternion(), scale = new Vector3();
+        world(index).decompose(position, rotation, scale);
+        const mesh = await terrain.terrain(attributes.m_TerrainData.r, false);
+        if (mesh !== undefined) terrain.roots.push(terrain.nodes.push({ name: document.nodes[index].name, translation: position.toArray(), rotation: rotation.toArray(), scale: scale.toArray(), mesh }) - 1);
+      } else if (kind === 26) await this.particles.direct(document, index, renderer);
       else if (kind === 137 && mesh != null) {
         try {
           const joints = (attributes.m_Bones ?? []).map((pointer) => pointer.r == null ? undefined : transforms.get(pointer.r));
@@ -177,6 +197,7 @@ export class AreaCompiler {
       const node = binding && transforms.get(binding.transform);
       if (node !== undefined && active(node)) await this.clips.add(document, id, transforms, renderers);
     }
-    return { file: document.save(), missing: [...document.missing].sort(), stats: document.stats };
+    Object.assign(terrain.settings, document.settings);
+    return { file: document.save(), terrain: terrain.roots.length ? terrain.save() : undefined, missing: [...document.missing].sort(), stats: document.stats };
   }
 }

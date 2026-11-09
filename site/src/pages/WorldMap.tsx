@@ -2,7 +2,8 @@ import { type CSSProperties, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom';
 import ErrorState from '../components/ErrorState';
 import MapRouteTooltip from '../components/MapRouteTooltip';
-import { MINIMAP_PX, worldToPx } from '../data/minimapCoords';
+import { MINIMAP_PX, PX_PER_GAME_UNIT, worldToPx } from '../data/minimapCoords';
+import WorldPreview from '../components/WorldPreview';
 import { buildWorldMapMarkers, buildWorldTransportRoutes, buildWorldWarpRoutes, buildWorldBossPaths, MAP_MARKER_KIND_LABELS, MAP_MARKER_KINDS, type MapMarker, type MapMarkerKind } from '../data/mapMarkers';
 import type { Area } from '../data/types';
 import { useBuildEntry } from '../data/useBuildEntry';
@@ -208,6 +209,7 @@ export default function WorldMap() {
         <Link to={`/${build}`}>{entry ? entry.displayName : build}</Link>
       </p>
       <h1>World Map</h1>
+      <WorldPreview build={build} focus={[-(viewportSize.width / 2 - offset.x) / zoom / PX_PER_GAME_UNIT / 100, (MINIMAP_PX - (viewportSize.height / 2 - offset.y) / zoom) / PX_PER_GAME_UNIT / 100]} />
       {error && <ErrorState title="Couldn't load the map" message="Area data failed to load." detail={error} />}
       {!error && (
         <div className="map-marker-toggles" aria-label="Map marker filters">

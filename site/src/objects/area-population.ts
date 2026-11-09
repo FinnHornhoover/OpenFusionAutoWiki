@@ -5,6 +5,8 @@ import { placedModel, type PlacedModel } from './placed-model';
 
 export interface PopulationSelection { name: string; unavailable: boolean; loading: boolean }
 export interface PopulationLayer {
+  readonly moving: boolean;
+  replace(data: AreaPopulation): void;
   toggle(kind: PopulationKind, show: boolean): void;
   update(delta: number): void;
   dispose(): void;
@@ -29,7 +31,14 @@ export function areaPopulation(data: AreaPopulation, scene: THREE.Scene, camera:
   };
   const rebuild = (): void => {
     for (const [kind, points] of markers) {
-      const positions = points.geometry.getAttribute('position') as THREE.BufferAttribute;
+      let positions = points.geometry.getAttribute('position') as THREE.BufferAttribute;
+      const capacity = data.placements.filter((placement) => placement.kind === kind).length;
+      if (positions.count !== capacity) {
+        points.geometry.dispose();
+        points.geometry = new THREE.BufferGeometry();
+        positions = new THREE.BufferAttribute(new Float32Array(capacity * 3), 3);
+        points.geometry.setAttribute('position', positions);
+      }
       let count = 0;
       for (const placement of data.placements) if (placement.kind === kind && !loaded.has(placement.id)) {
         positions.setXYZ(count++, placement.position[0], placement.position[1] + 1, placement.position[2]);
@@ -138,6 +147,13 @@ export function areaPopulation(data: AreaPopulation, scene: THREE.Scene, camera:
   signal.addEventListener('abort', dispose, { once: true });
   rebuild();
   return {
+    get moving() { return loaded.size > 0; },
+    replace(next) {
+      data = next;
+      if (selection && !data.placements.some((p) => p.id === selection!.id)) { selection = undefined; notify(); }
+      failed.clear();
+      refresh();
+    },
     toggle(kind, show) { if (show) enabled.add(kind); else enabled.delete(kind); selection = undefined; selected(null); refresh(); },
     update(delta) { elapsed += delta; const pose = [...camera.position, ...camera.quaternion].join(','); if (elapsed > 0.5 || pose !== cameraPose) { elapsed = 0; cameraPose = pose; refresh(); } loaded.forEach((model) => model.update(delta)); },
     dispose,

@@ -1,11 +1,10 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { createEnvironment, applySceneSettings } from 'ff-three';
-import { createFiles, loadGlb, setUpScene, type SceneSetup } from 'ff-three/world';
+import { createFiles } from 'ff-three/world';
 import type { AreaPopulation, AreaPreviewRecipe, PopulationKind } from '../../../shared/objects';
-import { disposeTree } from './assets';
-import { dressFusionMatter, repairWrenchAlpha } from './materials';
-import { sceneMotion, type SceneMotion } from './scene-motion';
+import { loadAreaTile, type AreaTile } from './area-tile';
+import { focusPopulation } from './area-camera';
 import { areaPopulation, type PopulationLayer, type PopulationSelection } from './area-population';
 
 export interface AreaViewer {
@@ -16,6 +15,7 @@ export interface AreaViewer {
   effects(visible: boolean): void;
   pause(paused: boolean): void;
   population(kind: PopulationKind, show: boolean): void;
+  focus?(x: number, z: number): void;
   dispose(): void;
 }
 
@@ -40,7 +40,7 @@ export async function mountAreaViewer(container: HTMLElement, recipe: AreaPrevie
   } });
   const smallScreen = matchMedia('(max-width: 600px)').matches;
   const particleBudget = { remaining: smallScreen ? 4000 : 12000, systems: smallScreen ? 64 : 160 };
-  const tiles: { setup: SceneSetup; release: () => void; motion?: SceneMotion }[] = [];
+  const tiles: AreaTile[] = [];
   let disposed = false, visible = true, frame = 0, previous = 0, lastRendered = 0, hasMotion = false;
   let paused = false, forceDraw = true;
   let population: PopulationLayer | undefined;
@@ -61,7 +61,7 @@ export async function mountAreaViewer(container: HTMLElement, recipe: AreaPrevie
       signal.removeEventListener('abort', dispose);
     }
     population?.dispose();
-    for (const tile of tiles) { tile.motion?.dispose(); tile.setup.dispose(); disposeTree(tile.setup.root); tile.release(); }
+    tiles.forEach((tile) => tile.dispose());
     files.forget();
   };
   signal.addEventListener('abort', dispose, { once: true });
@@ -69,24 +69,15 @@ export async function mountAreaViewer(container: HTMLElement, recipe: AreaPrevie
   try {
     for (const [index, file] of recipe.tiles.entries()) {
       onStatus(`Loading tile ${index + 1} of ${recipe.tiles.length}…`);
-      const loaded = await loadGlb(new URL(`${baseUrl}/${file}`, location.href).href, files);
-      let setup: SceneSetup;
-      try { setup = await setUpScene(loaded.gltf, { env, grass: true, animate: true }); }
-      catch (error) { disposeTree(loaded.gltf.scene); loaded.release(); throw error; }
-      const tile = { setup, release: loaded.release, motion: undefined as SceneMotion | undefined };
+      const tile = await loadAreaTile(file, baseUrl, env, files, signal, camera, particleBudget, { grass: true, effects: true });
       tiles.push(tile);
       if (disposed || signal.aborted) throw new DOMException('Aborted', 'AbortError');
-      dressFusionMatter(setup.dressing, env);
-      repairWrenchAlpha(setup.dressing);
-      setup.root.traverse((object) => { if (object instanceof THREE.Mesh && object.material instanceof THREE.ShaderMaterial && object.material.name === 'ff:grass') object.userData.ffGrass = true; });
-      onStatus(`Preparing tile ${index + 1} of ${recipe.tiles.length}…`);
-      tile.motion = await sceneMotion(loaded.gltf, setup, new URL(`${baseUrl}/${file}`, location.href).href, baseUrl, env, files, signal, camera, particleBudget);
-      if (disposed || signal.aborted) throw new DOMException('Aborted', 'AbortError');
+      const { setup } = tile;
       scene.add(setup.root);
       const fog = applySceneSettings(env, setup.settings);
       scene.background = new THREE.Color().fromArray(fog);
       hasMotion ||= setup.dressing.meshes.some((mesh) => ['water', 'fusion', 'vfx'].includes(mesh.userData.ffInfo?.family));
-      hasMotion ||= tile.motion.moving || !!setup.root.getObjectByName('grass');
+      hasMotion ||= !!tile.motion?.moving || !!setup.root.getObjectByName('grass');
     }
     if (!tiles.length) throw new Error('No area tiles are available');
     scene.updateMatrixWorld(true);
@@ -137,23 +128,7 @@ export async function mountAreaViewer(container: HTMLElement, recipe: AreaPrevie
     const data = await response.json() as AreaPopulation;
     signal.throwIfAborted();
     population = areaPopulation(data, scene, camera, renderer.domElement, baseUrl, env, signal, files, invalidate, (point) => {
-      orbit.target.copy(point).add(new THREE.Vector3(0, 1.5, 0));
-      const ray = new THREE.Raycaster(), direction = new THREE.Vector3();
-      const obstacles: THREE.Object3D[] = [];
-      for (const { setup } of tiles) setup.root.traverse((object) => {
-        if (object instanceof THREE.Mesh && object.visible && !object.userData.ffSkip && !object.userData.ffGrass && !object.userData.ffEffect) obstacles.push(object);
-      });
-      let bestDistance = 0;
-      scene.updateMatrixWorld(true);
-      for (let angle = 0; angle < Math.PI * 2; angle += Math.PI / 4) {
-        direction.set(Math.sin(angle), 0.35, -Math.cos(angle)).normalize();
-        ray.set(orbit.target, direction);
-        ray.far = 18;
-        const hit = ray.intersectObjects(obstacles, false)[0];
-        const distance = Math.max(1, Math.min(18, (hit?.distance ?? 19) - 1));
-        if (distance > bestDistance) { bestDistance = distance; camera.position.copy(orbit.target).addScaledVector(direction, distance); }
-      }
-      orbit.update();
+      focusPopulation(point, camera, orbit, tiles.map((tile) => tile.setup.root));
       invalidate();
     }, onSelection);
     hasMotion ||= data.placements.length > 0;

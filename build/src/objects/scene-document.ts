@@ -211,7 +211,7 @@ export class SceneDocument {
     return index;
   }
 
-  async terrain(id: number): Promise<number | undefined> {
+  async terrain(id: number, grass = true): Promise<number | undefined> {
     const source = this.pack.resources[id]?.[2];
     if (!source) { this.missing.add(`terrain:${id}`); return undefined; }
     const terrain = source as unknown as TerrainData;
@@ -242,7 +242,7 @@ export class SceneDocument {
       controls.push(index);
     }
     const lightmap = await this.texture(terrain.m_Lightmap?.r);
-    const details = await this.details(terrain);
+    const details = grass ? await this.details(terrain) : undefined;
     const material = this.materials.push({ name: terrain.m_Name, pbrMetallicRoughness: { metallicFactor: 0, roughnessFactor: 1 }, extras: { terrain: { splats, controls, lightmap, details } } }) - 1;
     const { indices, ...meshAttributes } = attributes;
     return this.meshes.push({ primitives: [{ attributes: meshAttributes, indices, material }] }) - 1;

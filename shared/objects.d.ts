@@ -109,6 +109,19 @@ export interface AreaPreviewRecipe {
   missing: string[];
 }
 
+export interface WorldTile {
+  id: string;
+  bounds: AreaPreviewRecipe['bounds'];
+  terrain: string;
+  detail: string;
+}
+
+export interface WorldPreviewRecipe {
+  bounds: AreaPreviewRecipe['bounds'];
+  tiles: WorldTile[];
+  areas: { id: string; name: string; bounds: AreaPreviewRecipe['bounds'] }[];
+}
+
 export type PopulationKind = 'npcs' | 'monsters' | 'eggs';
 export interface AreaPlacement {
   id: string;

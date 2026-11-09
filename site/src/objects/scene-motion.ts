@@ -30,7 +30,7 @@ function loadedModel(gltf: GLTF, url: string): LoadedModel {
   return { gltf, url, nodes, data: gltf.parser.json as ModelData };
 }
 
-export async function sceneMotion(gltf: GLTF, setup: SceneSetup, url: string, baseUrl: string, env: Record<string, THREE.IUniform>, files: Files, signal: AbortSignal, camera?: THREE.Camera, particleBudget: ParticleBudget = { remaining: 12000 }, preserveParticleAlpha = true): Promise<SceneMotion> {
+export async function sceneMotion(gltf: GLTF, setup: SceneSetup, url: string, baseUrl: string, env: Record<string, THREE.IUniform>, files: Files, signal: AbortSignal, camera?: THREE.Camera, particleBudget: ParticleBudget = { remaining: 12000 }, preserveParticleAlpha = true, includeEffects = true): Promise<SceneMotion> {
   const model = loadedModel(gltf, url), data = gltf.parser.json as SceneData;
   const players: ModelAnimation[] = [], releases: (() => void)[] = [], effects: THREE.Object3D[] = [];
   const platforms = setup.animations;
@@ -88,7 +88,7 @@ export async function sceneMotion(gltf: GLTF, setup: SceneSetup, url: string, ba
       await player.play('automatic');
     }
     platforms?.update(0);
-    for (const entry of data.extras?.effects ?? []) {
+    for (const entry of includeEffects ? data.extras?.effects ?? [] : []) {
       signal.throwIfAborted();
       const parent = model.nodes.get(entry.node);
       if (!parent) continue;
@@ -119,12 +119,14 @@ export async function sceneMotion(gltf: GLTF, setup: SceneSetup, url: string, ba
         await player.play(name);
       }
     }
-    particles = await sceneParticles(gltf, signal, particleBudget, preserveParticleAlpha);
-    effects.push(...particles.roots);
+    if (includeEffects) {
+      particles = await sceneParticles(gltf, signal, particleBudget, preserveParticleAlpha);
+      effects.push(...particles.roots);
+    }
     signal.throwIfAborted();
     return {
       effects,
-      moving: shaderMotion || particles.roots.length > 0 || (platforms?.platforms ?? 0) > 0 || players.some((p) => p.playback.duration > 0),
+      moving: shaderMotion || !!particles?.roots.length || (platforms?.platforms ?? 0) > 0 || players.some((p) => p.playback.duration > 0),
       update(delta, drift) { time += delta; for (const player of players) if (player.playback.duration > 0) player.update(delta); platforms?.update(delta); for (const item of lifetimes) item.root.visible = time < item.duration; faceCamera(); particles?.update(delta, camera, drift); },
       dispose,
     };
