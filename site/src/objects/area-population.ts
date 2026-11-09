@@ -51,7 +51,7 @@ export function areaPopulation(data: AreaPopulation, scene: THREE.Scene, camera:
     invalidate();
   };
   for (const kind of enabled) {
-    const material = new THREE.PointsMaterial({ color: colors[kind], size: 7, sizeAttenuation: false, depthTest: false, transparent: true, opacity: 0.9 });
+    const material = new THREE.PointsMaterial({ color: colors[kind], size: 7, sizeAttenuation: false, depthTest: true, depthWrite: false, transparent: true, opacity: 0.9 });
     const geometry = new THREE.BufferGeometry();
     geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(data.placements.filter((p) => p.kind === kind).length * 3), 3));
     const points = new THREE.Points(geometry, material);
@@ -111,6 +111,10 @@ export function areaPopulation(data: AreaPopulation, scene: THREE.Scene, camera:
     tap = undefined;
     if (!clicked) return;
     const rect = canvas.getBoundingClientRect();
+    const terrain: THREE.Mesh[] = [];
+    scene.updateMatrixWorld(true);
+    scene.traverseVisible((object) => { if (object instanceof THREE.Mesh && object.userData.terrain) terrain.push(object); });
+    const ray = new THREE.Raycaster(), origin = camera.getWorldPosition(new THREE.Vector3()), point = new THREE.Vector3(), direction = new THREE.Vector3();
     let best = 15 ** 2, match: AreaPlacement | undefined;
     for (const placement of data.placements) {
       if (!enabled.has(placement.kind)) continue;
@@ -120,7 +124,13 @@ export function areaPopulation(data: AreaPopulation, scene: THREE.Scene, camera:
       if (projected.z < -1 || projected.z > 1) continue;
       const dx = rect.left + (projected.x + 1) / 2 * rect.width - event.clientX, dy = rect.top + (1 - projected.y) / 2 * rect.height - event.clientY;
       const distance = dx * dx + dy * dy;
-      if (distance < best) { best = distance; match = placement; }
+      if (distance < best) {
+        point.fromArray(placement.position); point.y += 1;
+        direction.subVectors(point, origin);
+        ray.set(origin, direction.clone().normalize()); ray.far = Math.max(0, direction.length() - 0.001);
+        if (ray.intersectObjects(terrain, false).length) continue;
+        best = distance; match = placement;
+      }
     }
     selection = match;
     if (match && failed.delete(match.id)) files.forget();
