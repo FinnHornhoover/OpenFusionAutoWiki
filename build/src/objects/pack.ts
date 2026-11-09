@@ -2,6 +2,7 @@ import { existsSync, readFileSync, statSync } from 'node:fs';
 import { join, posix } from 'node:path';
 import AdmZip from 'adm-zip';
 import { decode, decodeMulti } from '@msgpack/msgpack';
+import { MODEL_ALIASES, TEXTURE_ALIASES } from './aliases.js';
 
 export interface Prefab {
   file: string;
@@ -30,7 +31,7 @@ interface Texture {
 }
 
 interface PrefabDocument {
-  materials?: { extras?: { shader?: string; shader_object?: number } }[];
+  materials?: { name?: string; extras?: { shader?: string; shader_object?: number } }[];
   images?: { name?: string; uri?: string }[];
   extras?: { clips?: Record<string, string> };
   nodes?: { extras?: { animation?: { enabled: boolean; play_automatically: boolean; default: number | null; clips: { file?: string }[] } } }[];
@@ -202,7 +203,8 @@ export class Pack {
   }
 
   model(paths: string[]): Model | undefined {
-    for (const path of paths) {
+    const keys = paths.map((path) => path.toLowerCase());
+    for (const path of [...keys, ...keys.flatMap((key) => MODEL_ALIASES[key] ?? [])]) {
       const models = this.models.get(path.toLowerCase())?.filter((m) => m.prefab);
       if (!models?.length) continue;
       return models.sort((a, b) => this.priority(this.graphs.get(a.graph)?.asset.source) - this.priority(this.graphs.get(b.graph)?.asset.source))[0];
@@ -213,6 +215,17 @@ export class Pack {
   texture(name: string, prefab?: string): string | undefined {
     if (!name || name.toLowerCase() === 'null') return undefined;
     const key = textureKey(name);
+    return this.findTexture(key, prefab) ?? (TEXTURE_ALIASES[key] ? this.findTexture(TEXTURE_ALIASES[key], prefab) : undefined);
+  }
+
+  hasTextureSlot(file: string, slot: 'main' | 'sub'): boolean {
+    return (this.prefabDocument(file).materials ?? []).some((material) => {
+      const name = material.name?.toLowerCase() ?? '';
+      return slot === 'sub' ? name.includes('sub') : name.includes('main') && !name.includes('sub');
+    });
+  }
+
+  private findTexture(key: string, prefab?: string): string | undefined {
     const indexed = this.textures.get(key);
     if (indexed?.length) return indexed.sort((a, b) => this.priority(this.textureSources.get(a.object)) - this.priority(this.textureSources.get(b.object)))[0].file;
     if (prefab) {

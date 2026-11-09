@@ -39,7 +39,10 @@ export class Recipes {
     }) : undefined;
     return {
       model: model.prefab.file, mode,
-      primary: this.texture(primary, true, model.prefab.file), secondary: this.texture(secondary, false, model.prefab.file), mount,
+      // NPCs and nanos only replace named main/sub materials. Pre-textured
+      // human NPCs have neither; their table texture names are placeholders.
+      primary: mode !== 'prefab' || this.pack.hasTextureSlot(model.prefab.file, 'main') ? this.texture(primary, true, model.prefab.file) : undefined,
+      secondary: mode !== 'prefab' || this.pack.hasTextureSlot(model.prefab.file, 'sub') ? this.texture(secondary, false, model.prefab.file) : undefined, mount,
       renderers: renderers?.length ? renderers : undefined,
     };
   }
