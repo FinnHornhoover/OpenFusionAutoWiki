@@ -152,7 +152,7 @@ export async function mountViewer(container: HTMLElement, variant: PreviewVarian
     for (const vehicle of vehicles) await attach(vehicle.model, vehicle.part);
     if (disposed || signal.aborted) throw new DOMException('Aborted', 'AbortError');
     const hasMotion = !!variant.weaponShots?.length || animations.some((item) => item.playback.duration > 0) || models.some((model) =>
-      model.dressing?.meshes.some((mesh) => ['fusion', 'water'].includes(mesh.userData.ffInfo?.family)));
+      model.dressing?.meshes.some((mesh) => ['fusion', 'water', 'vfx'].includes(mesh.userData.ffInfo?.family)));
 
     scene.updateMatrixWorld(true);
     const bounds = new THREE.Box3().setFromObject(actor.gltf.scene);

@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { VFX_SHADERS } from '../../../shared/shaders.js';
 
 export const blendFactors: Record<string, THREE.BlendingSrcFactor> = {
   one: THREE.OneFactor, zero: THREE.ZeroFactor, srccolor: THREE.SrcColorFactor, invsrccolor: THREE.OneMinusSrcColorFactor,
@@ -6,12 +7,10 @@ export const blendFactors: Record<string, THREE.BlendingSrcFactor> = {
   invdestalpha: THREE.OneMinusDstAlphaFactor, destcolor: THREE.DstColorFactor, invdestcolor: THREE.OneMinusDstColorFactor,
 };
 
-const customEffects = new Set(['VFX_TextureRotate', 'VFX_TextureRotate_Additive', 'VFX_RotatingFlipbook', 'VFX_SimpleDualScrolling_Additive', 'VFX_PolarScrolling_Additive', 'VFX_ScrollDistort_wMask_Gradient_Additive']);
-
 export function shaderBlend(name: string): { source: THREE.BlendingSrcFactor; destination: THREE.BlendingDstFactor; depthWrite?: boolean; side?: THREE.Side; alphaPrimary?: boolean } | undefined {
   const custom = name.replace(/^ff:/, '');
   // Render states from these shaders' exported ShaderLab, which glTF marks opaque.
-  if (customEffects.has(custom)) return { source: THREE.SrcAlphaFactor, destination: custom.endsWith('_Additive') ? THREE.OneFactor : THREE.OneMinusSrcAlphaFactor, depthWrite: false, side: THREE.DoubleSide };
+  if (VFX_SHADERS.includes(custom)) return { source: THREE.SrcAlphaFactor, destination: custom.endsWith('_Additive') ? THREE.OneFactor : THREE.OneMinusSrcAlphaFactor, depthWrite: false, side: THREE.DoubleSide };
   if (custom === 'diffuseFade' || custom === 'retro_diffuseFade') return { source: THREE.SrcAlphaFactor, destination: THREE.OneMinusSrcAlphaFactor, alphaPrimary: true };
   const match = /blend(Invdestcolor|Invdestalpha|Invsrccolor|Invsrcalpha|Srccolor|Srcalpha|Destcolor|Destalpha|One|Zero)(Invdestcolor|Invdestalpha|Invsrccolor|Invsrcalpha|Srccolor|Srcalpha|Destcolor|Destalpha|One|Zero)/i.exec(name);
   return match ? {

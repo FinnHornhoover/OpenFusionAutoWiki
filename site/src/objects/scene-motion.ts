@@ -5,6 +5,7 @@ import { ModelAnimation } from './animation';
 import { sceneParticles, type ParticleBudget } from './particles';
 import { type LoadedModel, type ModelData, disposeTree } from './assets';
 import { dressEffectAlpha, dressFusionMatter, repairWrenchAlpha } from './materials';
+import { dressVfx } from './effect-material';
 
 interface Automatic { name: string; duration: number; animation?: number; material_clip?: number }
 interface Curve { node?: number; renderer_nodes?: number[] }
@@ -35,6 +36,7 @@ export async function sceneMotion(gltf: GLTF, setup: SceneSetup, url: string, ba
   const platforms = setup.animations;
   const lifetimes: { root: THREE.Object3D; duration: number }[] = [];
   let time = 0;
+  let shaderMotion = false;
   const billboards: { object: THREE.Object3D; up: boolean }[] = [];
   const collectBillboards = (source: LoadedModel): void => {
     for (const [index, node] of source.data.nodes.entries()) {
@@ -62,6 +64,8 @@ export async function sceneMotion(gltf: GLTF, setup: SceneSetup, url: string, ba
   let particles: Awaited<ReturnType<typeof sceneParticles>> | undefined;
   const dispose = (): void => { particles?.dispose(); players.forEach((p) => p.dispose()); releases.splice(0).forEach((release) => release()); };
   try {
+    await dressVfx(setup.dressing, gltf.parser, env);
+    shaderMotion = setup.dressing.meshes.some((mesh) => mesh.userData.ffInfo?.family === 'vfx');
     dressEffectAlpha(setup.dressing, preserveParticleAlpha);
     const dressed = new Set(setup.dressing.meshes);
     for (const info of data.extras?.automatic_clips ?? []) {
@@ -104,6 +108,8 @@ export async function sceneMotion(gltf: GLTF, setup: SceneSetup, url: string, ba
       if (entry.lifetime !== undefined) lifetimes.push({ root: child.root, duration: entry.lifetime });
       child.root.traverse((object) => { object.userData.ffEffect = true; });
       dressFusionMatter(child.dressing, env); repairWrenchAlpha(child.dressing);
+      await dressVfx(child.dressing, effect.gltf.parser, env);
+      shaderMotion ||= child.dressing.meshes.some((mesh) => mesh.userData.ffInfo?.family === 'vfx');
       dressEffectAlpha(child.dressing, preserveParticleAlpha);
       // Animated layers may share a source material but have different UV curves.
       if (entry.animations.length) for (const mesh of child.dressing.meshes) await child.dressing.unique(mesh);
@@ -118,7 +124,7 @@ export async function sceneMotion(gltf: GLTF, setup: SceneSetup, url: string, ba
     signal.throwIfAborted();
     return {
       effects,
-      moving: particles.roots.length > 0 || (platforms?.platforms ?? 0) > 0 || players.some((p) => p.playback.duration > 0),
+      moving: shaderMotion || particles.roots.length > 0 || (platforms?.platforms ?? 0) > 0 || players.some((p) => p.playback.duration > 0),
       update(delta, drift) { time += delta; for (const player of players) if (player.playback.duration > 0) player.update(delta); platforms?.update(delta); for (const item of lifetimes) item.root.visible = time < item.duration; faceCamera(); particles?.update(delta, camera, drift); },
       dispose,
     };

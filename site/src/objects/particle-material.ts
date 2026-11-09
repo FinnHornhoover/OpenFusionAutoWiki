@@ -1,29 +1,26 @@
 import * as THREE from 'three';
 import { canvasAlpha, shaderBlend } from './blend';
+import { VFX_SHADERS } from '../../../shared/shaders.js';
+import { effectSurface, type EffectExtras, type EffectTextures } from './effect-shader';
 
-interface MaterialData { extras?: { shader?: string; colors?: Record<string, number[]>; floats?: Record<string, number>; textures?: { _MainTex?: { index?: number; scale?: number[]; offset?: number[] } } } }
-export function particleMaterial(data: MaterialData, texture: THREE.Texture | null, trail = false, preserveAlpha = true): THREE.ShaderMaterial {
+interface MaterialData { extras?: EffectExtras }
+export function particleMaterial(data: MaterialData, texture: THREE.Texture | null, trail = false, preserveAlpha = true, textures: EffectTextures = {}): THREE.ShaderMaterial {
   const extras = data.extras, blend = shaderBlend(extras?.shader ?? '');
-  const rotate = /^VFX_TextureRotate(?:_Additive)?$/.test(extras?.shader ?? '');
-  if (!blend && !rotate) throw new Error(`Unsupported particle shader: ${extras?.shader}`);
-  const source = rotate ? THREE.SrcAlphaFactor : blend!.source;
-  const destination = (rotate
-    ? extras?.shader === 'VFX_TextureRotate_Additive' ? THREE.OneFactor : THREE.OneMinusSrcAlphaFactor
-    : blend!.destination) as THREE.BlendingDstFactor;
-  const tint = rotate ? extras?.colors?._Color ?? [1, 1, 1, 1] : extras?.colors?._TintColor ?? [0.5, 0.5, 0.5, 0.5];
+  if (!blend) throw new Error(`Unsupported particle shader: ${extras?.shader}`);
+  const surface = VFX_SHADERS.includes(extras?.shader ?? '') ? effectSurface(extras!, { ...textures, _MainTex: texture }, { value: 0 }) : undefined;
+  const tint = extras?.colors?._TintColor ?? [0.5, 0.5, 0.5, 0.5];
   const st = extras?.textures?._MainTex, scale = st?.scale ?? [1, 1], offset = st?.offset ?? [0, 0];
   const material = new THREE.ShaderMaterial({
-    defines: { ...(trail ? { FF_TRAIL: '' } : {}), ...(rotate ? { FF_TEXTURE_ROTATE: '' } : {}) },
+    defines: trail ? { FF_TRAIL: '' } : {},
     name: 'ff:particle', side: THREE.DoubleSide, transparent: true, depthWrite: false, blending: THREE.CustomBlending,
-    blendSrc: source, blendDst: destination, blendEquation: THREE.AddEquation,
+    blendSrc: blend.source, blendDst: blend.destination, blendEquation: THREE.AddEquation,
     blendSrcAlpha: preserveAlpha ? THREE.ZeroFactor : THREE.OneFactor, blendDstAlpha: preserveAlpha ? THREE.OneFactor : THREE.OneMinusSrcAlphaFactor, blendEquationAlpha: THREE.AddEquation,
     uniforms: {
       map: { value: texture }, hasMap: { value: !!texture }, tint: { value: new THREE.Vector4().fromArray(tint) },
-      time: { value: 0 }, rotationSpeed: { value: extras?.floats?._RotationSpeed ?? 1 },
-      rotationCenter: { value: new THREE.Vector2(extras?.floats?._CenterX ?? 0.5, extras?.floats?._CenterY ?? 0.5) },
-      vignette: { value: new THREE.Vector2(extras?.floats?._VignetteIntensity ?? 0, extras?.floats?._VignettePower ?? 2) },
+      time: { value: 0 },
       uvST: { value: new THREE.Vector4(scale[0], scale[1], offset[0], offset[1]) },
       billboard: { value: 0 }, maxSize: { value: 10 },
+      ...surface?.uniforms,
     },
     vertexShader: `
       attribute vec3 center; attribute vec2 dimensions; attribute vec4 particleColor; attribute float angle; attribute vec4 rectangle;
@@ -47,24 +44,14 @@ export function particleMaterial(data: MaterialData, texture: THREE.Texture | nu
 #endif
       }`,
     fragmentShader: `
-      uniform sampler2D map; uniform bool hasMap; uniform vec4 tint; uniform vec4 uvST;
-      uniform float time; uniform float rotationSpeed; uniform vec2 rotationCenter; uniform vec2 vignette;
+      ${surface?.glsl ?? 'uniform sampler2D map; uniform bool hasMap; uniform vec4 tint; uniform vec4 uvST;'}
       varying vec2 vUv; varying vec4 vColor;
       void main() {
+        ${surface ? 'gl_FragColor = ffEffect(vUv, vColor);' : `
         vec2 p = vUv * uvST.xy + uvST.zw;
-#ifdef FF_TEXTURE_ROTATE
-        float a = time * rotationSpeed;
-        float edge = 1. - clamp(pow(length(p - .5) * 2., vignette.y), 0., 1.) * vignette.x;
-        p = mat2(cos(a), sin(a), -sin(a), cos(a)) * (p - rotationCenter) + rotationCenter;
-#endif
         p.y = 1. - p.y;
         vec4 tex = hasMap ? texture2D(map, p) : vec4(1.);
-#ifdef FF_TEXTURE_ROTATE
-        vec4 color = tex * vColor * tint * edge;
-#else
-        vec4 color = tex * vColor * tint * 2.;
-#endif
-        gl_FragColor = clamp(color, 0., 1.);
+        gl_FragColor = clamp(tex * vColor * tint * 2., 0., 1.);`}
       }`,
   });
   if (!preserveAlpha) canvasAlpha(material);

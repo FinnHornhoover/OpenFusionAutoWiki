@@ -3,6 +3,7 @@ import { GLTFLoader, type GLTF } from 'three/addons/loaders/GLTFLoader.js';
 import { dress, type Dressing } from 'ff-three/materials';
 import type { Color, ModelPart, PreviewVariant } from '../../../shared/objects';
 import { dressEffectAlpha, dressFusionMatter, repairWrenchAlpha } from './materials';
+import { dressVfx } from './effect-material';
 
 export interface NodeDef {
   name?: string;
@@ -140,6 +141,7 @@ export async function dressModel(model: LoadedModel, part: ModelPart, variant: P
   model.dressing = await dress(model.gltf.scene, model.gltf.parser, { env });
   dressFusionMatter(model.dressing, env);
   repairWrenchAlpha(model.dressing);
+  await dressVfx(model.dressing, model.gltf.parser, env);
   dressEffectAlpha(model.dressing, preserveAlpha);
   for (const mesh of model.dressing.meshes) {
     for (const child of mesh.children) {

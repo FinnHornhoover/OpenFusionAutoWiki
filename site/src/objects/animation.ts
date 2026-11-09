@@ -75,19 +75,20 @@ function materialBinding(material: THREE.ShaderMaterial, attribute: string): Mat
   const outline = material.name === 'ff:outline';
   if (outline && !/^(_FatFactor|_OutlineColor\.[rgba])$/.test(attribute)) return undefined;
   if (!outline && attribute.startsWith('_OutlineColor.')) return undefined;
-  const color = /^(_Color|_Emission|_AmbColor|_OutlineColor)\.([rgba])$/.exec(attribute);
+  const color = /^(_\w+)\.([rgba])$/.exec(attribute);
   if (color) {
-    const keys = color[1] === '_Color' ? ['matColor', 'color'] : color[1] === '_Emission' ? ['matEmission', 'emission'] : color[1] === '_OutlineColor' ? ['color'] : ['matAmb'];
+    const keys = color[1] === '_Color' ? ['matColor', 'color'] : color[1] === '_Emission' ? ['matEmission', 'emission'] : color[1] === '_OutlineColor' ? ['color'] : color[1] === '_AmbColor' ? ['matAmb'] : [color[1]];
     const uniform = keys.map((key) => uniforms[key]).find(Boolean);
     const component = 'rgba'.indexOf(color[2]);
     if (uniform?.value instanceof THREE.Vector4 || uniform?.value instanceof THREE.Vector3 && component < 3) {
       return { key: `${material.uuid}/${keys.find((key) => uniforms[key] === uniform)}/${component}`, baseline: uniform.value.getComponent(component), apply: (v) => uniform.value.setComponent(component, v) };
     }
   }
-  const offset = /^_MainTex\.(offset|scale)\.([xy])$/.exec(attribute);
-  if (offset && uniforms.uvST) {
-    const component = (offset[1] === 'offset' ? 2 : 0) + (offset[2] === 'y' ? 1 : 0);
-    return { key: `${material.uuid}/uvST/${component}`, baseline: uniforms.uvST.value.getComponent(component), apply: (v) => uniforms.uvST.value.setComponent(component, v) };
+  const offset = /^(_MainTex|_MainTex2|_MaskTex)\.(offset|scale)\.([xy])$/.exec(attribute);
+  const st = offset && ({ _MainTex: 'uvST', _MainTex2: 'uvST2', _MaskTex: 'maskST' } as Record<string, string>)[offset[1]];
+  if (offset && st && uniforms[st]) {
+    const component = (offset[2] === 'offset' ? 2 : 0) + (offset[3] === 'y' ? 1 : 0);
+    return { key: `${material.uuid}/${st}/${component}`, baseline: uniforms[st].value.getComponent(component), apply: (v) => uniforms[st].value.setComponent(component, v) };
   }
   if (attribute === '_MainTex.rotation') {
     const rotation = textureRotation(material);
@@ -96,6 +97,9 @@ function materialBinding(material: THREE.ShaderMaterial, attribute: string): Mat
   if (attribute === '_FatFactor' && uniforms.push) {
     const outline = material.name === 'ff:outline' ? Number(material.userData.ffOutline ?? 0) : 0;
     return { key: `${material.uuid}/push`, baseline: uniforms.push.value - outline, apply: (v) => { uniforms.push.value = outline + v; } };
+  }
+  if (typeof uniforms[attribute]?.value === 'number') {
+    return { key: `${material.uuid}/${attribute}`, baseline: uniforms[attribute].value, apply: (v) => { uniforms[attribute].value = v; } };
   }
   return undefined;
 }

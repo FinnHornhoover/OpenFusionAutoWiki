@@ -7,6 +7,8 @@ import { trailSystem } from './particle-trail';
 import { particleMaterial } from './particle-material';
 import { ParticleMesh } from './particle-mesh';
 import { disposeTree, disposeTexture } from './assets';
+import { effectTextures } from './effect-material';
+import { VFX_SHADERS } from '../../../shared/shaders.js';
 
 export interface ParticleBudget { remaining: number; systems?: number }
 
@@ -30,12 +32,14 @@ export async function sceneParticles(gltf: GLTF, signal: AbortSignal, budget: Pa
       const data = gltf.parser.json.materials[recipe.material], index = data.extras?.textures?._MainTex?.index;
       const texture = index === undefined ? null : await gltf.parser.getDependency('texture', index) as THREE.Texture;
       if (texture) { texture.colorSpace = THREE.NoColorSpace; textures.add(texture); }
+      const extraTextures = VFX_SHADERS.includes(data.extras?.shader) ? await effectTextures(data.extras, gltf.parser) : {};
+      for (const texture of Object.values(extraTextures)) if (texture) textures.add(texture);
       let sourceMesh: ParticleMesh | undefined;
       if (recipe.kind === 'native' && recipe.mesh !== undefined) {
         const root = await gltf.parser.getDependency('mesh', recipe.mesh) as THREE.Object3D;
         meshes.add(root); sourceMesh = new ParticleMesh(root);
       }
-      const material = particleMaterial(data, texture, recipe.kind === 'trail', preserveAlpha);
+      const material = particleMaterial(data, texture, recipe.kind === 'trail', preserveAlpha, extraTextures);
       let item: ParticleSystem;
       try { item = recipe.kind === 'trail' ? trailSystem(recipe, parent, material, capacity) : billboardSystem(recipe, parent, material, capacity, sourceMesh); } catch (error) { material.dispose(); throw error; }
       budget.remaining -= capacity; budget.systems--; used += capacity; systemCount++; systems.push(item); gltf.scene.add(item.root);

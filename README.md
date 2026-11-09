@@ -65,6 +65,7 @@ mesh effects, with orbit, pan and overhead views. Format 5 packs add bounded
 scripted and native particles, ribbon trails, source blend modes, curves and atlas
 frames. Particle and draw-call budgets limit browser work. Both pack versions
 share the existing asset pool. NPCs, monsters and eggs use InfoPacks spawn positions and facing.
+Custom VFX use native scrolling, rotation, flipbooks, distortion, masks and gradients.
 Overview markers focus nearby idle models on tap; category toggles and bounded
 loading keep mobile views usable. Patrols and combat are not simulated.
 Tiles and terrain buffers share the R2 pool; terrain shader textures use lossless

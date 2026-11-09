@@ -1,6 +1,7 @@
 import type { BillboardParticleRecipe, NativeParticleEmitter, ParticleAnimator, ParticleBase, ParticleEffectSettings, ParticleEmitter, ParticleRecipe, ParticleRenderer, ParticleScriptKey, ParticleTrail } from '../../../shared/particles.js';
 import type { Pack, Resources } from './pack.js';
 import type { SceneDocument } from './scene-document.js';
+import { VFX_SHADERS } from '../../../shared/shaders.js';
 
 interface Component { m_Enabled?: boolean; m_GameObject?: { r: number | null }; m_Materials?: { r: number | null }[] }
 interface WorldRecord { type: string; data: Component }
@@ -36,7 +37,7 @@ export class ParticleCatalog {
     const raw = id == null ? undefined : this.materials[id]?.[2];
     const shader = (raw?.m_Shader as { r?: number } | undefined)?.r;
     const name = shader === undefined ? undefined : this.pack.resources[shader]?.[2].name;
-    if (!name || !/^VFX_TextureRotate(?:_Additive)?$/.test(name) && !/blend(?:Invdestcolor|Invdestalpha|Invsrccolor|Invsrcalpha|Srccolor|Srcalpha|Destcolor|Destalpha|One|Zero)(?:Invdestcolor|Invdestalpha|Invsrccolor|Invsrcalpha|Srccolor|Srcalpha|Destcolor|Destalpha|One|Zero)/i.test(name)) {
+    if (!name || !VFX_SHADERS.includes(name) && !/blend(?:Invdestcolor|Invdestalpha|Invsrccolor|Invsrcalpha|Srccolor|Srcalpha|Destcolor|Destalpha|One|Zero)(?:Invdestcolor|Invdestalpha|Invsrccolor|Invsrcalpha|Srccolor|Srcalpha|Destcolor|Destalpha|One|Zero)/i.test(name)) {
       document.missing.add(`Particle ${source}: material/shader unavailable or unsupported`);
       return undefined;
     }

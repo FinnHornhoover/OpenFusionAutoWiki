@@ -85,7 +85,7 @@ export async function mountAreaViewer(container: HTMLElement, recipe: AreaPrevie
       scene.add(setup.root);
       const fog = applySceneSettings(env, setup.settings);
       scene.background = new THREE.Color().fromArray(fog);
-      hasMotion ||= setup.dressing.meshes.some((mesh) => ['water', 'fusion'].includes(mesh.userData.ffInfo?.family));
+      hasMotion ||= setup.dressing.meshes.some((mesh) => ['water', 'fusion', 'vfx'].includes(mesh.userData.ffInfo?.family));
       hasMotion ||= tile.motion.moving || !!setup.root.getObjectByName('grass');
     }
     if (!tiles.length) throw new Error('No area tiles are available');
