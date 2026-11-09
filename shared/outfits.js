@@ -25,5 +25,6 @@ export function composeOutfit(base, items) {
   for (const slot of hat?.hiddenSlots ?? []) parts.delete(slot);
   if (items.some((item) => item.outfitSlot === 'vehicle')) parts.delete('weapon');
   const pose = items.find((item) => item.outfitSlot === 'vehicle') ?? items.find((item) => item.outfitSlot === 'weapon') ?? base;
-  return { ...base, parts: [...parts.values()], hiddenSlots: hat?.hiddenSlots, animationContext: pose.animationContext, idle: pose.idle, animations: pose.animations };
+  const shaderNames = Object.assign({}, base.shaderNames, ...items.map((item) => item.shaderNames));
+  return { ...base, parts: [...parts.values()], hiddenSlots: hat?.hiddenSlots, shaderNames: Object.keys(shaderNames).length ? shaderNames : undefined, vehicleEffects: pose.vehicleEffects, weaponShots: pose.weaponShots, weaponAttack: pose.weaponAttack, animationContext: pose.animationContext, idle: pose.idle, animations: pose.animations };
 }

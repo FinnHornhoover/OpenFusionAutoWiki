@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import type { AnimationChoice, PreviewVariant } from '../../../shared/objects';
 import { mountViewer, type PlaybackState, type Viewer, type ViewState } from '../objects/viewer';
 
@@ -9,7 +9,7 @@ function clock(seconds: number): string {
   return `${Math.floor(tenths / 600)}:${((tenths % 600) / 10).toFixed(1).padStart(4, '0')}`;
 }
 
-export default function ModelCanvas({ variant, baseUrl, preserveView = false }: { variant: PreviewVariant; baseUrl: string; preserveView?: boolean }) {
+export default function ModelCanvas({ variant, baseUrl, preserveView = false, options }: { variant: PreviewVariant; baseUrl: string; preserveView?: boolean; options?: ReactNode }) {
   const container = useRef<HTMLDivElement>(null);
   const viewer = useRef<Viewer>();
   const savedView = useRef<ViewState>();
@@ -26,6 +26,11 @@ export default function ModelCanvas({ variant, baseUrl, preserveView = false }: 
   const [error, setError] = useState('');
   const [animationError, setAnimationError] = useState('');
   const [loadingAnimation, setLoadingAnimation] = useState(false);
+  const [hasTrails, setHasTrails] = useState(false);
+  const [trails, setTrails] = useState(true);
+  const [shot, setShot] = useState(0);
+  const [firing, setFiring] = useState(false);
+  const [fireError, setFireError] = useState('');
   const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
@@ -33,6 +38,7 @@ export default function ModelCanvas({ variant, baseUrl, preserveView = false }: 
     const controller = new AbortController();
     const paused = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     setError('');
+    setShot(0); setFiring(false); setFireError(''); setHasTrails(false); setTrails(true);
     setAnimationError('');
     setLoadingAnimation(false);
     setReady(false);
@@ -47,6 +53,7 @@ export default function ModelCanvas({ variant, baseUrl, preserveView = false }: 
       setChoices(instance.animations);
       setSelected(instance.selected);
       setHasMotion(instance.hasMotion);
+      setHasTrails(instance.hasVehicleTrails);
       setReady(true);
     }).catch((reason: unknown) => {
       if (!controller.signal.aborted) setError(reason instanceof Error ? reason.message : 'Could not load preview');
@@ -74,6 +81,15 @@ export default function ModelCanvas({ variant, baseUrl, preserveView = false }: 
     });
   };
 
+  const fire = (): void => {
+    const instance = viewer.current;
+    if (!instance) return;
+    setFiring(true); setFireError('');
+    void instance.fire(shot).catch((reason: unknown) => {
+      if (viewer.current === instance) setFireError(reason instanceof Error ? reason.message : 'Could not load weapon effects');
+    }).finally(() => { if (viewer.current === instance) setFiring(false); });
+  };
+
   const beginScrub = (): void => {
     if (resumeAfterScrub.current !== null) return;
     resumeAfterScrub.current = !playbackRef.current.paused;
@@ -91,17 +107,28 @@ export default function ModelCanvas({ variant, baseUrl, preserveView = false }: 
         {!ready && !error && <span className="model-preview-status" role="status">Loading model…</span>}
       </div>
       {error && <p className="model-preview-error" role="alert">Preview unavailable: {error} <button onClick={() => setAttempt((n) => n + 1)}>Retry</button></p>}
-      {ready && <div className="model-preview-controls">
+      {ready && <section className="model-preview-controls" aria-label="3D viewing options">
+        {options}
+        {!!variant.weaponShots?.length && <div className="model-preview-weapon">
+          {variant.weaponShots.length > 1 && <label>Shot
+            <select className="styled-select" aria-label="Weapon shot" value={shot} disabled={firing} onChange={(event) => setShot(Number(event.target.value))}>
+              {variant.weaponShots.map((entry, index) => <option key={index} value={index}>{entry.label}</option>)}
+            </select>
+          </label>}
+          <button disabled={firing || loadingAnimation} onClick={fire}>{firing ? 'Firing…' : 'Fire weapon'}</button>
+          {fireError && <p role="alert">{fireError}</p>}
+        </div>}
+        {hasTrails && <button className="model-preview-vehicle-trails" aria-pressed={trails} onClick={() => { viewer.current?.trails(!trails); setTrails(!trails); }}>Vehicle trails</button>}
         {choices.length > 0 && <>
           <label className="model-preview-animation">Animation
-            <select ref={animationSelect} className="styled-select" aria-label="Animation" value={selected} onChange={(event) => select(event.target.value)}>
+            <select ref={animationSelect} className="styled-select" aria-label="Animation" disabled={firing} value={selected} onChange={(event) => select(event.target.value)}>
               {groups.map((group) => <optgroup key={group} label={group}>{choices.filter((choice) => choice.group === group).map((choice) => <option key={choice.name} value={choice.name}>{choice.label}</option>)}</optgroup>)}
             </select>
           </label>
           <div className="model-preview-timeline">
             <label htmlFor={timeId}>Playback position <output>{clock(playback.time)} / {clock(playback.duration)}</output></label>
             <input id={timeId} type="range" aria-label="Playback position" aria-valuetext={`${clock(playback.time)} of ${clock(playback.duration)}`}
-              min={0} max={playback.duration || 1} step="any" value={playback.time} disabled={!playback.duration || loadingAnimation}
+              min={0} max={playback.duration || 1} step="any" value={playback.time} disabled={!playback.duration || loadingAnimation || firing}
               onPointerDown={beginScrub} onPointerUp={endScrub} onPointerCancel={endScrub} onBlur={endScrub}
               onKeyDown={(event) => { if (/^(Arrow|Home|End|Page)/.test(event.key)) beginScrub(); }}
               onKeyUp={endScrub} onChange={(event) => viewer.current?.seek(Number(event.target.value))} />
@@ -109,7 +136,7 @@ export default function ModelCanvas({ variant, baseUrl, preserveView = false }: 
         </>}
         {hasMotion && <>
           <div className="model-preview-transport">
-            <button onClick={() => viewer.current?.pause(!playback.paused)}>{playback.paused ? 'Play' : 'Pause'}</button>
+            <button disabled={firing} onClick={() => viewer.current?.pause(!playback.paused)}>{playback.paused ? 'Play' : 'Pause'}</button>
             <button onClick={() => viewer.current?.reset()}>Reset view</button>
           </div>
           {loadingAnimation && <span className="muted" role="status">Loading animation…</span>}
@@ -117,7 +144,7 @@ export default function ModelCanvas({ variant, baseUrl, preserveView = false }: 
         </>}
         {!hasMotion && <button className="model-preview-reset" onClick={() => viewer.current?.reset()}>Reset view</button>}
         <p className="muted model-preview-help">Drag to rotate. Pinch or scroll to zoom.</p>
-      </div>}
+      </section>}
     </div>
   );
 }

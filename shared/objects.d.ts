@@ -28,6 +28,27 @@ export interface ModelPart {
   autoAnimation?: string | null;
 }
 
+export interface WeaponShot {
+  label: string;
+  bullet: number;
+  targetMode: number;
+  equipType: number;
+  cooldown: number;
+  link: string;
+  fire?: { model: string; duration: number };
+  projectile?: { model: string; duration: number };
+  impact?: { model: string; duration: number };
+  flight: { kind: 'ordinary'; delay: number; duration: number; range: number }
+    | { kind: 'rocket'; duration: number; speed: number; retrobution: boolean }
+    | { kind: 'grenade'; duration: number; speed: number; verticalSpeed: number; retrobution: boolean; weaponModel: boolean };
+}
+
+export interface WeaponAttack {
+  full?: string;
+  upper?: string;
+  ready?: string;
+}
+
 export interface PreviewVariant {
   label: string;
   model: ModelPart;
@@ -43,6 +64,10 @@ export interface PreviewVariant {
   animationContext?: AnimationContext;
   animations?: AnimationChoice[];
   outfitSlot?: PartSlot;
+  weaponShots?: WeaponShot[];
+  weaponAttack?: WeaponAttack;
+  shaderNames?: Record<string, string>;
+  vehicleEffects?: { model: string; mount: string }[];
 }
 
 export interface ModelPreview {

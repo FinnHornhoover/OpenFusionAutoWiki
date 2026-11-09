@@ -38,6 +38,8 @@ export async function mountAreaViewer(container: HTMLElement, recipe: AreaPrevie
     if (!response.ok) throw new Error(`Area asset download failed (${response.status})`);
     return response.arrayBuffer();
   } });
+  const smallScreen = matchMedia('(max-width: 600px)').matches;
+  const particleBudget = { remaining: smallScreen ? 4000 : 12000, systems: smallScreen ? 64 : 160 };
   const tiles: { setup: SceneSetup; release: () => void; motion?: SceneMotion }[] = [];
   let disposed = false, visible = true, frame = 0, previous = 0, lastRendered = 0, hasMotion = false;
   let paused = false, forceDraw = true;
@@ -78,7 +80,7 @@ export async function mountAreaViewer(container: HTMLElement, recipe: AreaPrevie
       repairWrenchAlpha(setup.dressing);
       setup.root.traverse((object) => { if (object instanceof THREE.Mesh && object.material instanceof THREE.ShaderMaterial && object.material.name === 'ff:grass') object.userData.ffGrass = true; });
       onStatus(`Preparing tile ${index + 1} of ${recipe.tiles.length}…`);
-      tile.motion = await sceneMotion(loaded.gltf, setup, new URL(`${baseUrl}/${file}`, location.href).href, baseUrl, env, files, signal);
+      tile.motion = await sceneMotion(loaded.gltf, setup, new URL(`${baseUrl}/${file}`, location.href).href, baseUrl, env, files, signal, camera, particleBudget);
       if (disposed || signal.aborted) throw new DOMException('Aborted', 'AbortError');
       scene.add(setup.root);
       const fog = applySceneSettings(env, setup.settings);
@@ -120,6 +122,7 @@ export async function mountAreaViewer(container: HTMLElement, recipe: AreaPrevie
         const delta = previous ? Math.min((time - previous) / 1000, 0.1) : 0;
         previous = time;
         if (!paused) { env.time.value += delta; tiles.forEach((tile) => tile.motion?.update(delta)); }
+        else tiles.forEach((tile) => tile.motion?.update(0));
         population?.update(paused ? 0 : delta);
         renderer.render(scene, camera);
         lastRendered = time;

@@ -29,10 +29,10 @@ export default function AreaCanvas({ recipe, baseUrl, populationUrl }: { recipe:
     }).catch((reason: unknown) => { if (!controller.signal.aborted) setError(reason instanceof Error ? reason.message : 'Could not load area'); });
     return () => { controller.abort(); viewer.current?.dispose(); viewer.current = undefined; };
   }, [recipe, baseUrl, populationUrl, attempt]);
-  return <div className="model-canvas area-canvas">
+  return <div className={`model-canvas area-canvas${ready ? ' model-canvas-ready' : ''}`}>
     <div className="model-preview-stage" ref={stage}>{!ready && !error && <span className="model-preview-status" role="status">{status}</span>}</div>
     {error && <p role="alert">{error} <button onClick={() => setAttempt((n) => n + 1)}>Retry</button></p>}
-    {ready && <div className="area-preview-controls">
+    {ready && <section className="model-preview-controls area-preview-controls" aria-label="3D viewing options">
       <button onClick={() => viewer.current?.reset()}>Reset view</button>
       <button onClick={() => viewer.current?.overhead()}>From above</button>
       <button aria-pressed={scenery} onClick={() => { viewer.current?.scenery(!scenery); setScenery(!scenery); }}>Scenery</button>
@@ -43,6 +43,6 @@ export default function AreaCanvas({ recipe, baseUrl, populationUrl }: { recipe:
       {selection && <p role="status">{selection.name}{selection.unavailable ? ' · Model unavailable' : selection.loading ? ' · Loading model…' : ''}</p>}
       <p className="muted">Drag to rotate. Scroll or pinch to zoom. Right-drag or use two fingers to pan. Tap a marker to focus.</p>
       {recipe.missing.length > 0 && <p className="muted">Some tiles are unavailable in this client cache.</p>}
-    </div>}
+    </section>}
   </div>;
 }

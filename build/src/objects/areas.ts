@@ -1,3 +1,4 @@
+import { ParticleCatalog } from './particles.js';
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import type { AreaPreviewRecipe } from '../../../shared/objects.js';
@@ -28,6 +29,7 @@ export class AreaCompiler {
   private pngs = new Map<string, Promise<string>>();
   private materials: Resources;
   private clips: SceneClips;
+  private particles: ParticleCatalog;
 
   constructor(private pack: Pack, private pool: AssetPool) {
     for (const scene of pack.json<{ scenes: SceneEntry[] }>('areas/index.json').scenes) {
@@ -36,6 +38,7 @@ export class AreaCompiler {
     }
     this.materials = pack.msgpack('metadata/materials.msgpack');
     this.clips = new SceneClips(pack);
+    this.particles = new ParticleCatalog(pack, this.materials);
   }
 
   async build(slug: string): Promise<number> {
@@ -108,6 +111,7 @@ export class AreaCompiler {
       if (index === undefined || !active(index) || attributes.m_Enabled === false) continue;
       if (kind === 23 && mesh != null) document.nodes[index].mesh = await document.geometry(mesh, attributes.m_Materials ?? []);
       else if (kind === 154 && attributes.m_TerrainData?.r != null) document.nodes[index].mesh = await document.terrain(attributes.m_TerrainData.r);
+      else if (kind === 26) await this.particles.direct(document, index, renderer);
       else if (kind === 137 && mesh != null) {
         try {
           const joints = (attributes.m_Bones ?? []).map((pointer) => pointer.r == null ? undefined : transforms.get(pointer.r));
@@ -165,7 +169,7 @@ export class AreaCompiler {
             document.stats.effects++;
           } else document.missing.add(`Effect prefab has no renderer: ${id}`);
         }
-        if ((settings.particles as unknown[] | undefined)?.length) document.missing.add('Particle emitters require ObjectPacks particle metadata');
+        await this.particles.add(document, node, settings as unknown as Parameters<ParticleCatalog['add']>[2]);
       }
     }
     for (const id of graph.animations ?? []) {

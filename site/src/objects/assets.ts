@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { GLTFLoader, type GLTF } from 'three/addons/loaders/GLTFLoader.js';
 import { dress, type Dressing } from 'ff-three/materials';
 import type { Color, ModelPart, PreviewVariant } from '../../../shared/objects';
-import { dressFusionMatter, repairWrenchAlpha } from './materials';
+import { dressEffectAlpha, dressFusionMatter, repairWrenchAlpha } from './materials';
 
 export interface NodeDef {
   name?: string;
@@ -95,7 +95,7 @@ function tint(material: THREE.Material, color: Color): void {
   colors._Emission = emission.map((c, i) => c * color[i]);
 }
 
-export async function dressModel(model: LoadedModel, part: ModelPart, variant: PreviewVariant, baseUrl: string, env: Record<string, THREE.IUniform>, textures: Set<THREE.Texture>): Promise<void> {
+export async function dressModel(model: LoadedModel, part: ModelPart, variant: PreviewVariant, baseUrl: string, env: Record<string, THREE.IUniform>, textures: Set<THREE.Texture>, preserveAlpha = false): Promise<void> {
   const loadTexture = async (key?: string): Promise<THREE.Texture | undefined> => {
     if (!key) return undefined;
     const texture = await new THREE.TextureLoader().loadAsync(`${baseUrl}/${key}`);
@@ -113,6 +113,7 @@ export async function dressModel(model: LoadedModel, part: ModelPart, variant: P
     const materials = sources.map((source, index) => {
       const material = source.clone();
       material.userData = structuredClone(source.userData);
+      material.userData.shader = variant.shaderNames?.[material.userData.shader_object] ?? material.userData.shader;
       const name = source.name.toLowerCase();
       const worn = part.mode === 'worn';
       const sub = name.includes('sub');
@@ -139,6 +140,7 @@ export async function dressModel(model: LoadedModel, part: ModelPart, variant: P
   model.dressing = await dress(model.gltf.scene, model.gltf.parser, { env });
   dressFusionMatter(model.dressing, env);
   repairWrenchAlpha(model.dressing);
+  dressEffectAlpha(model.dressing, preserveAlpha);
   for (const mesh of model.dressing.meshes) {
     for (const child of mesh.children) {
       if (child instanceof THREE.Mesh && child.material instanceof THREE.ShaderMaterial && child.material.name === 'ff:outline') {

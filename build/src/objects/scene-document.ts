@@ -38,7 +38,7 @@ export class SceneDocument {
   readonly missing = new Set<string>();
   readonly settings: Record<string, unknown> = {};
   readonly extras: Record<string, unknown> = {};
-  readonly stats = { skins: 0, clips: 0, platforms: 0, effects: 0, grass: 0 };
+  readonly stats = { skins: 0, clips: 0, platforms: 0, effects: 0, grass: 0, particles: 0 };
   private buffers: GeometryDocument['buffers'] = [];
   private views: GeometryDocument['bufferViews'] = [];
   private accessors: GeometryDocument['accessors'] = [];
@@ -149,7 +149,7 @@ export class SceneDocument {
     return index;
   }
 
-  private async material(id: number | null | undefined): Promise<number> {
+  async material(id: number | null | undefined): Promise<number> {
     if (id != null && this.materialIds.has(id)) return this.materialIds.get(id)!;
     const raw = id == null ? undefined : this.materialSource[id]?.[2];
     const shaderId = (raw?.m_Shader as { r: number | null } | undefined)?.r;
@@ -168,7 +168,7 @@ export class SceneDocument {
       if (name === '_MainTex' && index != null) pbr.baseColorTexture = { index };
     }
     if (colors._Color) pbr.baseColorFactor = colors._Color;
-    const shaderName = shader?.name ?? '';
+    const shaderName = /^Shader #/.test(shader?.name ?? '') && typeof shader?.declared_name === 'string' && shader.declared_name ? shader.declared_name : shader?.name ?? '';
     const material: Record<string, unknown> = {
       name: raw?.m_Name ?? 'default', pbrMetallicRoughness: pbr,
       extras: { object: id, shader: shaderName, colors, floats, textures },
@@ -272,7 +272,8 @@ export class SceneDocument {
   save(): string {
     const document = { asset: { version: '2.0', generator: 'FFWiki area adapter' }, scene: 0, scenes: [{ nodes: this.roots, extras: this.settings }], nodes: this.nodes, meshes: this.meshes, materials: this.materials, buffers: this.buffers, bufferViews: this.views, accessors: this.accessors, textures: this.textures, images: this.images, samplers: this.samplers };
     Object.assign(document, { extensionsUsed: ['EXT_texture_webp'], extensionsRequired: ['EXT_texture_webp'] });
-    Object.assign(document, { skins: this.skins, ...(this.animations.length ? { animations: this.animations } : {}), extras: { ...this.extras, material_clips: this.materialClips, automatic_clips: this.automatic, stats: this.stats } });
+    const { particles, ...baselineStats } = this.stats;
+    Object.assign(document, { skins: this.skins, ...(this.animations.length ? { animations: this.animations } : {}), extras: { ...this.extras, material_clips: this.materialClips, automatic_clips: this.automatic, stats: particles ? this.stats : baselineStats } });
     const json = Buffer.from(JSON.stringify(document));
     const padded = Buffer.alloc(Math.ceil(json.length / 4) * 4, 32);
     json.copy(padded);

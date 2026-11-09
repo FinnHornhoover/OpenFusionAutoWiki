@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { clipFromGltf } from 'ff-three';
 import type { GLTF } from 'three/addons/loaders/GLTFLoader.js';
 import type { LoadedModel } from './assets';
+import { textureRotation } from './materials';
 
 interface FloatCurve {
   input: number;
@@ -39,6 +40,23 @@ interface DecodedClip {
   duration: number;
 }
 
+interface LayerChannel {
+  object: THREE.Object3D;
+  property: 'position' | 'quaternion' | 'scale';
+  interpolant: THREE.Interpolant;
+  base: number[];
+}
+
+interface AnimationLayer {
+  decoded: DecodedClip;
+  channels: LayerChannel[];
+  time: number;
+  age: number;
+  speed: number;
+  fade: number;
+  ending?: { time: number; duration: number };
+}
+
 export function sample(times: ArrayLike<number>, values: ArrayLike<number>, time: number): number {
   if (times.length === 1 || time <= times[0]) return values[0];
   if (time >= times[times.length - 1]) return values[values.length - 1];
@@ -71,6 +89,10 @@ function materialBinding(material: THREE.ShaderMaterial, attribute: string): Mat
     const component = (offset[1] === 'offset' ? 2 : 0) + (offset[2] === 'y' ? 1 : 0);
     return { key: `${material.uuid}/uvST/${component}`, baseline: uniforms.uvST.value.getComponent(component), apply: (v) => uniforms.uvST.value.setComponent(component, v) };
   }
+  if (attribute === '_MainTex.rotation') {
+    const rotation = textureRotation(material);
+    if (rotation) return { key: `${material.uuid}/textureRotation`, baseline: THREE.MathUtils.radToDeg(rotation.value), apply: (v) => { rotation.value = THREE.MathUtils.degToRad(v); } };
+  }
   if (attribute === '_FatFactor' && uniforms.push) {
     const outline = material.name === 'ff:outline' ? Number(material.userData.ffOutline ?? 0) : 0;
     return { key: `${material.uuid}/push`, baseline: uniforms.push.value - outline, apply: (v) => { uniforms.push.value = outline + v; } };
@@ -82,6 +104,9 @@ export class ModelAnimation {
   readonly names: string[];
   private mixer: THREE.AnimationMixer;
   private action?: THREE.AnimationAction;
+  private fading?: { action: THREE.AnimationAction; remaining: number };
+  private layer?: AnimationLayer;
+  speed = 1;
   private materials: MaterialTrack[] = [];
   private time = 0;
   private duration = 0;
@@ -151,15 +176,61 @@ export class ModelAnimation {
     return { clip, materials, duration };
   }
 
-  async play(name: string): Promise<boolean> {
+  async prepare(names: string[]): Promise<void> {
+    await Promise.all([...new Set(names)].map((name) => this.decode(name)));
+  }
+
+  async clipDuration(name: string): Promise<number> {
+    return (await this.decode(name)).duration;
+  }
+
+  async playUpper(name: string, speed = 1, fade = 0.15): Promise<void> {
+    const decoded = await this.decode(name);
+    if (this.disposed) return;
+    this.stopUpper();
+    const channels: LayerChannel[] = [];
+    for (const track of decoded.clip.tracks) {
+      const match = /^(.*)\.(position|quaternion|scale)$/.exec(track.name);
+      const object = match && this.root.getObjectByProperty('uuid', match[1]);
+      if (!object || !match) continue;
+      const property = match[2] as LayerChannel['property'];
+      const interpolant = property === 'quaternion' ? new THREE.QuaternionLinearInterpolant(track.times, track.values, 4) : new THREE.LinearInterpolant(track.times, track.values, 3);
+      channels.push({ object, property, interpolant, base: object[property].toArray() });
+    }
+    this.layer = { decoded, channels, time: 0, age: 0, speed, fade };
+    this.applyTime(this.time);
+  }
+
+  stopUpper(fade = 0): void {
+    if (!this.layer) return;
+    if (fade > 0) { this.layer.ending = { time: 0, duration: fade }; return; }
+    this.restoreUpper();
+    this.layer = undefined;
+  }
+
+  get upperPlayback(): { time: number; duration: number } {
+    return { time: this.layer?.time ?? 0, duration: this.layer?.decoded.duration ?? 0 };
+  }
+
+  private restoreUpper(): void {
+    for (const channel of this.layer?.channels ?? []) channel.object[channel.property].fromArray(channel.base);
+  }
+
+  async play(name: string, fade = 0): Promise<boolean> {
     if (!this.names.includes(name)) throw new Error(`Animation is unavailable for this preview: ${name}`);
     const generation = ++this.generation;
     const decoded = await this.decode(name);
     if (this.disposed || generation !== this.generation) return false;
     for (const binding of this.bindings.values()) binding.apply(binding.baseline);
-    this.action?.stop();
-    if (this.action) this.mixer.uncacheClip(this.action.getClip());
-    this.action = this.mixer.clipAction(decoded.clip).reset().play();
+    if (this.fading) {
+      this.fading.action.stop(); this.mixer.uncacheClip(this.fading.action.getClip()); this.fading = undefined;
+    }
+    const previous = this.action;
+    if (previous && fade > 0 && previous.getClip() !== decoded.clip) {
+      previous.fadeOut(fade); this.fading = { action: previous, remaining: fade };
+    } else if (previous) { previous.stop(); this.mixer.uncacheClip(previous.getClip()); }
+    this.action = this.mixer.clipAction(decoded.clip).reset().setEffectiveWeight(1).play();
+    if (this.fading) this.action.fadeIn(fade);
     this.action.paused = true;
     this.materials = decoded.materials;
     this.duration = decoded.duration;
@@ -199,24 +270,46 @@ export class ModelAnimation {
     this.applyTime(time);
   }
 
-  private applyTime(time: number): void {
+  private applyTime(time: number, delta = 0, layerDelta = delta): void {
+    this.restoreUpper();
     this.time = Math.max(0, Math.min(Number.isFinite(time) ? time : 0, this.duration));
     if (this.action) this.action.time = this.time;
-    this.mixer.update(0);
+    this.mixer.update(delta);
+    if (this.fading) {
+      this.fading.remaining -= delta;
+      if (this.fading.remaining <= 0) { this.fading.action.stop(); this.mixer.uncacheClip(this.fading.action.getClip()); this.fading = undefined; }
+    }
     for (const track of this.materials) {
       const value = sample(track.times, track.values, this.time);
       for (const binding of track.bindings) binding.apply(value);
     }
+    const layer = this.layer;
+    if (layer) {
+      layer.age += layerDelta;
+      layer.time = Math.min(layer.decoded.duration, layer.time + layerDelta * layer.speed);
+      if (layer.ending) layer.ending.time += layerDelta;
+      const weight = (layer.fade > 0 ? Math.min(1, layer.age / layer.fade) : 1) * (layer.ending ? Math.max(0, 1 - layer.ending.time / layer.ending.duration) : 1);
+      const vector = new THREE.Vector3(), quaternion = new THREE.Quaternion();
+      for (const channel of layer.channels) {
+        channel.object[channel.property].toArray(channel.base);
+        const value = channel.interpolant.evaluate(layer.time);
+        if (channel.property === 'quaternion') channel.object.quaternion.slerp(quaternion.fromArray(value), weight);
+        else channel.object[channel.property].lerp(vector.fromArray(value), weight);
+      }
+      for (const track of layer.decoded.materials) for (const binding of track.bindings) binding.apply(binding.baseline + (sample(track.times, track.values, layer.time) - binding.baseline) * weight);
+      if (layer.ending && layer.ending.time >= layer.ending.duration) this.stopUpper();
+    }
   }
 
-  update(delta: number): void {
-    if (this.duration <= 0) { this.applyTime(0); return; }
-    this.applyTime((this.time + delta) % this.duration);
+  update(delta: number, loop = true, layerDelta = delta): void {
+    if (this.duration <= 0) { this.applyTime(0, delta, layerDelta); return; }
+    this.applyTime(loop ? (this.time + delta * this.speed) % this.duration : Math.min(this.time + delta * this.speed, this.duration), delta, layerDelta);
   }
 
   dispose(): void {
     this.disposed = true;
     this.generation++;
+    this.stopUpper();
     this.mixer.stopAllAction();
     this.mixer.uncacheRoot(this.root);
   }

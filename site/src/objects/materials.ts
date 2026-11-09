@@ -1,10 +1,30 @@
 import * as THREE from 'three';
 import { outlineMaterial, type Dressing } from 'ff-three/materials';
+import { canvasAlpha, shaderBlend } from './blend';
 
 interface FusionExtras {
   shader: string;
   colors?: Record<string, number[]>;
   floats?: Record<string, number>;
+}
+
+export function textureRotation(material: THREE.ShaderMaterial): THREE.IUniform<number> | undefined {
+  if (material.uniforms.ffTextureRotation) return material.uniforms.ffTextureRotation;
+  const lookup = /texture2D\(map,\s*vUv\)/g;
+  if (!lookup.test(material.fragmentShader)) return undefined;
+  const rotation = { value: 0 };
+  material.uniforms.ffTextureRotation = rotation;
+  // Exported UVs have the opposite V axis to Unity's texture coordinates.
+  material.fragmentShader = `
+    uniform float ffTextureRotation;
+    vec2 ffRotatedUv(vec2 uv) {
+      float c = cos(ffTextureRotation), s = sin(ffTextureRotation);
+      vec2 p = uv - 0.5;
+      return vec2(c * p.x + s * p.y, -s * p.x + c * p.y) + 0.5;
+    }
+  ` + material.fragmentShader.replace(lookup, 'texture2D(map, ffRotatedUv(vUv))');
+  material.needsUpdate = true;
+  return rotation;
 }
 
 // Retrobution's SkinnedFusionMatterLightDir shader stores three effects in
@@ -127,6 +147,43 @@ export function repairWrenchAlpha(dressing: Dressing): void {
   dressing.unique = async (mesh) => {
     const materials = await unique(mesh);
     repair(mesh, materials);
+    return materials;
+  };
+}
+
+export function dressEffectAlpha(dressing: Dressing, preserveAlpha = false): void {
+  const repair = (materials: THREE.Material[]): void => {
+    for (const material of materials) {
+      if (!(material instanceof THREE.ShaderMaterial) || material.fragmentShader.includes('float ffCanvasCoverage')) continue;
+      // Test variants have a separate opaque pass for their solid texels.
+      if (!material.transparent && material.uniforms.alphaTest?.value > 0) continue;
+      // ff-three knows the common normal_* blends; preserve the less common
+      // client factors too, rather than letting those fall back to opaque.
+      const blend = shaderBlend(material.name);
+      if (blend?.depthWrite !== undefined) material.depthWrite = blend.depthWrite;
+      if (blend?.side !== undefined) material.side = blend.side;
+      if (blend?.alphaPrimary !== undefined && material.uniforms.alphaPrimary) material.uniforms.alphaPrimary.value = blend.alphaPrimary;
+      if (blend && material.blending !== THREE.CustomBlending && !(material.transparent && blend.source === THREE.SrcAlphaFactor && blend.destination === THREE.OneMinusSrcAlphaFactor)) {
+        material.transparent = true;
+        material.blending = THREE.CustomBlending;
+        material.blendSrc = blend.source; material.blendDst = blend.destination;
+        material.blendSrcAlpha = THREE.OneFactor; material.blendDstAlpha = THREE.OneMinusSrcAlphaFactor;
+        material.needsUpdate = true;
+      }
+      canvasAlpha(material, preserveAlpha);
+      const alphaBlend = material.blending === THREE.NormalBlending || material.blending === THREE.CustomBlending && material.blendSrc === THREE.SrcAlphaFactor && material.blendDst === THREE.OneMinusSrcAlphaFactor;
+      if (material.transparent && material.depthWrite && alphaBlend && !material.fragmentShader.includes('// ffAlphaDepth')) {
+        material.fragmentShader = material.fragmentShader.replace(/}\s*$/, 'if (gl_FragColor.a <= 0.0) discard; // ffAlphaDepth\n}');
+        material.needsUpdate = true;
+      }
+    }
+  };
+  for (const mesh of dressing.meshes) repair(Array.isArray(mesh.material) ? mesh.material : [mesh.material]);
+
+  const unique = dressing.unique.bind(dressing);
+  dressing.unique = async (mesh) => {
+    const materials = await unique(mesh);
+    repair(materials);
     return materials;
   };
 }

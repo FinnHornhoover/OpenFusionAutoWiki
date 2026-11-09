@@ -3,7 +3,7 @@
 .outfit-view .model-preview-controls { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; max-height: none; overflow: visible; }
 .outfit-view .model-preview-animation { flex-direction: column; }
 .outfit-view .model-preview-animation select { width: 100%; }
-.outfit-view .model-preview-help, .outfit-view .model-preview-controls > [role] { grid-column: 1 / -1; }
+.outfit-view .model-preview-vehicle-trails, .outfit-view .model-preview-animation, .outfit-view .model-preview-timeline, .outfit-view .model-preview-transport, .outfit-view .model-preview-help, .outfit-view .model-preview-controls > [role] { grid-column: 1 / -1; }
 .outfit-options { margin-top: 1.5rem; }
 .outfit-toolbar { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: end; gap: 1rem; margin-bottom: 1rem; }
 .outfit-picker .outfit-options label { display: block; min-width: 0; }

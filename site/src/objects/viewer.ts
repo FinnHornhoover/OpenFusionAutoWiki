@@ -5,13 +5,18 @@ import { createEnvironment } from 'ff-three';
 import type { AnimationChoice, ModelPart, PreviewVariant } from '../../../shared/objects';
 import { animationChoices, preferredAnimation } from '../../../shared/animations.js';
 import { compose, disposeTexture, disposeTree, dressModel, loadModel, type LoadedModel } from './assets';
+import { vehicleEffects, type VehicleEffects } from './vehicle-effects';
+import { weaponEffects, type WeaponPlayback } from './weapon-effects';
 import { ModelAnimation } from './animation';
 
 export interface Viewer {
   animations: AnimationChoice[];
   hasMotion: boolean;
   selected: string;
+  hasVehicleTrails: boolean;
+  trails(show: boolean): void;
   play(name: string): Promise<void>;
+  fire(index: number): Promise<void>;
   pause(paused: boolean): void;
   seek(time: number): void;
   reset(): void;
@@ -50,6 +55,12 @@ export async function mountViewer(container: HTMLElement, variant: PreviewVarian
   const models: LoadedModel[] = [];
   const textures = new Set<THREE.Texture>();
   const animations: ModelAnimation[] = [];
+  let vehicle: VehicleEffects | undefined;
+  let weapon: WeaponPlayback | undefined;
+  let firePromise: Promise<void> | undefined;
+  let fireOnce = false;
+  let attackWindup = 0;
+  let fireWait: { done(): boolean; resolve(): void; reject(error: unknown): void } | undefined;
   let disposed = false;
   let paused = options.paused ?? false;
   let lastReported = 0;
@@ -65,6 +76,7 @@ export async function mountViewer(container: HTMLElement, variant: PreviewVarian
   const dispose = (): void => {
     if (!disposed) {
       disposed = true;
+      fireWait?.reject(new DOMException('Aborted', 'AbortError')); fireWait = undefined;
       cancelAnimationFrame(frame);
       resize?.disconnect();
       intersection?.disconnect();
@@ -77,6 +89,8 @@ export async function mountViewer(container: HTMLElement, variant: PreviewVarian
     }
     // A decode already in progress may finish after cancellation. Revisit
     // resources on that path so late materials/textures are released too.
+    vehicle?.dispose();
+    weapon?.dispose();
     animations.forEach((animation) => animation.dispose());
     models.forEach((model) => { model.dressing?.dispose(); disposeTree(model.gltf.scene); });
     for (const texture of textures) disposeTexture(texture);
@@ -124,21 +138,61 @@ export async function mountViewer(container: HTMLElement, variant: PreviewVarian
     }
     const context = variant.animationContext ?? { kind: variant.gender ? 'avatar' : 'creature' };
     const choices = variant.animations ?? animationChoices(Object.keys(actor.data.extras?.clips ?? {}).map((name) => ({ name, duration: 1 })), context);
-    const animation = new ModelAnimation(actor, loadClip, actor.gltf.scene, choices.map((choice) => choice.name));
+    const animation = new ModelAnimation(actor, loadClip, actor.gltf.scene, [...new Set([...choices.map((choice) => choice.name), ...Object.values(variant.weaponAttack ?? {}).filter((name): name is string => !!name)])]);
     animations.push(animation);
-    const selected = preferredAnimation(choices, context, variant.idle);
+    let selected = preferredAnimation(choices, context, variant.idle);
+    const vehicleMovement = (): number => {
+      if (!context.vehicle || choices.find((choice) => choice.name === selected)?.group !== 'Movement') return 0;
+      return /runback|swimback/.test(selected) ? -1 : 1;
+    };
     if (selected) await animation.play(selected);
     if (variant.height !== undefined) await animation.proportions('height', variant.height);
     if (variant.shape !== undefined) await animation.proportions('shape', variant.shape);
     animation.update(0);
     for (const vehicle of vehicles) await attach(vehicle.model, vehicle.part);
     if (disposed || signal.aborted) throw new DOMException('Aborted', 'AbortError');
-    const hasMotion = animations.some((item) => item.playback.duration > 0) || models.some((model) =>
+    const hasMotion = !!variant.weaponShots?.length || animations.some((item) => item.playback.duration > 0) || models.some((model) =>
       model.dressing?.meshes.some((mesh) => ['fusion', 'water'].includes(mesh.userData.ffInfo?.family)));
 
     scene.updateMatrixWorld(true);
     const bounds = new THREE.Box3().setFromObject(actor.gltf.scene);
     if (bounds.isEmpty()) throw new Error('No visible geometry available');
+    const actorHeight = bounds.getSize(new THREE.Vector3()).y;
+    const viewDistance = actorHeight * 1.3;
+    if (variant.weaponShots?.length) {
+      const destination = actor.gltf.scene.getWorldPosition(new THREE.Vector3()).add(new THREE.Vector3(0, actorHeight * 0.5, viewDistance));
+      bounds.expandByPoint(destination);
+      const equipped = models.find((model) => model.url === new URL(`${baseUrl}/${variant.parts?.find((part) => part.slot === 'weapon')?.model}`, location.href).href);
+      let fallback: THREE.Object3D | undefined;
+      const findMount = (name: string): THREE.Object3D | undefined => {
+        for (const model of [...models].reverse()) {
+          const index = model.data.nodes.findIndex((node) => node.name?.toLowerCase() === name.toLowerCase());
+          const node = model.nodes.get(index);
+          if (!node) continue;
+          let parent: THREE.Object3D | null = node;
+          while (parent && parent !== actor.gltf.scene) parent = parent.parent;
+          if (parent) return node;
+        }
+        if (!equipped || !/^gtag01$/i.test(name)) return undefined;
+        if (fallback) return fallback;
+        const root = equipped.nodes.get(0);
+        if (!root) return undefined;
+        root.updateWorldMatrix(true, true);
+        const inverse = root.matrixWorld.clone().invert(), box = new THREE.Box3(), point = new THREE.Vector3();
+        for (const mesh of equipped.dressing?.meshes ?? []) {
+          mesh.updateWorldMatrix(true, false);
+          const transform = inverse.clone().multiply(mesh.matrixWorld), positions = mesh.geometry.getAttribute('position');
+          for (let i = 0; i < positions.count; i++) box.expandByPoint(point.fromBufferAttribute(positions, i).applyMatrix4(transform));
+        }
+        if (box.isEmpty()) return undefined;
+        const forward = new THREE.Vector3(0, 0, 1).transformDirection(actor.gltf.scene.matrixWorld).transformDirection(inverse);
+        const tip = new THREE.Ray(box.getCenter(new THREE.Vector3()), forward).intersectBox(box, new THREE.Vector3());
+        if (!tip) return undefined;
+        fallback = new THREE.Object3D(); fallback.name = 'preview-muzzle'; fallback.position.copy(tip); root.add(fallback);
+        return fallback;
+      };
+      weapon = weaponEffects(scene, actor.gltf.scene, variant.weaponShots, findMount, baseUrl, env, camera, signal, equipped?.nodes.get(0));
+    }
     const center = bounds.getCenter(new THREE.Vector3());
     const size = bounds.getSize(new THREE.Vector3());
     const radius = Math.max(size.x, size.y, size.z, 0.1);
@@ -154,7 +208,7 @@ export async function mountViewer(container: HTMLElement, variant: PreviewVarian
     const reset = (): void => {
       lastFit = fitDistance();
       controls.target.copy(center);
-      camera.position.set(center.x, center.y + radius * 0.08, center.z + lastFit);
+      camera.position.set(center.x + (weapon || variant.vehicleEffects?.length ? lastFit * 0.55 : 0), center.y + radius * 0.08, center.z + lastFit);
       camera.near = radius / 1000;
       camera.far = radius * 100;
       camera.updateProjectionMatrix();
@@ -173,13 +227,93 @@ export async function mountViewer(container: HTMLElement, variant: PreviewVarian
       controls.update();
       renderer.render(scene, camera);
     }
+    if (variant.vehicleEffects?.length) {
+      vehicle = await vehicleEffects(vehicles.map((entry) => entry.model), variant.vehicleEffects, actor.gltf.scene, actorHeight * 3, baseUrl, env, camera, signal);
+      if (disposed || signal.aborted) { vehicle.dispose(); throw new DOMException('Aborted', 'AbortError'); }
+    }
+    const waitForFire = (done: () => boolean): Promise<void> => {
+      if (disposed) return Promise.reject(new DOMException('Aborted', 'AbortError'));
+      if (done()) return Promise.resolve();
+      return new Promise((resolve, reject) => { fireWait = { done, resolve, reject }; });
+    };
+    const assertLive = (): void => { if (disposed) throw new DOMException('Aborted', 'AbortError'); };
+    const fire = async (index: number): Promise<void> => {
+      const shot = variant.weaponShots?.[index];
+      if (!weapon || !shot) return;
+      const saved = { name: selected, time: animation.playback.time, paused };
+      const attachedTimes = animations.map((item) => item.playback.time);
+      const attack = variant.weaponAttack ?? {};
+      const moving = choices.find((choice) => choice.name === selected)?.group === 'Movement';
+      const full = /stand|ready/.test(selected) || !attack.upper ? attack.full : undefined;
+      paused = true; report();
+
+      try {
+        await animation.prepare([full, attack.upper, attack.ready, saved.name].filter((name): name is string => !!name));
+        assertLive();
+        await weapon.fire(index);
+        assertLive();
+        if (full) {
+          await animation.play(full, 0.15);
+          animation.speed = shot.cooldown > 0 && shot.cooldown < animation.playback.duration ? shot.cooldown / animation.playback.duration : 1;
+        }
+        if (attack.upper) {
+          const duration = await animation.clipDuration(attack.upper);
+          const speed = shot.cooldown > 0 && shot.cooldown < duration ? shot.cooldown / duration * 0.9 : 1;
+          await animation.playUpper(attack.upper, speed);
+        }
+        assertLive();
+        fireOnce = !!full;
+        // Longer pistol launch delays belong before recoil, not inside it.
+        attackWindup = context.weapon === 'pistol' && shot.flight.kind === 'ordinary' ? Math.max(0, shot.flight.delay - 0.1) : 0;
+        paused = false; previous = 0; invalidate();
+        await waitForFire(() => (!full || animation.playback.time >= animation.playback.duration) && animation.upperPlayback.time >= animation.upperPlayback.duration);
+        assertLive();
+
+        paused = true;
+        animation.stopUpper(0.15);
+        animation.speed = 1;
+        if (!moving && attack.ready) await animation.play(attack.ready, 0.15);
+        assertLive();
+        fireOnce = false;
+        paused = false; previous = 0; invalidate();
+        await waitForFire(() => !weapon!.active);
+      } finally {
+        fireOnce = false;
+        attackWindup = 0;
+        animation.speed = 1;
+        animation.stopUpper();
+        if (!disposed) {
+          weapon.clear(); paused = true;
+          try {
+            if (saved.name) await animation.play(saved.name);
+            assertLive();
+            animation.seek(saved.time);
+            animations.forEach((item, i) => { if (item !== animation) item.seek(attachedTimes[i]); });
+          } finally {
+            if (!disposed) { paused = saved.paused; previous = 0; report(); invalidate(); }
+          }
+        }
+      }
+    };
     const report = (): void => options.onPlayback?.({ ...animation.playback, paused });
     const seek = (time: number): void => {
+      weapon?.clear();
       animation.seek(time);
       for (const item of animations) if (item !== animation) item.seek(item.playback.duration > 0 ? time % item.playback.duration : 0);
       env.time.value = animation.playback.time;
       previous = 0;
       report();
+    };
+    const advance = (delta: number): void => {
+      const attackDelta = delta - Math.min(delta, attackWindup);
+      attackWindup = Math.max(0, attackWindup - delta);
+      for (const item of animations) {
+        if (item === animation) item.update(fireOnce ? attackDelta : delta, !fireOnce, attackDelta);
+        else item.update(delta);
+      }
+      env.time.value += delta;
+      vehicle?.update(delta, vehicleMovement());
+      weapon?.update(delta);
     };
     const draw = (time: number): void => {
       if (disposed) return;
@@ -187,9 +321,16 @@ export async function mountViewer(container: HTMLElement, variant: PreviewVarian
       const delta = previous ? Math.min((time - previous) / 1000, 0.1) : 0;
       previous = time;
       if (!paused) {
-        animations.forEach((item) => item.update(delta));
-        env.time.value += delta;
-      }
+        // Split launch and hit events so animation sampling does not depend on frame rate.
+        let remaining = delta;
+        for (let events = 0; events < 4; events++) {
+          const event = weapon?.eventIn;
+          if (event === undefined || event > remaining) break;
+          advance(event); remaining = Math.max(0, remaining - event);
+        }
+        advance(remaining);
+        if (fireWait?.done()) { const waiting = fireWait; fireWait = undefined; waiting.resolve(); }
+      } else { vehicle?.update(0, vehicleMovement()); weapon?.update(0); }
       renderer.render(scene, camera);
       if (time - lastReported >= 100 || paused) { report(); lastReported = time; }
       if (visible && !document.hidden && !paused && hasMotion) frame = requestAnimationFrame(draw);
@@ -217,10 +358,20 @@ export async function mountViewer(container: HTMLElement, variant: PreviewVarian
     invalidate();
     report();
     return {
-      animations: choices, selected, hasMotion,
-      play: (name) => animation.play(name).then((changed) => { if (changed) { seek(0); invalidate(); } }),
-      seek: (time) => { seek(time); invalidate(); },
+      hasVehicleTrails: !!vehicle?.count, trails: (show) => { vehicle?.visible(show); invalidate(); },
+      animations: choices, get selected() { return selected; }, hasMotion,
+      fire: (index) => {
+        if (!firePromise) firePromise = fire(index).finally(() => { firePromise = undefined; });
+        return firePromise;
+      },
+      play: async (name) => {
+        if (firePromise) return;
+        const changed = await animation.play(name);
+        if (changed) { selected = name; seek(0); invalidate(); }
+      },
+      seek: (time) => { if (!firePromise) { seek(time); invalidate(); } },
       pause: (value) => {
+        if (firePromise) return;
         paused = value;
         previous = 0;
         report();

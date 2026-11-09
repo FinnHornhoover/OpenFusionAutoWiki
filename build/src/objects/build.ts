@@ -14,6 +14,7 @@ import { AssetPool } from './pool.js';
 import { Recipes, type Xdt } from './recipes.js';
 import { animationChoices } from '../../../shared/animations.js';
 import { composeOutfit } from '../../../shared/outfits.js';
+import { WeaponEffects } from './weapon-effects.js';
 import { AreaCompiler } from './areas.js';
 
 export const OBJECTS_CACHE = join(CACHE_DIR, 'objects');
@@ -90,6 +91,7 @@ export async function buildPreviews(release: Release, downloaded: DownloadedAsse
 
     const pack = new Pack(location);
     const areaCompiler = new AreaCompiler(pack, pool);
+    const weaponEffects = new WeaponEffects(pack, pool);
     const revision = Number(/_r(\d+)/.exec(canonical?.asset.name ?? builds[0].asset.name)?.[1]);
     if (pack.manifest.build !== source || (!local && pack.manifest.revision !== revision)) {
       throw new Error(`${source}: ObjectPacks build/revision does not match FFInfoPacks`);
@@ -103,6 +105,26 @@ export async function buildPreviews(release: Release, downloaded: DownloadedAsse
       const xdt = JSON.parse(xdtEntry.getData().toString('utf8')) as Xdt;
       const recipes = new Recipes(pack, xdt);
       const entities = recipes.entities();
+      const weapons = new Map((xdt.m_pWeaponItemTable?.m_pItemData ?? []).map((row) => [Number(row.m_iItemNumber), row]));
+      for (const item of entities.items) {
+        if (!String(item.id).startsWith('0-')) continue;
+        const row = weapons.get(Number(String(item.id).slice(2)));
+        if (!row) continue;
+        const shots = await weaponEffects.shots(row);
+        if (shots.length) for (const variant of item.variants) variant.weaponShots = shots;
+      }
+      const vehicles = new Map((xdt.m_pVehicleItemTable?.m_pItemData ?? []).map((row) => [Number(row.m_iItemNumber), row]));
+      for (const item of entities.items) {
+        if (!String(item.id).startsWith('10-')) continue;
+        const row = vehicles.get(Number(String(item.id).slice(3)));
+        const name = row && xdt.m_pVehicleItemTable.m_pItemMeshData[Number(row.m_iMesh)]?.m_pstrMMeshModelString;
+        if (typeof name !== 'string') continue;
+        for (const variant of item.variants) {
+          const part = variant.parts?.find((part) => part.slot === 'vehicle');
+          if (part) variant.vehicleEffects = await weaponEffects.vehicle(name.toLowerCase(), part.model);
+        }
+      }
+      for (const gap of weaponEffects.missing) recipes.missing.add(gap);
       const itemIndex = JSON.parse(readFileSync(join(DATA_OUT, slug, 'index', 'items.json'), 'utf8')) as { id: string; name: string; icon: string; contentLevel: number; rarity: string; gender: string; type: string; displayType?: string; obtainable: boolean }[];
       const itemInfo = new Map(itemIndex.map((item) => [String(item.id), item]));
       entities.items = entities.items.filter((item) => itemInfo.has(String(item.id)));
@@ -113,12 +135,21 @@ export async function buildPreviews(release: Release, downloaded: DownloadedAsse
       mkdirSync(directory, { recursive: true });
       const types: PreviewType[] = [];
       const stage = (variant: PreviewVariant): void => {
+        const shaderNames = Object.assign({}, ...[variant.model, ...variant.parts ?? []].map((part) => pack.shaderNames(part.model))) as Record<string, string>;
+        if (Object.keys(shaderNames).length) variant.shaderNames = shaderNames;
         const context = variant.animationContext ?? { kind: variant.gender ? 'avatar' : 'creature' };
         variant.animations = animationChoices(pack.animationClips(variant.model.model), context);
+        if (variant.weaponShots?.length) {
+          const names = new Set(pack.animationClips(variant.model.model).map((clip) => clip.name));
+          const prefix = ['stick', 'pistol', 'rifle', 'rocket', 'bomb'].includes(context.weapon ?? '') ? context.weapon : '';
+          const find = (suffix: string): string | undefined => [`${prefix}${suffix}`, suffix].find((name) => names.has(name));
+          variant.weaponAttack = { full: find('attack1'), upper: find('attack1upper'), ready: find('ready') };
+        }
         for (const part of [variant.model, ...variant.parts ?? []]) {
           pool.add(pack, part.model);
           if (part === variant.model) {
             const names = variant.animations.map((clip) => clip.name);
+            names.push(...Object.values(variant.weaponAttack ?? {}).filter((name): name is string => !!name));
             if (variant.height !== undefined) names.push('height', 'height_Add');
             if (variant.shape !== undefined) names.push('shape', 'shape_Add');
             pool.stageAnimations(pack, part.model, names);
@@ -153,7 +184,7 @@ export async function buildPreviews(release: Release, downloaded: DownloadedAsse
       }
       const areaCount = await areaCompiler.build(slug);
       buildPopulation(slug, zip, xdt, recipes, pack, stage);
-      const meta: PreviewMeta = { baseUrl: `${baseUrl}/v4`, types, release: release.tagName, format: 4, areas: areaCount > 0 };
+      const meta: PreviewMeta = { baseUrl: `${baseUrl}/v4`, types, release: release.tagName, format: pack.manifest.format_version, areas: areaCount > 0 };
       writeFileSync(join(directory, 'meta.json'), JSON.stringify(meta));
       writeFileSync(join(directory, 'coverage.json'), JSON.stringify({ counts: Object.fromEntries(types.map((type) => [type, entities[type].length])), unresolved: [...recipes.missing].sort() }));
       completed.add(slug);

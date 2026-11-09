@@ -2,8 +2,9 @@ import * as THREE from 'three';
 import type { GLTF, GLTFParser } from 'three/addons/loaders/GLTFLoader.js';
 import { loadGlb, setUpScene, type Files, type SceneSetup } from 'ff-three/world';
 import { ModelAnimation } from './animation';
+import { sceneParticles, type ParticleBudget } from './particles';
 import { type LoadedModel, type ModelData, disposeTree } from './assets';
-import { dressFusionMatter, repairWrenchAlpha } from './materials';
+import { dressEffectAlpha, dressFusionMatter, repairWrenchAlpha } from './materials';
 
 interface Automatic { name: string; duration: number; animation?: number; material_clip?: number }
 interface Curve { node?: number; renderer_nodes?: number[] }
@@ -12,14 +13,14 @@ interface SceneData extends ModelData {
   extras?: ModelData['extras'] & {
     automatic_clips?: Automatic[];
     material_clips?: { float_curves?: Record<string, Curve> }[];
-    effects?: { node: number; model: string; animations: string[] }[];
+    effects?: { node: number; model: string; animations: string[]; lifetime?: number }[];
     stats?: { skins: number; clips: number; grass: number; platforms: number; effects: number };
   };
 }
 export interface SceneMotion {
   moving: boolean;
   effects: THREE.Object3D[];
-  update(delta: number): void;
+  update(delta: number, drift?: THREE.Vector3): void;
   dispose(): void;
 }
 function loadedModel(gltf: GLTF, url: string): LoadedModel {
@@ -28,12 +29,40 @@ function loadedModel(gltf: GLTF, url: string): LoadedModel {
   return { gltf, url, nodes, data: gltf.parser.json as ModelData };
 }
 
-export async function sceneMotion(gltf: GLTF, setup: SceneSetup, url: string, baseUrl: string, env: Record<string, THREE.IUniform>, files: Files, signal: AbortSignal): Promise<SceneMotion> {
+export async function sceneMotion(gltf: GLTF, setup: SceneSetup, url: string, baseUrl: string, env: Record<string, THREE.IUniform>, files: Files, signal: AbortSignal, camera?: THREE.Camera, particleBudget: ParticleBudget = { remaining: 12000 }, preserveParticleAlpha = true): Promise<SceneMotion> {
   const model = loadedModel(gltf, url), data = gltf.parser.json as SceneData;
   const players: ModelAnimation[] = [], releases: (() => void)[] = [], effects: THREE.Object3D[] = [];
   const platforms = setup.animations;
-  const dispose = (): void => { players.forEach((p) => p.dispose()); releases.splice(0).forEach((release) => release()); };
+  const lifetimes: { root: THREE.Object3D; duration: number }[] = [];
+  let time = 0;
+  const billboards: { object: THREE.Object3D; up: boolean }[] = [];
+  const collectBillboards = (source: LoadedModel): void => {
+    for (const [index, node] of source.data.nodes.entries()) {
+      const mode = /_Billboard(Camera|Up)$/i.exec(node.name ?? '');
+      const object = source.nodes.get(index);
+      if (mode && object) billboards.push({ object, up: mode[1].toLowerCase() === 'up' });
+    }
+  };
+  collectBillboards(model);
+  const facing = new THREE.Quaternion(), parentRotation = new THREE.Quaternion(), forward = new THREE.Vector3(), matrix = new THREE.Matrix4();
+  const faceCamera = (): void => {
+    if (!camera) return;
+    for (const { object, up } of billboards) {
+      camera.getWorldQuaternion(facing);
+      if (up) {
+        camera.getWorldDirection(forward); forward.y = 0;
+        if (!forward.lengthSq()) continue;
+        facing.setFromRotationMatrix(matrix.lookAt(new THREE.Vector3(), forward, new THREE.Vector3(0, 1, 0)));
+      }
+      object.parent?.getWorldQuaternion(parentRotation);
+      object.quaternion.copy(object.parent ? parentRotation.invert().multiply(facing) : facing);
+      object.updateWorldMatrix(false, true);
+    }
+  };
+  let particles: Awaited<ReturnType<typeof sceneParticles>> | undefined;
+  const dispose = (): void => { particles?.dispose(); players.forEach((p) => p.dispose()); releases.splice(0).forEach((release) => release()); };
   try {
+    dressEffectAlpha(setup.dressing, preserveParticleAlpha);
     const dressed = new Set(setup.dressing.meshes);
     for (const info of data.extras?.automatic_clips ?? []) {
       signal.throwIfAborted();
@@ -67,23 +96,30 @@ export async function sceneMotion(gltf: GLTF, setup: SceneSetup, url: string, ba
       catch (error) { disposeTree(effect.gltf.scene); throw error; }
       setup.adopt(child);
       const item = loadedModel(effect.gltf, href);
+      collectBillboards(item);
       const root = item.nodes.get(0);
       if (root) { root.position.set(0, 0, 0); root.quaternion.identity(); root.scale.set(1, 1, 1); }
       parent.add(child.root);
       effects.push(child.root);
+      if (entry.lifetime !== undefined) lifetimes.push({ root: child.root, duration: entry.lifetime });
       child.root.traverse((object) => { object.userData.ffEffect = true; });
       dressFusionMatter(child.dressing, env); repairWrenchAlpha(child.dressing);
+      dressEffectAlpha(child.dressing, preserveParticleAlpha);
+      // Animated layers may share a source material but have different UV curves.
+      if (entry.animations.length) for (const mesh of child.dressing.meshes) await child.dressing.unique(mesh);
       for (const name of entry.animations) {
         const player = new ModelAnimation(item, async (file) => { const clip = await loadGlb(file, files); releases.push(clip.release); return clip.gltf; }, child.root, [name]);
         players.push(player);
         await player.play(name);
       }
     }
+    particles = await sceneParticles(gltf, signal, particleBudget, preserveParticleAlpha);
+    effects.push(...particles.roots);
     signal.throwIfAborted();
     return {
       effects,
-      moving: (platforms?.platforms ?? 0) > 0 || players.some((p) => p.playback.duration > 0),
-      update(delta) { for (const player of players) if (player.playback.duration > 0) player.update(delta); platforms?.update(delta); },
+      moving: particles.roots.length > 0 || (platforms?.platforms ?? 0) > 0 || players.some((p) => p.playback.duration > 0),
+      update(delta, drift) { time += delta; for (const player of players) if (player.playback.duration > 0) player.update(delta); platforms?.update(delta); for (const item of lifetimes) item.root.visible = time < item.duration; faceCamera(); particles?.update(delta, camera, drift); },
       dispose,
     };
   } catch (error) { dispose(); throw error; }

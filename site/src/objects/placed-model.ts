@@ -43,10 +43,10 @@ export async function placedModel(variant: PreviewVariant, baseUrl: string, env:
   try {
     const actor = await load(variant.model.model);
     actor.gltf.scene.scale.setScalar(variant.scale ?? 1);
-    await dressModel(actor, variant.model, variant, baseUrl, env, textures);
+    await dressModel(actor, variant.model, variant, baseUrl, env, textures, true);
     for (const part of variant.parts ?? []) {
       const item = await load(part.model);
-      await dressModel(item, part, variant, baseUrl, env, textures);
+      await dressModel(item, part, variant, baseUrl, env, textures, true);
       compose(actor, item, part, variant);
       if (part.mode === 'attached' && part.autoAnimation) {
         const player = new ModelAnimation(item, loadClip, actor.gltf.scene, [part.autoAnimation]);

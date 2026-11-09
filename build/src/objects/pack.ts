@@ -30,6 +30,7 @@ interface Texture {
 }
 
 interface PrefabDocument {
+  materials?: { extras?: { shader?: string; shader_object?: number } }[];
   images?: { name?: string; uri?: string }[];
   extras?: { clips?: Record<string, string> };
   nodes?: { extras?: { animation?: { enabled: boolean; play_automatically: boolean; default: number | null; clips: { file?: string }[] } } }[];
@@ -67,6 +68,7 @@ export class Pack {
   private textureSources = new Map<number, string>();
   private rigCache?: Record<string, Rig>;
   private resourceCache?: Resources;
+  private assetSources: string[] = [];
   private prefabIndex?: Record<string, Prefab>;
   readonly manifest: { format_version: number; build: string; revision: number };
 
@@ -79,7 +81,7 @@ export class Pack {
     }
 
     this.manifest = this.json('manifest.json');
-    if (this.manifest.format_version !== 4) throw new Error(`Expected ObjectPacks format 4, got ${this.manifest.format_version}`);
+    if (![4, 5, 6].includes(this.manifest.format_version)) throw new Error(`Expected ObjectPacks format 4, 5 or 6, got ${this.manifest.format_version}`);
     for (const graph of this.json<Graph[]>('metadata/graphs.json')) this.graphs.set(graph.file, graph);
     const categories = this.json<Record<string, string>>('models/index.json');
     for (const category of Object.keys(categories)) {
@@ -98,6 +100,7 @@ export class Pack {
     const fields = decodeMulti(sources.subarray(1));
     if (fields.next().value !== 'assets') throw new Error('Missing source asset list');
     const assets = fields.next().value as { source: string }[];
+    this.assetSources = assets.map((asset) => asset.source);
     const resources = this.resources;
     const indexed = new Set<number>();
     for (const texture of this.json<Texture[]>('textures/index.json')) {
@@ -116,6 +119,10 @@ export class Pack {
       const key = textureKey(data.name);
       this.embeddedTextures.set(key, [...this.embeddedTextures.get(key) ?? [], texture]);
     }
+  }
+
+  assetSource(asset: number): string | undefined {
+    return this.assetSources[asset];
   }
 
   read(relative: string): Buffer {
@@ -153,6 +160,17 @@ export class Pack {
 
   automaticAnimation(file: string): string | null {
     return this.automaticAnimations(file)[0] ?? null;
+  }
+
+  shaderNames(file: string): Record<string, string> {
+    const names: Record<string, string> = {};
+    for (const material of this.prefabDocument(file).materials ?? []) {
+      const extras = material.extras;
+      if (extras?.shader_object === undefined || !/^Shader #/.test(extras.shader ?? '')) continue;
+      const declared = this.resources[extras.shader_object]?.[2].declared_name;
+      if (typeof declared === 'string' && declared) names[extras.shader_object] = declared;
+    }
+    return names;
   }
 
   automaticAnimations(file: string): string[] {

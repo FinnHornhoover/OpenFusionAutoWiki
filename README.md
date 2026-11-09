@@ -50,12 +50,21 @@ The viewer opens in a modal (full viewport on small screens), with grouped
 animations, seeking and play/pause controls. Playback loops immediately at 1×.
 Animation choices follow the equipped weapon or vehicle;
 partial layers and body-shape controls stay internal.
+Format 6 adds a Fire weapon control with muzzle flashes, projectiles and impacts,
+plus Standard/Battery choices. Ordinary bullets, rockets and grenades follow their
+client timing and trajectories, with a virtual target and floor for previews.
+Firing uses internal attack layers, retains movement, and restores the selected
+animation and playback position. Retrobution throws the equipped weapon model.
 Vehicle pages show mounted boy/girl previews with board or scooter rider motions;
 vehicle models retain their own default animations and texture variants.
+Vehicle trails use the client attachment points during movement animations,
+with forward/backward travel simulated in place. Idle poses have no trails.
 Only selected clips and required composition controls enter the shared asset pool.
 Area pages preview layered terrain, grass, animated scenery, moving platforms and
-mesh effects, with orbit, pan and overhead views. Particle effects need additional
-ObjectPacks data. NPCs, monsters and eggs use InfoPacks spawn positions and facing.
+mesh effects, with orbit, pan and overhead views. Format 5 packs add bounded
+scripted and native particles, ribbon trails, source blend modes, curves and atlas
+frames. Particle and draw-call budgets limit browser work. Both pack versions
+share the existing asset pool. NPCs, monsters and eggs use InfoPacks spawn positions and facing.
 Overview markers focus nearby idle models on tap; category toggles and bounded
 loading keep mobile views usable. Patrols and combat are not simulated.
 Tiles and terrain buffers share the R2 pool; terrain shader textures use lossless
@@ -77,7 +86,7 @@ revision. Fixed builds reuse the non-fixed assets with their own table data.
 It uploads new assets before deploying Pages, retains assets for older deployments,
 and skips objects already present. `npm run upload:objects` runs publication alone.
 
-For local iteration after generating wiki data, with extracted Format 4 packs:
+For local iteration after generating wiki data, with extracted Format 4–6 packs:
 
 ```bash
 FFWIKI_RELEASE=release-41 \

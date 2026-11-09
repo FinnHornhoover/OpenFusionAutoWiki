@@ -49,13 +49,17 @@ export default function ModelPreview({ build, type, id, name }: { build?: string
           </div>
           <div className="model-preview-body">
             <Suspense fallback={<p role="status">Loading viewer…</p>}>
-              <ModelCanvas key={`${key}/${variant}`} variant={variants[variant]} baseUrl={loaded.meta.baseUrl} />
+              <ModelCanvas key={`${key}/${variant}`} variant={variants[variant]} baseUrl={loaded.meta.baseUrl} options={<>
+                {variants.length > 1 && <label>Character
+                  <select className="styled-select" aria-label="Character" value={variant} onChange={(event) => setVariant(Number(event.target.value))}>
+                    {variants.map((v, i) => <option key={i} value={i}>{v.label}</option>)}
+                  </select>
+                </label>}
+                {outfit && <Link className="model-preview-action" to={outfitUrl}>Open in Outfit Picker</Link>}
+              </>} />
             </Suspense>
           </div>
-          {(variants.length > 1 || outfit) && <div className="model-preview-footer">
-            {variants.length > 1 && <label>Character <select className="styled-select" aria-label="Character" value={variant} onChange={(event) => setVariant(Number(event.target.value))}>{variants.map((v, i) => <option key={i} value={i}>{v.label}</option>)}</select></label>}
-            {outfit && <Link className="model-preview-action" to={outfitUrl}>Open in Outfit Picker</Link>}
-          </div>}
+
         </ModelDialog>
       )}
     </div>
