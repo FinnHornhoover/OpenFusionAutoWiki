@@ -16,6 +16,7 @@ import { animationChoices } from '../../../shared/animations.js';
 import { composeOutfit } from '../../../shared/outfits.js';
 import { WeaponEffects } from './weapon-effects.js';
 import { AreaCompiler } from './areas.js';
+import { sharePreviews } from './share.js';
 
 export const OBJECTS_CACHE = join(CACHE_DIR, 'objects');
 export const POOL_DIR = join(OBJECTS_CACHE, 'pool');
@@ -195,6 +196,7 @@ export async function buildPreviews(release: Release, downloaded: DownloadedAsse
     if (!local) rmSync(location);
   }
 
+  sharePreviews(DATA_OUT, completed);
   pool.save(UPLOAD_INDEX);
   const bytes = [...pool.entries.values()].reduce((sum, row) => sum + row.bytes, 0);
   log.done(`3D assets: ${pool.entries.size.toLocaleString()} unique files, ${(bytes / 1e9).toFixed(3)} GB, ${completed.size} builds`);

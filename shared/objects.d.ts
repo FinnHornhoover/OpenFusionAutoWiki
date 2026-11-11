@@ -96,6 +96,7 @@ export interface OutfitItem {
 
 export interface PreviewMeta {
   baseUrl: string;
+  shared?: Record<string, string>;
   types: PreviewType[];
   release: string;
   format: number;

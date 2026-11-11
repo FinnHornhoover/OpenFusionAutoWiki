@@ -1,7 +1,7 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
-import type { Gender, ModelPreview, OutfitCatalog, OutfitItem, PartSlot, PreviewVariant } from '../../../shared/objects';
+import type { Gender, ModelPreview, OutfitCatalog, OutfitItem, PartSlot, PreviewMeta, PreviewVariant } from '../../../shared/objects';
 import { composeOutfit } from '../../../shared/outfits.js';
-import { previewJson } from '../objects/data';
+import { previewJson, previewUrl } from '../objects/data';
 import { chunkFor } from '../data/useEntity';
 import ItemSearch from './ItemSearch';
 import Icon from './Icon';
@@ -12,7 +12,7 @@ const CLOTHING = new Set<PartSlot>(['shirt', 'pants', 'shoes']);
 const describe = (item: OutfitItem): string => `Lv${item.level} · ${item.rarity}`;
 const searchText = (item: OutfitItem): string => `${describe(item)} · ${item.type} · ${item.gender}${item.obtainable ? '' : ' · Unobtainable'}`;
 
-export default function OutfitPreview({ initial, variant, build, baseUrl, catalog, onGenderChange }: { initial: string[]; variant: PreviewVariant; build: string; baseUrl: string; catalog: OutfitCatalog; onGenderChange: (gender: Gender) => void }) {
+export default function OutfitPreview({ initial, variant, build, meta, catalog, onGenderChange }: { initial: string[]; variant: PreviewVariant; build: string; meta: PreviewMeta; catalog: OutfitCatalog; onGenderChange: (gender: Gender) => void }) {
   const [selected, setSelected] = useState(initial);
   const [preview, setPreview] = useState(variant);
   const [loading, setLoading] = useState(false);
@@ -42,7 +42,7 @@ export default function OutfitPreview({ initial, variant, build, baseUrl, catalo
     setError('');
     void (async () => {
       const items = await Promise.all(equipped.map(async (item) => {
-        const rows = await previewJson<Record<string, ModelPreview>>(`/data/${build}/previews/items/${chunkFor('items', item.id)}.json`);
+        const rows = await previewJson<Record<string, ModelPreview>>(previewUrl(build, `items/${chunkFor('items', item.id)}.json`, meta));
         const choice = rows?.[item.id]?.variants.find((v) => v.gender === variant.gender);
         if (!choice) throw new Error(`Could not load ${item.name}.`);
         return choice;
@@ -53,7 +53,7 @@ export default function OutfitPreview({ initial, variant, build, baseUrl, catalo
       if (alive) setError(reason instanceof Error ? reason.message : 'Could not load outfit.');
     }).finally(() => { if (alive) setLoading(false); });
     return () => { alive = false; };
-  }, [catalog, equipped, build, variant, selected, attempt]);
+  }, [catalog, equipped, build, meta, variant, selected, attempt]);
 
   const choose = (slot: PartSlot, id: string): void => {
     setSelected((previous) => [...previous.filter((key) => catalog.items.find((item) => item.id === key)?.slot !== slot), ...(id ? [id] : [])]);
@@ -91,7 +91,7 @@ export default function OutfitPreview({ initial, variant, build, baseUrl, catalo
 
   return <div className="model-preview outfit-picker">
     <div className="outfit-view"><Suspense fallback={<p role="status">Loading viewer…</p>}>
-      <ModelCanvas variant={preview.gender === variant.gender ? preview : variant} baseUrl={baseUrl} preserveView />
+      <ModelCanvas variant={preview.gender === variant.gender ? preview : variant} baseUrl={meta.baseUrl} preserveView />
     </Suspense></div>
     {controls}
   </div>;

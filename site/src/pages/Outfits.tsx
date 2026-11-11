@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import type { Gender, OutfitCatalog, PreviewMeta } from '../../../shared/objects';
 import OutfitPreview from '../components/OutfitPreview';
-import { previewJson } from '../objects/data';
+import { previewJson, previewUrl } from '../objects/data';
 import { useBuildEntry } from '../data/useBuildEntry';
 import { TITLE_SEPARATOR, useDocumentTitle } from '../data/useDocumentTitle';
 import '../components/ModelPreview.css';
@@ -11,7 +11,7 @@ import './Outfits.css';
 function Picker({ build, catalog, meta, initial, initialGender }: { build: string; catalog: OutfitCatalog; meta: PreviewMeta; initial: string[]; initialGender?: Gender }) {
   const [gender, setGender] = useState(() => initialGender ?? catalog.items.find((item) => initial.includes(item.id))?.genders[0] ?? catalog.defaults[0].gender!);
   const variant = catalog.defaults.find((v) => v.gender === gender)!;
-  return <OutfitPreview initial={initial} variant={variant} build={build} baseUrl={meta.baseUrl} catalog={catalog} onGenderChange={setGender} />;
+  return <OutfitPreview initial={initial} variant={variant} build={build} meta={meta} catalog={catalog} onGenderChange={setGender} />;
 }
 
 export default function Outfits() {
@@ -31,10 +31,11 @@ export default function Outfits() {
   useEffect(() => {
     let alive = true;
     setStatus('Loading outfit choices…');
-    void Promise.all([
-      previewJson<PreviewMeta>(`/data/${build}/previews/meta.json`),
-      previewJson<OutfitCatalog>(`/data/${build}/previews/outfits.json`),
-    ]).then(([meta, catalog]) => {
+    void (async () => {
+      const meta = await previewJson<PreviewMeta>(`/data/${build}/previews/meta.json`);
+      const catalog = meta ? await previewJson<OutfitCatalog>(previewUrl(build!, 'outfits.json', meta)) : null;
+      return { meta, catalog };
+    })().then(({ meta, catalog }) => {
       if (!alive) return;
       if (meta && catalog?.defaults.length) setData({ build: build!, meta, catalog });
       else setStatus('Outfit previews are unavailable for this build.');

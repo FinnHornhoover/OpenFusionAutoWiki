@@ -84,9 +84,16 @@ After feature completion, enable production previews:
    `CLOUDFLARE_ACCOUNT_ID` supplies the account.
 
 The workflow uses the matching FFObjectPacks release tag and validates format and
-revision. Fixed builds reuse the non-fixed assets with their own table data.
-It uploads new assets before deploying Pages, retains assets for older deployments,
-and skips objects already present. `npm run upload:objects` runs publication alone.
+revision. Identical fixed-build preview folders share the non-fixed data; differing
+folders and outfit catalogs remain separate. The site passes size/file-count checks
+before R2 publication. Uploads use 48 workers (override with the repository variable
+`R2_UPLOAD_CONCURRENCY`), skip existing assets, and retain older deployment assets.
+`npm run upload:objects` runs publication alone.
+
+Publication gzip-compresses GLB/BIN files when smaller and sets `Content-Encoding`.
+URLs and decoded bytes stay the same. Cached copies live in `.cache/objects/gzip-v1`;
+`.cache/objects/publication.json` records upload sizes. To prepare and measure locally
+without uploading: `npm run build -w build && node build/dist/objects/compress.js`.
 
 For local iteration after generating wiki data, with extracted Format 4–6 packs:
 

@@ -2,7 +2,7 @@ import { lazy, Suspense, useEffect, useId, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import type { ModelPreview as Recipe, PreviewMeta, PreviewType } from '../../../shared/objects';
 import { chunkFor } from '../data/useEntity';
-import { previewJson as json } from '../objects/data';
+import { previewJson as json, previewUrl } from '../objects/data';
 import './ModelPreview.css';
 import ModelDialog from './ModelDialog';
 
@@ -25,7 +25,7 @@ export default function ModelPreview({ build, type, id, name }: { build?: string
       const meta = await json<PreviewMeta>(`/data/${build}/previews/meta.json`);
       if (!meta?.types.includes(type)) return;
       const chunk = chunkFor(type, String(id));
-      const rows = await json<Record<string, Recipe>>(`/data/${build}/previews/${type}/${chunk}.json`);
+      const rows = await json<Record<string, Recipe>>(previewUrl(build, `${type}/${chunk}.json`, meta));
       const recipe = rows?.[id];
       if (alive && recipe?.variants.length) setLoaded({ key, meta, recipe });
     })();

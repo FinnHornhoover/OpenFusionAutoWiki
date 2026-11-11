@@ -76,15 +76,6 @@ jobs:
         env:
           FFWIKI_RELEASE: ${{ steps.ffinfo.outputs.tag }}
 
-      - name: Publish shared 3D assets to R2
-        if: env.FFWIKI_OBJECTS_URL != ''
-        run: npm run upload:objects
-        env:
-          R2_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
-          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
-          R2_BUCKET: ${{ vars.R2_BUCKET }}
-
       - name: Build site (Vite + MDX)
         run: npm run build:site
 
@@ -93,7 +84,7 @@ jobs:
           # Cloudflare Pages: ≤20,000 files per deployment, ≤25 MB per file.
           FILE_COUNT=$(find site/dist -type f | wc -l)
           echo "site/dist file count: $FILE_COUNT"
-          if [ "$FILE_COUNT" -ge 20000 ]; then
+          if [ "$FILE_COUNT" -gt 20000 ]; then
             echo "::error::site/dist exceeds Cloudflare Pages' 20,000 file limit ($FILE_COUNT)"
             exit 1
           fi
@@ -103,6 +94,16 @@ jobs:
             echo "$OVERSIZE"
             exit 1
           fi
+
+      - name: Publish shared 3D assets to R2
+        if: env.FFWIKI_OBJECTS_URL != ''
+        run: npm run upload:objects
+        env:
+          R2_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET: ${{ vars.R2_BUCKET }}
+          R2_UPLOAD_CONCURRENCY: ${{ vars.R2_UPLOAD_CONCURRENCY || '48' }}
 
       - name: Deploy to Cloudflare Pages
         uses: cloudflare/wrangler-action@v3

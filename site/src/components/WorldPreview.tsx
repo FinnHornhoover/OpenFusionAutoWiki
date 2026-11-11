@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useId, useMemo, useRef, useState } from 'react';
 import type { AreaPreviewRecipe, PreviewMeta, WorldPreviewRecipe } from '../../../shared/objects';
-import { previewJson } from '../objects/data';
+import { previewJson, previewUrl } from '../objects/data';
 import ModelDialog from './ModelDialog';
 import './ModelPreview.css';
 
@@ -16,12 +16,12 @@ export default function WorldPreview({ build, focus }: { build: string; focus: [
     void (async () => {
       const meta = await previewJson<PreviewMeta>(`/data/${build}/previews/meta.json`);
       if (!meta?.areas) return;
-      const recipe = await previewJson<WorldPreviewRecipe>(`/data/${build}/previews/world.json`);
+      const recipe = await previewJson<WorldPreviewRecipe>(previewUrl(build, 'world.json', meta));
       if (alive && recipe?.tiles.length) setLoaded({ build, meta, recipe });
     })();
     return () => { alive = false; };
   }, [build]);
-  const world = useMemo(() => loaded && active ? { recipe: loaded.recipe, focus: active, populationBase: `/data/${build}/previews/world/population` } : undefined, [loaded, active, build]);
+  const world = useMemo(() => loaded && active ? { recipe: loaded.recipe, focus: active, populationBase: previewUrl(build, 'world/population', loaded.meta) } : undefined, [loaded, active, build]);
   const recipe = useMemo<AreaPreviewRecipe>(() => ({ id: 'world', bounds: loaded?.recipe.bounds ?? [0, 0, 0, 0], tiles: [], missing: [] }), [loaded]);
   if (loaded?.build !== build) return null;
   return <div className="model-preview world-map-preview">
