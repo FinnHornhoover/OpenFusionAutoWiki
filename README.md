@@ -4,6 +4,8 @@ Generated wiki for FusionFall. It reads ZIP assets from [FFInfoPacks](https://gi
 
 ## Local development
 
+Use Node.js 22 or newer.
+
 ```bash
 npm install
 npm run build:data    # download FFInfoPacks ZIPs + normalize (cached)
@@ -33,6 +35,74 @@ GOOGLE_SERVICE_ACCOUNT_JSON=...
 ## Deployment (Cloudflare Pages)
 
 The workflow at [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) deploys to Cloudflare Pages on pushes to `main`.
+
+### 3D previews (R2)
+
+Models, textures and animations share a content-addressed R2 pool across builds
+and releases. Entity recipes stay with the Pages data. The viewer loads on demand;
+missing client models retain their normal icon-only pages.
+The Outfit Picker page has a tall viewer above animation controls, equipped-item
+cards and the same card search as Combinations. Selecting an item replaces its slot.
+Item and set pages can open it with their outfit preselected; their
+3D dialogs show the original outfit. Gender restrictions, hat cutouts and vehicle
+poses apply.
+The viewer opens in a modal (full viewport on small screens), with grouped
+animations, seeking and play/pause controls. Playback loops immediately at 1×.
+Animation choices follow the equipped weapon or vehicle;
+partial layers and body-shape controls stay internal.
+Format 6 adds a Fire weapon control with muzzle flashes, projectiles and impacts,
+plus Standard/Battery choices. Ordinary bullets, rockets and grenades follow their
+client timing and trajectories, with a virtual target and floor for previews.
+Firing uses internal attack layers, retains movement, and restores the selected
+animation and playback position. Retrobution throws the equipped weapon model.
+Vehicle pages show mounted boy/girl previews with board or scooter rider motions;
+vehicle models retain their own default animations and texture variants.
+Vehicle trails use the client attachment points during movement animations,
+with forward/backward travel simulated in place. Idle poses have no trails.
+Only selected clips and required composition controls enter the shared asset pool.
+Area pages preview layered terrain, grass, animated scenery, moving platforms and
+mesh effects, with orbit, pan and overhead views. Format 5 packs add bounded
+scripted and native particles, ribbon trails, source blend modes, curves and atlas
+frames. Particle and draw-call budgets limit browser work. Both pack versions
+share the existing asset pool. NPCs, monsters and eggs use InfoPacks spawn positions and facing.
+Custom VFX use native scrolling, rotation, flipbooks, distortion, masks and gradients.
+The world map's 3D view streams nearby terrain and one detailed tile, with lower mobile budgets.
+Overview markers focus nearby idle models on tap; category toggles and bounded
+loading keep mobile views usable. Patrols and combat are not simulated.
+Tiles and terrain buffers share the R2 pool; terrain shader textures use lossless
+PNG to preserve blend weights through the browser decoder.
+
+After feature completion, enable production previews:
+
+1. Create a Standard R2 bucket and connect `assets.<your-domain>` to it.
+2. Allow CORS `GET`/`HEAD` from the wiki's origin. Add a cache rule making all
+   assets on that hostname eligible for caching (including `.glb` and `.bin`).
+3. Set repository variables `FFWIKI_OBJECTS_URL=https://assets.<your-domain>`
+   and `R2_BUCKET=<bucket-name>`.
+4. Set secrets `R2_ACCESS_KEY_ID` and `R2_SECRET_ACCESS_KEY` using an R2 API token
+   with Object Read & Write permission for that bucket. The existing
+   `CLOUDFLARE_ACCOUNT_ID` supplies the account.
+
+The workflow uses the matching FFObjectPacks release tag and validates format and
+revision. Fixed builds reuse the non-fixed assets with their own table data.
+It uploads new assets before deploying Pages, retains assets for older deployments,
+and skips objects already present. `npm run upload:objects` runs publication alone.
+
+For local iteration after generating wiki data, with extracted Format 4–6 packs:
+
+```bash
+FFWIKI_RELEASE=release-41 \
+FFWIKI_OBJECT_PACKS=/tmp/ff-format4/packs \
+FFWIKI_BUILDS=beta-20100104,beta-20111013,retrobution npm run build:previews
+npm run dev
+```
+
+Local overrides use `/objects` and do not enforce release revision matching.
+The development server serves `.cache/objects/pool` without copying assets into
+Pages. Regenerate data before starting the server. Preview coverage is recorded
+in `site/public/data/<build>/previews/coverage.json`, with area diagnostics under
+`previews/areas/coverage.json`.
+Next: coverage fixes, then production rollout.
 
 ### Cloudflare Pages config files
 

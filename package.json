@@ -14,9 +14,11 @@
     "dev": "npm run dev -w site",
     "preview": "npm run preview -w site",
     "clean": "rm -rf site/dist site/public/data site/public/icons site/public/builds.json build/dist",
-    "item-sets:editor": "node scripts/item-set-editor.mjs"
+    "item-sets:editor": "node scripts/item-set-editor.mjs",
+    "build:previews": "npm run build -w build && node build/dist/objects/build.js",
+    "upload:objects": "npm run build -w build && node build/dist/objects/upload.js"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   }
 }

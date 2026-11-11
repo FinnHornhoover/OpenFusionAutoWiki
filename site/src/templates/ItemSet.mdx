@@ -1,6 +1,9 @@
+import ModelPreview from '../components/ModelPreview';
 import EntityLink from '../components/EntityLink';
 
 # {props.data.name}
+
+<ModelPreview build={props.build} type="item-sets" id={props.data.id} name={props.data.name} />
 
 <table className="location-table source-table entity-index-table">
   <thead>

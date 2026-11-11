@@ -1,0 +1,53 @@
+.model-preview { margin: 1rem 0; }
+.model-preview :is(button, .model-preview-action) { min-height: 44px; padding: .45rem .8rem; color: var(--color-text); background: var(--color-bg-elevated); border: 1px solid var(--color-border); border-radius: var(--radius-sm); cursor: pointer; font: inherit; }
+.model-preview :is(button, .model-preview-action):hover { background: var(--color-bg-subtle); }
+.model-preview :is(button, select, input, .model-preview-action):focus-visible { outline: 2px solid var(--color-accent); outline-offset: 3px; }
+.model-preview-action { display: inline-flex; align-items: center; justify-content: center; text-decoration: none; }
+.model-preview-dialog { width: min(1120px, calc(100vw - 3rem)); height: min(780px, calc(100dvh - 3rem)); max-width: none; max-height: none; margin: auto; padding: 1rem; color: var(--color-text); background: var(--color-bg) url("/assets/modal-bg-dark.png") repeat; border: 1px solid var(--color-border); border-radius: var(--radius-lg); box-shadow: var(--shadow-md); overflow: hidden; }
+.model-preview-dialog[open] { display: flex; flex-direction: column; gap: 1rem; }
+.model-preview-dialog::backdrop { background: #000b; backdrop-filter: blur(3px); }
+.model-preview-heading { display: flex; flex-wrap: wrap; align-items: center; gap: .75rem; flex: none; }
+.model-preview-heading h2 { flex: 1; min-width: 0; margin: 0; font-size: 1.15rem; overflow-wrap: anywhere; }
+.model-preview-close { margin-left: auto; }
+.model-preview label { display: flex; align-items: center; gap: .4rem; }
+.model-preview label:has(select) { flex-direction: column; align-items: stretch; }
+.model-preview select { width: 100%; min-height: 44px; max-width: 100%; min-width: 0; font: inherit; }
+.model-preview-body { display: flex; flex: 1; min-height: 0; overflow: auto; }
+.model-canvas { display: grid; flex: 1; min-width: 0; min-height: 0; grid-template-columns: minmax(0, 1fr); gap: 1rem; }
+.model-canvas-ready { grid-template-columns: minmax(0, 1fr) 18rem; }
+.model-preview-stage { position: relative; min-width: 0; min-height: 180px; background: radial-gradient(ellipse at center, #64708040, #23283130); border-radius: .5rem; overflow: hidden; }
+.model-preview-stage canvas { position: absolute; inset: 0; display: block; width: 100%; height: 100%; touch-action: none; }
+.model-preview-status { position: absolute; inset: 0; display: grid; place-items: center; }
+.model-preview-options-jump { display: none; position: absolute; right: .75rem; bottom: .75rem; z-index: 1; }
+.model-preview-controls { display: flex; flex-direction: column; gap: 1rem; min-width: 0; padding: .25rem; overflow-y: auto; font-size: .875rem; }
+.model-preview-timeline label { justify-content: space-between; font-size: .8rem; }
+.model-preview-timeline output { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.model-preview-timeline input { width: 100%; min-height: 44px; margin: 0; accent-color: var(--color-accent); }
+.model-preview-transport { display: flex; align-items: center; flex-wrap: wrap; gap: .6rem; }
+.model-preview-transport button { flex: 1; }
+.model-preview-help { margin: 0; }
+.model-preview-error { align-self: center; }
+@media (max-width: 900px), (max-height: 500px) and (pointer: coarse) {
+  .model-preview-dialog { width: 100%; height: 100dvh; border: 0; border-radius: 0; padding: max(.75rem, env(safe-area-inset-top)) max(.75rem, env(safe-area-inset-right)) max(.75rem, env(safe-area-inset-bottom)) max(.75rem, env(safe-area-inset-left)); }
+  .model-preview-dialog[open] { gap: .6rem; }
+  .model-preview-heading { gap: .4rem; }
+  .model-preview-heading h2 { font-size: 1rem; }
+  .model-preview-heading h2 { order: 0; }
+  .model-preview-close { order: 1; }
+  .model-preview-body { display: block; overscroll-behavior: contain; }
+  .model-preview-dialog .model-canvas { display: flex; flex-direction: column; height: 100%; }
+  .model-preview-dialog .model-preview-stage { flex: none; height: 75svh; min-height: min(320px, 100%); max-height: 100%; }
+  .model-preview-dialog .model-preview-controls { flex: none; align-items: stretch; gap: .5rem; overflow: visible; }
+  .model-preview-dialog .model-preview-options-jump { display: block; }
+}
+
+.area-preview-controls { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-content: start; gap: .5rem; }
+.model-preview :is(.area-preview-controls button, .model-preview-vehicle-trails)[aria-pressed="false"] { color: var(--color-text-muted); border-color: var(--color-text-muted); }
+.area-preview-controls p { grid-column: 1 / -1; margin: 0; font-size: .875rem; }
+.world-area-select { grid-column: 1 / -1; display: grid; gap: .3rem; min-width: 0; }
+.world-map-preview { margin-bottom: .75rem; }
+
+.model-preview-weapon { display: flex; align-items: end; flex-wrap: wrap; gap: .6rem; }
+.model-preview-weapon label { display: grid; gap: .3rem; flex: 1; min-width: 8rem; }
+.model-preview-weapon button { flex: 1; }
+.model-preview-weapon [role="alert"] { flex-basis: 100%; }

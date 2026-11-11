@@ -6,6 +6,7 @@ const ENTITY_TYPES = [
   { type: 'map', label: 'World Map' },
   { type: 'player-stats', label: 'Player Stats' },
   { type: 'combinations', label: 'Combinations' },
+  { type: 'outfits', label: 'Outfit Picker' },
   { type: 'missions', label: 'Missions' },
   { type: 'npcs', label: 'NPCs' },
   { type: 'monsters', label: 'Monsters' },

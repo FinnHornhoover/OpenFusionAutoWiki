@@ -125,7 +125,7 @@ export default function EntityPage() {
         <Breadcrumb build={build} buildLabel={buildLabel} type="npcs" label="NPCs" />
         {'kind' in (entity as object) && (entity as NpcAmbiguity).kind === 'npc-ambiguity'
           ? <NPCAmbiguityTemplate data={entity as NpcAmbiguity} build={build} />
-          : <NPCTemplate data={entity as Npc} />}
+          : <NPCTemplate data={entity as Npc} build={build} />}
       </section>
     );
   }
@@ -133,13 +133,13 @@ export default function EntityPage() {
     return <section className="entity-page item-page"><Breadcrumb build={build} buildLabel={buildLabel} type="items" label="Items" /><ItemTemplate data={entity as Item} build={build} /></section>;
   }
   if (type === 'item-sets') {
-    return <section className="entity-page item-set-page"><Breadcrumb build={build} buildLabel={buildLabel} type="item-sets" label="Item Sets" /><ItemSetTemplate data={entity as ItemSet} /></section>;
+    return <section className="entity-page item-set-page"><Breadcrumb build={build} buildLabel={buildLabel} type="item-sets" label="Item Sets" /><ItemSetTemplate data={entity as ItemSet} build={build} /></section>;
   }
   if (type === 'codes') {
     return <section className="entity-page code-page"><Breadcrumb build={build} buildLabel={buildLabel} type="codes" label="Codes" /><CodeTemplate data={entity as Code} /></section>;
   }
   if (type === 'monsters') {
-    return <section className="entity-page monster-page"><Breadcrumb build={build} buildLabel={buildLabel} type="monsters" label="Monsters" /><MonsterTemplate data={entity as Mob} /></section>;
+    return <section className="entity-page monster-page"><Breadcrumb build={build} buildLabel={buildLabel} type="monsters" label="Monsters" /><MonsterTemplate data={entity as Mob} build={build} /></section>;
   }
   if (type === 'areas') {
     return <section className="entity-page area-page"><Breadcrumb build={build} buildLabel={buildLabel} type="areas" label="Areas" /><AreaTemplate data={entity as Area} build={build} /></section>;
@@ -151,7 +151,7 @@ export default function EntityPage() {
     return <section className="entity-page infected-zone-page"><Breadcrumb build={build} buildLabel={buildLabel} type="infected-zones" label="Infected Zones" /><InfectedZoneTemplate data={entity as InfectedZone} /></section>;
   }
   if (type === 'nanos') {
-    return <section className="entity-page nano-page"><Breadcrumb build={build} buildLabel={buildLabel} type="nanos" label="Nanos" /><NanoTemplate data={entity as Nano} /></section>;
+    return <section className="entity-page nano-page"><Breadcrumb build={build} buildLabel={buildLabel} type="nanos" label="Nanos" /><NanoTemplate data={entity as Nano} build={build} /></section>;
   }
 
   return (

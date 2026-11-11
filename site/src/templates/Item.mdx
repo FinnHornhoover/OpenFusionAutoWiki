@@ -1,3 +1,4 @@
+import ModelPreview from '../components/ModelPreview';
 import Currency from '../components/Currency';
 import { Link } from 'react-router-dom';
 
@@ -23,12 +24,10 @@ import { formatDurationSeconds } from '../data/formatTime';
   </div>
 </div>
 
+<ModelPreview build={props.build} type="items" id={props.data.id} name={props.data.name} />
+
 {props.data.description && (
   <blockquote className="npc-comment">{props.data.description}</blockquote>
-)}
-
-{props.data.typeId >= 0 && props.data.typeId <= 3 && ['Common', 'Uncommon', 'Rare', 'Ultra Rare'].includes(props.data.rarity) && (
-  <p><Link to={'/' + props.build + '/combinations?style=' + encodeURIComponent(props.data.id)}>Plan combinations with this style item</Link></p>
 )}
 
 <dl className="stat-grid">

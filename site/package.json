@@ -12,15 +12,18 @@
     "@mdx-js/react": "^3.0.1",
     "@types/dagre": "^0.7.54",
     "dagre": "^0.8.5",
+    "ff-three": "https://codeload.github.com/kamilprzyb2/ff-three/tar.gz/b951781d08f9b9b41af04e0acc32bccf4fc1457d",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "react-router-dom": "^6.26.2"
+    "react-router-dom": "^6.26.2",
+    "three": "^0.186.0"
   },
   "devDependencies": {
     "@mdx-js/rollup": "^3.0.1",
     "@types/mdx": "^2.0.13",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
+    "@types/three": "^0.183.1",
     "@vitejs/plugin-react": "^4.3.3",
     "typescript": "^5.6.3",
     "vite": "^5.4.10"
