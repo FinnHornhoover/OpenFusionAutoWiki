@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import type { SoundEvent } from '../../../shared/objects';
 import { clipFromGltf } from 'ff-three';
 import type { GLTF } from 'three/addons/loaders/GLTFLoader.js';
 import type { LoadedModel } from './assets';
@@ -17,7 +18,7 @@ interface FloatCurve {
 interface ClipData {
   animations?: { extras?: { duration?: number; float_curves?: Record<string, FloatCurve> } }[];
   extras?: {
-    clip?: { duration?: number };
+    clip?: { duration?: number; events?: SoundEvent[] };
     material_clips?: { duration?: number; float_curves?: Record<string, FloatCurve> }[];
   };
 }
@@ -35,6 +36,7 @@ interface MaterialBinding {
 }
 
 interface DecodedClip {
+  events: SoundEvent[];
   clip: THREE.AnimationClip;
   materials: MaterialTrack[];
   duration: number;
@@ -106,6 +108,11 @@ function materialBinding(material: THREE.ShaderMaterial, attribute: string): Mat
 
 export class ModelAnimation {
   readonly names: string[];
+  onEvent?: (event: SoundEvent) => void;
+  private events: SoundEvent[] = [];
+  private beginning = false;
+  get hasAttackSound(): boolean { return [...this.events, ...this.layer?.decoded.events ?? []].some((event) => event.functionName === 'attacksound'); }
+  get soundKeys(): string[] { return [...this.events, ...this.layer?.decoded.events ?? []].flatMap((event) => event.audio ? [event.audio] : []); }
   private mixer: THREE.AnimationMixer;
   private action?: THREE.AnimationAction;
   private fading?: { action: THREE.AnimationAction; remaining: number };
@@ -177,7 +184,7 @@ export class ModelAnimation {
       const values = curve.values?.map((v) => v ?? 0) ?? (await gltf.parser.getDependency('accessor', curve.output) as THREE.BufferAttribute).array;
       if (times.length) materials.push({ times, values, bindings });
     }
-    return { clip, materials, duration };
+    return { clip, materials, duration, events: data.extras?.clip?.events ?? [] };
   }
 
   async prepare(names: string[]): Promise<void> {
@@ -236,10 +243,12 @@ export class ModelAnimation {
     this.action = this.mixer.clipAction(decoded.clip).reset().setEffectiveWeight(1).play();
     if (this.fading) this.action.fadeIn(fade);
     this.action.paused = true;
+    this.events = decoded.events;
     this.materials = decoded.materials;
     this.duration = decoded.duration;
     this.time = 0;
     this.seek(0);
+    this.beginning = true;
     return true;
   }
 
@@ -271,6 +280,7 @@ export class ModelAnimation {
   }
 
   seek(time: number): void {
+    this.beginning = false;
     this.applyTime(time);
   }
 
@@ -289,6 +299,7 @@ export class ModelAnimation {
     }
     const layer = this.layer;
     if (layer) {
+      if (!layer.ending && layerDelta > 0) this.emit(layer.decoded.events, layer.time, Math.min(layer.decoded.duration, layer.time + layerDelta * layer.speed), layer.age === 0);
       layer.age += layerDelta;
       layer.time = Math.min(layer.decoded.duration, layer.time + layerDelta * layer.speed);
       if (layer.ending) layer.ending.time += layerDelta;
@@ -305,9 +316,30 @@ export class ModelAnimation {
     }
   }
 
+  private emit(events: SoundEvent[], from: number, to: number, start: boolean): void {
+    for (const event of events) if (Number.isFinite(event.time) && event.time >= 0 && (event.time > from || start && event.time === from) && event.time <= to) this.onEvent?.(event);
+  }
+
   update(delta: number, loop = true, layerDelta = delta): void {
-    if (this.duration <= 0) { this.applyTime(0, delta, layerDelta); return; }
-    this.applyTime(loop ? (this.time + delta * this.speed) % this.duration : Math.min(this.time + delta * this.speed, this.duration), delta, layerDelta);
+    if (this.disposed) return;
+    const events = this.layer?.decoded.events.some((event) => event.functionName === 'attacksound') ? this.events.filter((event) => event.functionName !== 'attacksound') : this.events;
+    if (delta > 0) {
+      let from = this.time, remaining = Math.max(0, delta * this.speed), start = this.beginning;
+      for (let iteration = 0; iteration < 8; iteration++) {
+        const untilEnd = this.duration - from;
+        const wraps = loop && this.duration > 0 && remaining >= untilEnd;
+        const to = wraps ? this.duration : Math.min(from + remaining, this.duration);
+        this.emit(events, from, to, start);
+        if (!wraps) break;
+        remaining -= untilEnd;
+        if (remaining <= 0) break;
+        from = 0; start = true;
+      }
+      this.beginning = false;
+    }
+    const time = this.duration > 0 ? loop ? (this.time + delta * this.speed) % this.duration : Math.min(this.time + delta * this.speed, this.duration) : 0;
+    this.applyTime(time, delta, layerDelta);
+    if (loop && delta > 0 && this.duration > 0 && time === 0) this.beginning = true;
   }
 
   dispose(): void {
@@ -316,5 +348,10 @@ export class ModelAnimation {
     this.stopUpper();
     this.mixer.stopAllAction();
     this.mixer.uncacheRoot(this.root);
+    this.onEvent = undefined;
+    this.events = [];
+    this.materials = [];
+    this.decoded.clear();
+    this.bindings.clear();
   }
 }

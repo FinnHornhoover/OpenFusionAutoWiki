@@ -28,7 +28,7 @@ export default function WorldPreview({ build, focus }: { build: string; focus: [
     <button ref={opener} className="model-preview-open" aria-haspopup="dialog" onClick={() => setActive([...focus])}>View world in 3D</button>
     {world && <ModelDialog titleId={title} returnFocus={opener} onClose={() => setActive(null)}>
       <div className="model-preview-heading"><h2 id={title}>World map</h2><button className="model-preview-close" aria-label="Close 3D preview" onClick={() => setActive(null)}>Close</button></div>
-      <div className="model-preview-body"><Suspense fallback={<p role="status">Loading viewer…</p>}><AreaCanvas recipe={recipe} baseUrl={loaded.meta.baseUrl} populationUrl="" world={world} /></Suspense></div>
+      <div className="model-preview-body"><Suspense fallback={<p role="status">Loading viewer…</p>}><AreaCanvas recipe={recipe} baseUrl={loaded.meta.baseUrl} audioFile={loaded.meta.audio} populationUrl="" world={world} /></Suspense></div>
     </ModelDialog>}
   </div>;
 }

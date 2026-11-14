@@ -38,7 +38,7 @@ The workflow at [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) d
 
 ### 3D previews (R2)
 
-Models, textures and animations share a content-addressed R2 pool across builds
+Models, textures, animations and audio share a content-addressed R2 pool across builds
 and releases. Entity recipes stay with the Pages data. The viewer loads on demand;
 missing client models retain their normal icon-only pages.
 The Outfit Picker page has a tall viewer above animation controls, equipped-item
@@ -55,6 +55,9 @@ plus Standard/Battery choices. Ordinary bullets, rockets and grenades follow the
 client timing and trajectories, with a virtual target and floor for previews.
 Firing uses internal attack layers, retains movement, and restores the selected
 animation and playback position. Retrobution throws the equipped weapon model.
+Format 7 adds opt-in animation/weapon sounds and separate map Ambience/Music controls.
+Audio stops with hidden/closed viewers; seeking stays silent. Music streams, while
+short sounds use a bounded decoded cache. Ogg files share the existing R2 pool.
 Vehicle pages show mounted boy/girl previews with board or scooter rider motions;
 vehicle models retain their own default animations and texture variants.
 Vehicle trails use the client attachment points during movement animations,
@@ -90,12 +93,12 @@ before R2 publication. Uploads use 48 workers (override with the repository vari
 `R2_UPLOAD_CONCURRENCY`), skip existing assets, and retain older deployment assets.
 `npm run upload:objects` runs publication alone.
 
-Publication gzip-compresses GLB/BIN files when smaller and sets `Content-Encoding`.
+Publication gzip-compresses GLB/BIN/JSON files when smaller and sets `Content-Encoding`.
 URLs and decoded bytes stay the same. Cached copies live in `.cache/objects/gzip-v1`;
 `.cache/objects/publication.json` records upload sizes. To prepare and measure locally
 without uploading: `npm run build -w build && node build/dist/objects/compress.js`.
 
-For local iteration after generating wiki data, with extracted Format 4–6 packs:
+For local iteration after generating wiki data, with extracted Format 4–7 packs:
 
 ```bash
 FFWIKI_RELEASE=release-41 \

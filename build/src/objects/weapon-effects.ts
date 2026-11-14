@@ -9,7 +9,7 @@ interface Bullet {
   m_iParticleScript: number; m_iFireScript: number;
   m_fBulletModelScale: number; m_fFireModelScale: number;
   m_fMaxTimer: number; m_fHideTime: number; m_strFireLink: string;
-  m_iSuccScript: number; m_fSuccModelScale: number;
+  m_iSuccScript: number; m_fSuccModelScale: number; m_strSuccSound?: string;
 }
 interface PrefabDocument {
   nodes: { name?: string; translation?: number[]; rotation?: number[]; scale?: number[]; children?: number[]; extras?: { source_object?: number } }[];
@@ -125,7 +125,7 @@ export class WeaponEffects {
     const choices = [['Standard', Number(row.m_iEffect1)], ['Battery', Number(row.m_iEffect2)]] as const;
     const shots: WeaponShot[] = [];
     for (const [label, id] of choices) {
-      if (label === 'Battery' && (!id || id === Number(row.m_iEffect1))) continue;
+      if (label === 'Battery' && (!id || id === Number(row.m_iEffect1) && Number(row.m_iSound2) === Number(row.m_iSound1))) continue;
       const bullet = this.bullets[id];
       if (!bullet) { this.missing.add(`weapon-bullet:${id}`); continue; }
       const targetMode = Number(row.m_iTargetMode), warhead = targetMode === 5 || targetMode === 6;
@@ -139,7 +139,7 @@ export class WeaponEffects {
         : targetMode === 6 ? { kind: 'grenade', ...common, verticalSpeed: Number(row.m_iDeliverTime) * 0.5, weaponModel: common.retrobution && bullet.m_iParticleScript === 31 }
           : { kind: 'ordinary', delay: Math.max(0, bullet.m_fHideTime), duration: Math.max(0, bullet.m_fMaxTimer), range: Math.max(0, Number(row.m_iAtkRange) * 0.01) };
       shots.push({ label, bullet: id, targetMode, equipType: Number(row.m_iEquipType), cooldown: Math.max(0, Number(row.m_iDelayTime) * 0.1), link: bullet.m_strFireLink, fire, projectile, impact,
-        flight,
+        flight, impactSound: bullet.m_strSuccSound && !/null|\.\.\.|"/i.test(bullet.m_strSuccSound) ? `sound/${bullet.m_strSuccSound}.wav`.toLowerCase() : undefined,
       });
     }
     return shots;

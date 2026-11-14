@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { MapAudio, type SoundController } from './audio';
 import { previewOrbitControls } from './orbit-controls';
 import { createEnvironment, applySceneSettings } from 'ff-three';
 import { streamFiles } from './stream-files';
@@ -7,7 +8,7 @@ import { loadAreaTile, type AreaTile } from './area-tile';
 import { focusPopulation } from './area-camera';
 import { areaPopulation, type PopulationLayer, type PopulationSelection } from './area-population';
 
-export interface AreaViewer {
+export interface AreaViewer extends SoundController {
   reset(): void;
   overhead(): void;
   scenery(visible: boolean): void;
@@ -19,7 +20,7 @@ export interface AreaViewer {
   dispose(): void;
 }
 
-export async function mountAreaViewer(container: HTMLElement, recipe: AreaPreviewRecipe, baseUrl: string, signal: AbortSignal, onStatus: (status: string) => void, populationUrl: string, onSelection: (value: PopulationSelection | null) => void): Promise<AreaViewer> {
+export async function mountAreaViewer(container: HTMLElement, recipe: AreaPreviewRecipe, baseUrl: string, signal: AbortSignal, onStatus: (status: string) => void, populationUrl: string, onSelection: (value: PopulationSelection | null) => void, audioFile?: string): Promise<AreaViewer> {
   const renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
   renderer.outputColorSpace = THREE.LinearSRGBColorSpace;
@@ -32,6 +33,7 @@ export async function mountAreaViewer(container: HTMLElement, recipe: AreaPrevie
   orbit.maxPolarAngle = Math.PI * 0.49;
   orbit.minDistance = 5;
   const env = createEnvironment();
+  const audio = audioFile ? new MapAudio(baseUrl, audioFile, () => orbit.target.toArray()) : undefined;
   const smallScreen = matchMedia('(max-width: 600px)').matches;
   const files = streamFiles(signal, (smallScreen ? 32 : 96) * 1024 * 1024, 6);
   const particleBudget = { remaining: smallScreen ? 4000 : 12000, systems: smallScreen ? 64 : 160 };
@@ -45,6 +47,7 @@ export async function mountAreaViewer(container: HTMLElement, recipe: AreaPrevie
   const dispose = (): void => {
     if (!disposed) {
       disposed = true;
+      audio?.dispose();
       cancelAnimationFrame(frame);
       resize?.disconnect();
       intersection?.disconnect();
@@ -131,11 +134,12 @@ export async function mountAreaViewer(container: HTMLElement, recipe: AreaPrevie
     reset();
     resize = new ResizeObserver(() => { size(); invalidate(); });
     resize.observe(container);
-    intersection = new IntersectionObserver(([entry]) => { visible = entry.isIntersecting; previous = 0; if (visible) invalidate(); });
+    intersection = new IntersectionObserver(([entry]) => { visible = entry.isIntersecting; audio?.visibility(visible && !document.hidden); previous = 0; if (visible) invalidate(); });
     intersection.observe(container);
-    visibility = () => { previous = 0; if (!document.hidden) invalidate(); };
+    visibility = () => { audio?.visibility(visible && !document.hidden); previous = 0; if (!document.hidden) invalidate(); };
     document.addEventListener('visibilitychange', visibility);
     return {
+      sound: async (settings, onError) => { await audio?.sound(settings, onError); },
       reset,
       overhead: () => { orbit.target.set(x, ground, z); camera.position.set(x, ground + span / Math.min(camera.aspect, 1) * 1.4, z - 0.01); orbit.update(); invalidate(); },
       scenery: (show) => {

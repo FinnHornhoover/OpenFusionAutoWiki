@@ -82,7 +82,7 @@ export class Pack {
     }
 
     this.manifest = this.json('manifest.json');
-    if (![4, 5, 6].includes(this.manifest.format_version)) throw new Error(`Expected ObjectPacks format 4, 5 or 6, got ${this.manifest.format_version}`);
+    if (![4, 5, 6, 7].includes(this.manifest.format_version)) throw new Error(`Expected ObjectPacks format 4–7, got ${this.manifest.format_version}`);
     for (const graph of this.json<Graph[]>('metadata/graphs.json')) this.graphs.set(graph.file, graph);
     const categories = this.json<Record<string, string>>('models/index.json');
     for (const category of Object.keys(categories)) {
@@ -163,6 +163,12 @@ export class Pack {
     return this.automaticAnimations(file)[0] ?? null;
   }
 
+  animationObjects(file: string, names: string[]): number[] {
+    const source = this.prefabDocument(file).extras?.clips ?? {};
+    const files = new Set(names.flatMap((name) => source[name] ? [posix.normalize(posix.join(posix.dirname(file), source[name]))] : []));
+    return this.prefabs.get(file)?.clips.filter((clip) => files.has(clip.file)).map((clip) => clip.object) ?? [];
+  }
+
   shaderNames(file: string): Record<string, string> {
     const names: Record<string, string> = {};
     for (const material of this.prefabDocument(file).materials ?? []) {
@@ -235,7 +241,7 @@ export class Pack {
     return this.embeddedTextures.get(key)?.sort((a, b) => this.priority(this.textureSources.get(a.object)) - this.priority(this.textureSources.get(b.object)))[0]?.file;
   }
 
-  private priority(source = ''): number {
+  priority(source = ''): number {
     // ResourceLocator checks global bundles before searching world tiles.
     const order = ['CharacterCreation', 'Effects', 'CharacterSelection', 'Tutorial', 'CharTexture', 'NpcTexture', 'FutureNano', 'Nano', 'Retro_shared', 'Retro_shared_part2', 'Freearea_shared'];
     const index = order.indexOf(source.replace(/\.resourceFile$/i, ''));

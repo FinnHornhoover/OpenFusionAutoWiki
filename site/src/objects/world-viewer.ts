@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { MapAudio } from './audio';
 import { previewOrbitControls } from './orbit-controls';
 import { createEnvironment, applySceneSettings } from 'ff-three';
 import type { AreaPopulation, WorldPreviewRecipe, WorldTile } from '../../../shared/objects';
@@ -19,7 +20,7 @@ const distance = (tile: WorldTile, x: number, z: number): number => {
   return Math.max(x0 - x, 0, x - x1) ** 2 + Math.max(z0 - z, 0, z - z1) ** 2;
 };
 
-export async function mountWorldViewer(container: HTMLElement, view: WorldView, baseUrl: string, signal: AbortSignal, onStatus: (status: string) => void, onSelection: (value: PopulationSelection | null) => void): Promise<AreaViewer> {
+export async function mountWorldViewer(container: HTMLElement, view: WorldView, baseUrl: string, signal: AbortSignal, onStatus: (status: string) => void, onSelection: (value: PopulationSelection | null) => void, audioFile?: string): Promise<AreaViewer> {
   const mobile = matchMedia('(max-width: 600px)').matches;
   const renderer = new THREE.WebGLRenderer({ antialias: !mobile });
   renderer.setPixelRatio(Math.min(devicePixelRatio, mobile ? 1.5 : 2));
@@ -31,6 +32,7 @@ export async function mountWorldViewer(container: HTMLElement, view: WorldView, 
   orbit.screenSpacePanning = false; orbit.maxPolarAngle = Math.PI * 0.48;
   orbit.minDistance = 5; orbit.maxDistance = mobile ? 800 : 1100;
   const env = createEnvironment();
+  const audio = audioFile ? new MapAudio(baseUrl, audioFile, () => orbit.target.toArray()) : undefined;
   const files = streamFiles(signal, (mobile ? 32 : 96) * 1024 * 1024);
   const budget = { remaining: mobile ? 2000 : 6000, systems: mobile ? 32 : 80 };
   const terrain = new Map<string, { tile: AreaTile; population: AreaPopulation }>();
@@ -179,10 +181,10 @@ export async function mountWorldViewer(container: HTMLElement, view: WorldView, 
     orbit.target.set(x, y, z); camera.position.set(x, y + span * 0.7, z - span * 0.7);
     orbit.update(); refresh();
   }
-  const visibility = (): void => { previous = 0; if (!document.hidden) invalidate(); };
+  const visibility = (): void => { audio?.visibility(visible && !document.hidden); previous = 0; if (!document.hidden) invalidate(); };
   const dispose = (): void => {
     if (disposed) return;
-    disposed = true; cancelAnimationFrame(frame); clearTimeout(timer);
+    disposed = true; audio?.dispose(); cancelAnimationFrame(frame); clearTimeout(timer);
     observer?.disconnect(); intersection?.disconnect(); document.removeEventListener('visibilitychange', visibility);
     signal.removeEventListener('abort', dispose); pending.forEach((controller) => controller.abort());
     population.dispose(); removeDetail(); terrain.forEach((entry) => entry.tile.dispose()); terrain.clear(); files.dispose();
@@ -201,9 +203,10 @@ export async function mountWorldViewer(container: HTMLElement, view: WorldView, 
     orbit.addEventListener('change', change);
     focus(...view.focus);
     observer = new ResizeObserver(size); observer.observe(container);
-    intersection = new IntersectionObserver(([entry]) => { visible = entry.isIntersecting; previous = 0; if (visible) invalidate(); }); intersection.observe(container);
+    intersection = new IntersectionObserver(([entry]) => { visible = entry.isIntersecting; audio?.visibility(visible && !document.hidden); previous = 0; if (visible) invalidate(); }); intersection.observe(container);
     document.addEventListener('visibilitychange', visibility);
     return {
+      sound: async (settings, onError) => { await audio?.sound(settings, onError); },
       focus,
       reset: () => { files.forget(); failed.clear(); focus(orbit.target.x, orbit.target.z); },
       overhead: () => { camera.position.copy(orbit.target).add(new THREE.Vector3(0, mobile ? 600 : 850, -0.01)); orbit.update(); invalidate(); },

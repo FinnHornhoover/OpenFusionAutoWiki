@@ -24,7 +24,7 @@ export interface WeaponPlayback {
   dispose(): void;
 }
 
-export function weaponEffects(scene: THREE.Scene, actor: THREE.Object3D, shots: WeaponShot[], findMount: (name: string) => THREE.Object3D | undefined, baseUrl: string, env: Record<string, THREE.IUniform>, camera: THREE.Camera, signal: AbortSignal, equipped?: THREE.Object3D): WeaponPlayback {
+export function weaponEffects(scene: THREE.Scene, actor: THREE.Object3D, shots: WeaponShot[], findMount: (name: string) => THREE.Object3D | undefined, baseUrl: string, env: Record<string, THREE.IUniform>, camera: THREE.Camera, signal: AbortSignal, equipped?: THREE.Object3D, onSound?: (kind: 'launch' | 'impact', shot: WeaponShot) => void): WeaponPlayback {
   const files = streamFiles(signal, 16 * 1024 * 1024);
   const effects: Effect[] = [], origin = new THREE.Vector3(), forward = new THREE.Vector3(), rotation = new THREE.Quaternion();
   let controller: AbortController | undefined, generation = 0, elapsed = 0, current: WeaponShot | undefined, disposed = false;
@@ -42,6 +42,7 @@ export function weaponEffects(scene: THREE.Scene, actor: THREE.Object3D, shots: 
   signal.addEventListener('abort', dispose, { once: true });
 
   const launch = (shot: WeaponShot): void => {
+    onSound?.('launch', shot);
     actor.updateWorldMatrix(true, true);
     actor.getWorldPosition(origin);
     forward.set(0, 0, 1).transformDirection(actor.matrixWorld);
@@ -110,6 +111,7 @@ export function weaponEffects(scene: THREE.Scene, actor: THREE.Object3D, shots: 
       path.advance(Math.max(0, Math.min(time, current.flight.duration) - before));
       if (time >= current.flight.duration && impactAt === undefined) {
         impactAt = current.flight.duration;
+        onSound?.('impact', current);
         for (const effect of effects) if (effect.kind === 'impact') { effect.root.position.copy(path.position); effect.root.quaternion.identity(); }
       }
       let active = impactAt === undefined;

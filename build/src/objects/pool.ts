@@ -17,7 +17,7 @@ export class AssetPool {
 
   add(pack: Pack, key: string): string {
     key = posix.normalize(key);
-    if (!/^(models\/(prefabs|geometry|buffers)|animations\/gltf|textures)\/[a-f0-9]{64}\.(glb|bin|webp)$/.test(key)) {
+    if (!/^(models\/(prefabs|geometry|buffers)|animations\/gltf|textures|audio\/clips)\/[a-f0-9]{64}\.(glb|bin|webp|ogg)$/.test(key)) {
       throw new Error(`Expected content-addressed browser asset: ${key}`);
     }
     if (this.entries.has(key)) return key;
@@ -43,7 +43,7 @@ export class AssetPool {
     return key;
   }
 
-  store(folder: 'areas/tiles' | 'areas/terrain' | 'models/buffers' | 'textures', bytes: Buffer, extension: 'glb' | 'bin' | 'png'): string {
+  store(folder: 'areas/tiles' | 'areas/terrain' | 'models/buffers' | 'textures' | 'audio/banks', bytes: Buffer, extension: 'glb' | 'bin' | 'png' | 'json'): string {
     const sha256 = createHash('sha256').update(bytes).digest('hex');
     const key = `${folder}/${sha256}.${extension}`;
     this.write(key, bytes, sha256);

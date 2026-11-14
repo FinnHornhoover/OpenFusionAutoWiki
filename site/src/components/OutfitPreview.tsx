@@ -91,7 +91,7 @@ export default function OutfitPreview({ initial, variant, build, meta, catalog, 
 
   return <div className="model-preview outfit-picker">
     <div className="outfit-view"><Suspense fallback={<p role="status">Loading viewer…</p>}>
-      <ModelCanvas variant={preview.gender === variant.gender ? preview : variant} baseUrl={meta.baseUrl} preserveView />
+      <ModelCanvas variant={preview.gender === variant.gender ? preview : variant} baseUrl={meta.baseUrl} audioFile={meta.audio} preserveView />
     </Suspense></div>
     {controls}
   </div>;

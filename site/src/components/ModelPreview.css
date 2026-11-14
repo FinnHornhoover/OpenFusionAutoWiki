@@ -51,3 +51,10 @@
 .model-preview-weapon label { display: grid; gap: .3rem; flex: 1; min-width: 8rem; }
 .model-preview-weapon button { flex: 1; }
 .model-preview-weapon [role="alert"] { flex-basis: 100%; }
+
+.model-preview-sound { grid-column: 1 / -1; display: grid; gap: 0.6rem; }
+.model-preview-sound .model-preview-volume { display: grid; grid-template-columns: 44px minmax(0, 1fr); align-items: center; gap: 0.6rem; }
+.model-preview-sound .model-preview-sound-toggle { display: grid; place-items: center; width: 44px; height: 44px; padding: 0; }
+.model-preview-volume input:disabled { opacity: 0.5; }
+.model-preview-sound input { width: 100%; min-height: 44px; margin: 0; accent-color: var(--color-accent); }
+.model-preview-sound button[aria-pressed="false"] { color: var(--color-text-muted); border-color: var(--color-text-muted); }

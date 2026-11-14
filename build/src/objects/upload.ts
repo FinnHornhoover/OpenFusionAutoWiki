@@ -57,7 +57,7 @@ export async function upload(): Promise<void> {
           const row = pending[next++];
           const body = await readFile(row.path, { signal: controller.signal });
           controller.signal.throwIfAborted();
-          const type = row.key.endsWith('.webp') ? 'image/webp' : row.key.endsWith('.png') ? 'image/png' : row.key.endsWith('.glb') ? 'model/gltf-binary' : 'application/octet-stream';
+          const type = row.key.endsWith('.ogg') ? 'audio/ogg' : row.key.endsWith('.json') ? 'application/json' : row.key.endsWith('.webp') ? 'image/webp' : row.key.endsWith('.png') ? 'image/png' : row.key.endsWith('.glb') ? 'model/gltf-binary' : 'application/octet-stream';
           const result = await client.send(new PutObjectCommand({
             Bucket: R2_BUCKET, Key: `v4/${row.key}`, Body: body,
             ContentType: type, ContentEncoding: row.contentEncoding,

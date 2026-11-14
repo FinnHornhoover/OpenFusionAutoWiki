@@ -19,7 +19,7 @@ export interface UploadEntry extends PoolEntry {
 }
 
 export async function prepareUploads(entries: PoolEntry[], pool = POOL_DIR, cache = GZIP_DIR): Promise<UploadEntry[]> {
-  const eligible = (row: PoolEntry): boolean => row.bytes >= 1024 && /\.(glb|bin)$/.test(row.key);
+  const eligible = (row: PoolEntry): boolean => row.bytes >= 1024 && /\.(glb|bin|json)$/.test(row.key);
   const directories = new Set(entries.filter(eligible).map((row) => dirname(join(cache, `${row.key}.gz`))));
   await Promise.all([...directories].map((directory) => mkdir(directory, { recursive: true })));
 

@@ -8,8 +8,9 @@ import { compose, disposeTexture, disposeGltf, dressModel, loadModel, type Loade
 import { vehicleEffects, type VehicleEffects } from './vehicle-effects';
 import { weaponEffects, type WeaponPlayback } from './weapon-effects';
 import { ModelAnimation } from './animation';
+import { PreviewAudio, type SoundController } from './audio';
 
-export interface Viewer {
+export interface Viewer extends SoundController {
   animations: AnimationChoice[];
   hasMotion: boolean;
   selected: string;
@@ -36,6 +37,7 @@ export interface PlaybackState {
 }
 
 interface ViewerOptions {
+  audioFile?: string;
   paused?: boolean;
   view?: ViewState;
   onPlayback?: (state: PlaybackState) => void;
@@ -55,6 +57,8 @@ export async function mountViewer(container: HTMLElement, variant: PreviewVarian
   const controls = previewOrbitControls(camera, renderer.domElement);
   controls.enablePan = false;
   const env = createEnvironment();
+  const audio = options.audioFile ? new PreviewAudio(baseUrl, options.audioFile) : undefined;
+  let shotIndex: number | undefined;
   const models: LoadedModel[] = [];
   const textures = new Set<THREE.Texture>();
   const animations: ModelAnimation[] = [];
@@ -81,6 +85,7 @@ export async function mountViewer(container: HTMLElement, variant: PreviewVarian
       disposed = true;
       signal.removeEventListener('abort', dispose);
       controller.abort();
+      audio?.dispose();
       fireWait?.reject(new DOMException('Aborted', 'AbortError')); fireWait = undefined;
       cancelAnimationFrame(frame);
       resize?.disconnect();
@@ -131,6 +136,7 @@ export async function mountViewer(container: HTMLElement, variant: PreviewVarian
       if (part.mode === 'attached' && part.autoAnimation !== null) {
         const animation = new ModelAnimation(garment, loadClip, actor.gltf.scene);
         animations.push(animation);
+        animation.onEvent = (event) => audio?.event(event);
         const name = part.autoAnimation ?? animation.names.find((n) => n === 'nif-default') ?? animation.names[0];
         if (name) await animation.play(name);
       }
@@ -146,6 +152,12 @@ export async function mountViewer(container: HTMLElement, variant: PreviewVarian
     const choices = variant.animations ?? animationChoices(Object.keys(actor.data.extras?.clips ?? {}).map((name) => ({ name, duration: 1 })), context);
     const animation = new ModelAnimation(actor, loadClip, actor.gltf.scene, [...new Set([...choices.map((choice) => choice.name), ...Object.values(variant.weaponAttack ?? {}).filter((name): name is string => !!name)])]);
     animations.push(animation);
+    const attackSound = (): void => {
+      const sounds = variant.weaponShots?.[shotIndex ?? 0]?.sounds;
+      let choice = Math.random() * (sounds?.reduce((sum, sound) => sum + sound.weight, 0) ?? 0);
+      for (const sound of sounds ?? []) { choice -= sound.weight; if (choice < 0) { void audio?.play(sound.key); break; } }
+    };
+    animation.onEvent = (event) => audio?.event(event, attackSound);
     let selected = preferredAnimation(choices, context, variant.idle);
     const vehicleMovement = (): number => {
       if (!context.vehicle || choices.find((choice) => choice.name === selected)?.group !== 'Movement') return 0;
@@ -197,7 +209,7 @@ export async function mountViewer(container: HTMLElement, variant: PreviewVarian
         fallback = new THREE.Object3D(); fallback.name = 'preview-muzzle'; fallback.position.copy(tip); root.add(fallback);
         return fallback;
       };
-      weapon = weaponEffects(scene, actor.gltf.scene, variant.weaponShots, findMount, baseUrl, env, camera, signal, equipped?.nodes.get(0));
+      weapon = weaponEffects(scene, actor.gltf.scene, variant.weaponShots, findMount, baseUrl, env, camera, signal, equipped?.nodes.get(0), (kind, shot) => { if (kind === 'impact' && shot.impactSound) void audio?.play(shot.impactSound); else if (kind === 'launch' && !animation.hasAttackSound) attackSound(); });
     }
     const center = bounds.getCenter(new THREE.Vector3());
     const size = bounds.getSize(new THREE.Vector3());
@@ -246,6 +258,8 @@ export async function mountViewer(container: HTMLElement, variant: PreviewVarian
     const fire = async (index: number): Promise<void> => {
       const shot = variant.weaponShots?.[index];
       if (!weapon || !shot) return;
+      shotIndex = index;
+      audio?.stop();
       const saved = { name: selected, time: animation.playback.time, paused };
       const attachedTimes = animations.map((item) => item.playback.time);
       const attack = variant.weaponAttack ?? {};
@@ -285,6 +299,7 @@ export async function mountViewer(container: HTMLElement, variant: PreviewVarian
         await waitForFire(() => !weapon!.active);
       } finally {
         fireOnce = false;
+        shotIndex = undefined;
         attackWindup = 0;
         animation.speed = 1;
         animation.stopUpper();
@@ -303,6 +318,7 @@ export async function mountViewer(container: HTMLElement, variant: PreviewVarian
     };
     const report = (): void => options.onPlayback?.({ ...animation.playback, paused });
     const seek = (time: number): void => {
+      audio?.stop();
       weapon?.clear();
       animation.seek(time);
       for (const item of animations) if (item !== animation) item.seek(item.playback.duration > 0 ? time % item.playback.duration : 0);
@@ -357,13 +373,14 @@ export async function mountViewer(container: HTMLElement, variant: PreviewVarian
       invalidate();
     });
     resize.observe(container);
-    intersection = new IntersectionObserver(([entry]) => { visible = entry.isIntersecting; previous = 0; if (visible) invalidate(); });
+    intersection = new IntersectionObserver(([entry]) => { visible = entry.isIntersecting; audio?.visibility(visible && !document.hidden); previous = 0; if (visible) invalidate(); });
     intersection.observe(container);
-    visibility = (): void => { previous = 0; if (!document.hidden) invalidate(); };
+    visibility = (): void => { audio?.visibility(visible && !document.hidden); previous = 0; if (!document.hidden) invalidate(); };
     document.addEventListener('visibilitychange', visibility);
     invalidate();
     report();
     return {
+      sound: async (settings, onError) => { await audio?.sound(settings, onError); if (settings.sound) await audio?.prefetch(animations.flatMap((item) => item.soundKeys).concat(variant.weaponShots?.flatMap((shot) => [...shot.sounds?.map((sound) => sound.key) ?? [], ...shot.impactSound ? [shot.impactSound] : []]) ?? [])); },
       hasVehicleTrails: !!vehicle?.count, trails: (show) => { vehicle?.visible(show); invalidate(); },
       animations: choices, get selected() { return selected; }, hasMotion,
       fire: (index) => {
@@ -372,13 +389,16 @@ export async function mountViewer(container: HTMLElement, variant: PreviewVarian
       },
       play: async (name) => {
         if (firePromise) return;
+        audio?.stop();
         const changed = await animation.play(name);
+        if (audio?.settings.sound) void audio.prefetch(animation.soundKeys).catch((error: unknown) => audio.onError(error instanceof Error ? error.message : 'Could not load audio'));
         if (changed) { selected = name; seek(0); invalidate(); }
       },
       seek: (time) => { if (!firePromise) { seek(time); invalidate(); } },
       pause: (value) => {
         if (firePromise) return;
         paused = value;
+        if (paused) audio?.stop();
         previous = 0;
         report();
         invalidate();

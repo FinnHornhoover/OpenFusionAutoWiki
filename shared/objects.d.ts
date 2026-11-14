@@ -29,6 +29,8 @@ export interface ModelPart {
 }
 
 export interface WeaponShot {
+  sounds?: { key: string; weight: number }[];
+  impactSound?: string;
   label: string;
   bullet: number;
   targetMode: number;
@@ -95,6 +97,7 @@ export interface OutfitItem {
 }
 
 export interface PreviewMeta {
+  audio?: string;
   baseUrl: string;
   shared?: Record<string, string>;
   types: PreviewType[];
@@ -102,6 +105,12 @@ export interface PreviewMeta {
   format: number;
   areas?: boolean;
 }
+
+export interface SoundEvent { time: number; functionName: string; data?: string; audio?: string | null }
+export interface AudioSettings { sound: boolean; ambience: boolean; music: boolean; volume: number }
+export interface AudioRegion { points: [number, number][]; instance: boolean; delay: number; sound?: string }
+export interface AudioEmitter { id: string; position: [number, number, number]; sound: string; volume: number; pitch: number; near: number; far: number }
+export interface AudioBank { sounds: Record<string, string[]>; music: AudioRegion[]; ambience: AudioRegion[]; emitters: AudioEmitter[] }
 
 export interface AreaPreviewRecipe {
   id: string;

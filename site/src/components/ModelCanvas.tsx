@@ -2,6 +2,7 @@ import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import type { AnimationChoice, PreviewVariant } from '../../../shared/objects';
 import { mountViewer, type PlaybackState, type Viewer, type ViewState } from '../objects/viewer';
 import PreviewOptionsButton from './PreviewOptionsButton';
+import SoundControls from './SoundControls';
 
 const INITIAL: PlaybackState = { time: 0, duration: 0, paused: false };
 
@@ -10,7 +11,7 @@ function clock(seconds: number): string {
   return `${Math.floor(tenths / 600)}:${((tenths % 600) / 10).toFixed(1).padStart(4, '0')}`;
 }
 
-export default function ModelCanvas({ variant, baseUrl, preserveView = false, options }: { variant: PreviewVariant; baseUrl: string; preserveView?: boolean; options?: ReactNode }) {
+export default function ModelCanvas({ variant, baseUrl, audioFile, preserveView = false, options }: { variant: PreviewVariant; baseUrl: string; audioFile?: string; preserveView?: boolean; options?: ReactNode }) {
   const container = useRef<HTMLDivElement>(null);
   const viewer = useRef<Viewer>();
   const savedView = useRef<ViewState>();
@@ -45,7 +46,7 @@ export default function ModelCanvas({ variant, baseUrl, preserveView = false, op
     setReady(false);
     setPlayback({ ...INITIAL, paused });
     void mountViewer(container.current, variant, baseUrl, controller.signal, {
-      paused,
+      paused, audioFile,
       view: preserveView ? savedView.current : undefined,
       onPlayback: (state) => { if (!controller.signal.aborted) { playbackRef.current = state; setPlayback(state); } },
     }).then((instance) => {
@@ -66,7 +67,7 @@ export default function ModelCanvas({ variant, baseUrl, preserveView = false, op
       viewer.current?.dispose();
       viewer.current = undefined;
     };
-  }, [variant, baseUrl, attempt, preserveView]);
+  }, [variant, baseUrl, audioFile, attempt, preserveView]);
 
   const select = (name: string): void => {
     const request = ++animationRequest.current;
@@ -111,6 +112,7 @@ export default function ModelCanvas({ variant, baseUrl, preserveView = false, op
       {error && <p className="model-preview-error" role="alert">Preview unavailable: {error} <button onClick={() => setAttempt((n) => n + 1)}>Retry</button></p>}
       {ready && <section className="model-preview-controls" aria-label="3D viewing options">
         {options}
+        {audioFile && <SoundControls controller={() => viewer.current} />}
         {!!variant.weaponShots?.length && <div className="model-preview-weapon">
           {variant.weaponShots.length > 1 && <label>Shot
             <select className="styled-select" aria-label="Weapon shot" value={shot} disabled={firing} onChange={(event) => setShot(Number(event.target.value))}>

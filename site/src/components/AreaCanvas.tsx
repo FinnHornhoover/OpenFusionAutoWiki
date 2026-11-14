@@ -4,8 +4,9 @@ import type { PopulationSelection } from '../objects/area-population';
 import { mountAreaViewer, type AreaViewer } from '../objects/area-viewer';
 import { mountWorldViewer, type WorldView } from '../objects/world-viewer';
 import PreviewOptionsButton from './PreviewOptionsButton';
+import SoundControls from './SoundControls';
 
-export default function AreaCanvas({ recipe, baseUrl, populationUrl, world }: { recipe: AreaPreviewRecipe; baseUrl: string; populationUrl: string; world?: WorldView }) {
+export default function AreaCanvas({ recipe, baseUrl, populationUrl, world, audioFile }: { recipe: AreaPreviewRecipe; baseUrl: string; populationUrl: string; audioFile?: string; world?: WorldView }) {
   const stage = useRef<HTMLDivElement>(null);
   const viewer = useRef<AreaViewer>();
   const [ready, setReady] = useState(false);
@@ -25,8 +26,8 @@ export default function AreaCanvas({ recipe, baseUrl, populationUrl, world }: { 
     setReady(false); setError(''); setScenery(!world || !matchMedia('(max-width: 600px)').matches); setGrass(!world); setEffects(!world); setMotion(animate);
     const onStatus = (text: string): void => { if (!controller.signal.aborted) setStatus(text); };
     const onSelection = (value: PopulationSelection | null): void => { if (!controller.signal.aborted) setSelection(value); };
-    const mounted = world ? mountWorldViewer(stage.current!, world, baseUrl, controller.signal, onStatus, onSelection)
-      : mountAreaViewer(stage.current!, recipe, baseUrl, controller.signal, onStatus, populationUrl, onSelection);
+    const mounted = world ? mountWorldViewer(stage.current!, world, baseUrl, controller.signal, onStatus, onSelection, audioFile)
+      : mountAreaViewer(stage.current!, recipe, baseUrl, controller.signal, onStatus, populationUrl, onSelection, audioFile);
     void mounted.then((instance) => {
       if (controller.signal.aborted) { instance.dispose(); return; }
       instance.pause(!animate);
@@ -34,7 +35,7 @@ export default function AreaCanvas({ recipe, baseUrl, populationUrl, world }: { 
       setReady(true);
     }).catch((reason: unknown) => { if (!controller.signal.aborted) setError(reason instanceof Error ? reason.message : 'Could not load area'); });
     return () => { controller.abort(); viewer.current?.dispose(); viewer.current = undefined; };
-  }, [recipe, baseUrl, populationUrl, world, attempt]);
+  }, [recipe, baseUrl, populationUrl, world, audioFile, attempt]);
   return <div className={`model-canvas area-canvas${ready ? ' model-canvas-ready' : ''}`}>
     <div className="model-preview-stage" ref={stage}>
       {!ready && !error && <span className="model-preview-status" role="status">{status}</span>}
@@ -48,6 +49,7 @@ export default function AreaCanvas({ recipe, baseUrl, populationUrl, world }: { 
           if (area) viewer.current?.focus?.((area.bounds[0] + area.bounds[2]) / 2, (area.bounds[1] + area.bounds[3]) / 2);
         }}><option value="">Choose area…</option>{world.recipe.areas.map((area) => <option key={area.id} value={area.id}>{area.name}</option>)}</select>
       </label>}
+      {audioFile && <SoundControls map controller={() => viewer.current} />}
       <button onClick={() => viewer.current?.reset()}>Reset view</button>
       <button onClick={() => viewer.current?.overhead()}>From above</button>
       <button aria-pressed={scenery} onClick={() => { viewer.current?.scenery(!scenery); setScenery(!scenery); }}>Scenery</button>

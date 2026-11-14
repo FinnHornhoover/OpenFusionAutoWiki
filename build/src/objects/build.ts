@@ -16,6 +16,7 @@ import { animationChoices } from '../../../shared/animations.js';
 import { composeOutfit } from '../../../shared/outfits.js';
 import { WeaponEffects } from './weapon-effects.js';
 import { AreaCompiler } from './areas.js';
+import { AudioCompiler } from './audio.js';
 import { sharePreviews } from './share.js';
 
 export const OBJECTS_CACHE = join(CACHE_DIR, 'objects');
@@ -105,6 +106,7 @@ export async function buildPreviews(release: Release, downloaded: DownloadedAsse
       if (!xdtEntry) throw new Error(`${slug}: missing xdt.json`);
       const xdt = JSON.parse(xdtEntry.getData().toString('utf8')) as Xdt;
       const recipes = new Recipes(pack, xdt);
+      const audio = new AudioCompiler(pack, pool);
       const entities = recipes.entities();
       const weapons = new Map((xdt.m_pWeaponItemTable?.m_pItemData ?? []).map((row) => [Number(row.m_iItemNumber), row]));
       for (const item of entities.items) {
@@ -112,7 +114,7 @@ export async function buildPreviews(release: Release, downloaded: DownloadedAsse
         const row = weapons.get(Number(String(item.id).slice(2)));
         if (!row) continue;
         const shots = await weaponEffects.shots(row);
-        if (shots.length) for (const variant of item.variants) variant.weaponShots = shots;
+        if (shots.length) for (const variant of item.variants) { variant.weaponShots = shots; audio.weapon(variant, row, xdt); }
       }
       const vehicles = new Map((xdt.m_pVehicleItemTable?.m_pItemData ?? []).map((row) => [Number(row.m_iItemNumber), row]));
       for (const item of entities.items) {
@@ -163,6 +165,7 @@ export async function buildPreviews(release: Release, downloaded: DownloadedAsse
           if (part.primary) pool.add(pack, part.primary);
           if (part.secondary) pool.add(pack, part.secondary);
         }
+        audio.variant(variant);
       };
       defaults.forEach(stage);
       const catalog: OutfitCatalog = {
@@ -185,9 +188,9 @@ export async function buildPreviews(release: Release, downloaded: DownloadedAsse
       }
       const areaCount = await areaCompiler.build(slug);
       buildPopulation(slug, zip, xdt, recipes, pack, stage);
-      const meta: PreviewMeta = { baseUrl: `${baseUrl}/v4`, types, release: release.tagName, format: pack.manifest.format_version, areas: areaCount > 0 };
+      const meta: PreviewMeta = { baseUrl: `${baseUrl}/v4`, types, release: release.tagName, format: pack.manifest.format_version, audio: audio.save(), areas: areaCount > 0 };
       writeFileSync(join(directory, 'meta.json'), JSON.stringify(meta));
-      writeFileSync(join(directory, 'coverage.json'), JSON.stringify({ counts: Object.fromEntries(types.map((type) => [type, entities[type].length])), unresolved: [...recipes.missing].sort() }));
+      writeFileSync(join(directory, 'coverage.json'), JSON.stringify({ counts: Object.fromEntries(types.map((type) => [type, entities[type].length])), unresolved: [...recipes.missing].sort(), audio: [...audio.missing].sort() }));
       completed.add(slug);
       log.done(`${slug}: ${types.map((t) => `${t}=${entities[t].length}`).join(' ')}; unresolved aliases=${recipes.missing.size}`);
     }

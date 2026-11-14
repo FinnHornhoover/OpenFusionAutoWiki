@@ -7,11 +7,11 @@ import type { Connect, Plugin } from 'vite';
 
 function localObjects(): Plugin {
   const serve: Connect.NextHandleFunction = (request, response, next) => {
-    const match = /^\/objects\/v4\/((?:models\/(?:prefabs|geometry|buffers)|animations\/gltf|areas\/(?:tiles|terrain)|textures)\/[a-f0-9]{64}\.(glb|bin|webp|png))(?:\?.*)?$/.exec(request.url ?? '');
+    const match = /^\/objects\/v4\/((?:models\/(?:prefabs|geometry|buffers)|animations\/gltf|areas\/(?:tiles|terrain)|textures|audio\/(?:clips|banks))\/[a-f0-9]{64}\.(glb|bin|webp|png|ogg|json))(?:\?.*)?$/.exec(request.url ?? '');
     if (!match) return next();
     const file = resolve(__dirname, '../.cache/objects/pool', match[1]);
     if (!existsSync(file)) { response.statusCode = 404; response.end(); return; }
-    response.setHeader('Content-Type', match[2] === 'webp' ? 'image/webp' : match[2] === 'png' ? 'image/png' : match[2] === 'glb' ? 'model/gltf-binary' : 'application/octet-stream');
+    response.setHeader('Content-Type', match[2] === 'ogg' ? 'audio/ogg' : match[2] === 'json' ? 'application/json' : match[2] === 'webp' ? 'image/webp' : match[2] === 'png' ? 'image/png' : match[2] === 'glb' ? 'model/gltf-binary' : 'application/octet-stream');
     createReadStream(file).on('error', () => { response.destroy(); }).pipe(response);
   };
   return {
