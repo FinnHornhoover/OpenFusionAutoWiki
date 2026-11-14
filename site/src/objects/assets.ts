@@ -130,7 +130,10 @@ export async function dressModel(model: LoadedModel, part: ModelPart, variant: P
       const sub = name.includes('sub');
       const vehicle = part.mount === 'vehicle';
       const texture = vehicle ? primary : sub ? secondary : primary;
-      if ((worn || index === 0) && !(worn && name.includes('override')) && (worn || name.includes('main') || sub) && texture) {
+      // Later linked main groups can have their own attachment atlas, such as
+      // Dexter's pistol. Keep that binding when replacing the actor's body.
+      const independent = !worn && !vehicle && /(?:^|-)main-link_[b-z](?:\.|$)/.test(name) && (source as THREE.MeshStandardMaterial).map;
+      if (!independent && (worn || index === 0) && !(worn && name.includes('override')) && (worn || name.includes('main') || sub) && texture) {
         (material as THREE.MeshStandardMaterial).map = texture;
         // ff-three checks this legacy field before the standard map.
         delete material.userData.main_texture_index;

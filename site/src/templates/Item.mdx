@@ -24,7 +24,12 @@ import { formatDurationSeconds } from '../data/formatTime';
   </div>
 </div>
 
-<ModelPreview build={props.build} type="items" id={props.data.id} name={props.data.name} />
+<div className="model-preview item-actions">
+  <ModelPreview build={props.build} type="items" id={props.data.id} name={props.data.name} />
+  {props.data.typeId >= 0 && props.data.typeId <= 3 && ['Common', 'Uncommon', 'Rare', 'Ultra Rare'].includes(props.data.rarity) && (
+    <Link className="model-preview-action" to={'/' + props.build + '/combinations?style=' + encodeURIComponent(props.data.id)}>Plan combinations</Link>
+  )}
+</div>
 
 {props.data.description && (
   <blockquote className="npc-comment">{props.data.description}</blockquote>

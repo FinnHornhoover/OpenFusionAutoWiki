@@ -13,11 +13,12 @@ export function trailSystem(recipe: TrailParticleRecipe, parent: THREE.Object3D,
     if (i < length - 1) indices.push(i * 2, i * 2 + 1, i * 2 + 2, i * 2 + 2, i * 2 + 1, i * 2 + 3);
   }
   geometry.setAttribute('position', positions); geometry.setAttribute('uv', uv); geometry.setAttribute('particleColor', colors); geometry.setIndex(indices);
+  geometry.setDrawRange(0, 0);
   const mesh = new THREE.Mesh(geometry, material);
   mesh.name = 'particle-trail'; mesh.userData.ffEffect = true; mesh.frustumCulled = false; mesh.renderOrder = 3;
   const pose = new ParticlePose(recipe, parent); pose.update(0);
   const history = Array.from({ length }, () => pose.position.clone()), previous = pose.position.clone(), point = new THREE.Vector3(), axis = new THREE.Vector3(), right = new THREE.Vector3(), side = new THREE.Vector3(), cameraPosition = new THREE.Vector3();
-  let time = 0, accumulator = 0;
+  let time = 0, accumulator = 0, initialized = false;
   const add = (point: THREE.Vector3): void => {
     for (let i = 0; i < length - 1; i++) history[i].copy(history[i + 1]);
     history[length - 1].copy(point);
@@ -34,6 +35,15 @@ export function trailSystem(recipe: TrailParticleRecipe, parent: THREE.Object3D,
     add(pose.position);
   };
   const update = (delta: number, camera?: THREE.Camera, drift?: THREE.Vector3): void => {
+    if (!initialized) {
+      // Runtime effects are positioned after construction. Seed their history
+      // at the first update, once the emitter is at its launch/attachment pose.
+      pose.update(0);
+      history.forEach((point) => point.copy(pose.position));
+      previous.copy(pose.position);
+      initialized = true;
+      if (recipe.effect.prewarm !== false && recipe.effect.maxTimer < 0) for (let t = 0; t < Math.min(-recipe.effect.maxTimer, 8); t += 1 / 30) tick(1 / 30);
+    }
     accumulator += delta;
     while (accumulator >= 1 / 30) { tick(1 / 30, drift); accumulator -= 1 / 30; }
     const dead = recipe.effect.maxTimer > 0 && !recipe.effect.disableUpdate && time > recipe.effect.maxTimer + (recipe.effect.longestLifeTime ?? recipe.emitter.lifeTime);
@@ -56,7 +66,5 @@ export function trailSystem(recipe: TrailParticleRecipe, parent: THREE.Object3D,
     }
     positions.needsUpdate = true; uv.needsUpdate = true;
   };
-  if (recipe.effect.prewarm !== false && recipe.effect.maxTimer < 0) for (let t = 0; t < Math.min(-recipe.effect.maxTimer, 8); t += 1 / 30) tick(1 / 30);
-  update(0);
   return { root: mesh, update, dispose() { geometry.dispose(); material.dispose(); } };
 }

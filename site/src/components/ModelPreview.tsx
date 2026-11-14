@@ -40,7 +40,10 @@ export default function ModelPreview({ build, type, id, name }: { build?: string
   const outfitUrl = `/${build}/outfits?items=${encodeURIComponent(selected?.join(',') ?? '')}${gender ? `&gender=${gender}` : ''}`;
   return (
     <div className="model-preview">
-      <button ref={opener} className="model-preview-open" aria-haspopup="dialog" onClick={() => setActiveKey(key)}>View in 3D</button>
+      <div className="model-preview-actions">
+        <button ref={opener} className="model-preview-open" aria-haspopup="dialog" onClick={() => setActiveKey(key)}>View in 3D</button>
+        {outfit && <Link className="model-preview-action" to={outfitUrl}>Open in Outfit Picker</Link>}
+      </div>
       {activeKey === key && (
         <ModelDialog titleId={titleId} returnFocus={opener} onClose={() => setActiveKey('')}>
           <div className="model-preview-heading">

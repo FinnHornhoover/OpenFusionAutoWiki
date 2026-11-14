@@ -52,6 +52,10 @@ export function weaponEffects(scene: THREE.Scene, actor: THREE.Object3D, shots: 
     for (const effect of effects) {
       effect.root.position.copy(flight.position);
       effect.root.quaternion.copy(effect.kind === 'muzzle' ? rotation : flight.rotation);
+      if (effect.kind !== 'impact') {
+        effect.root.updateMatrixWorld(true);
+        effect.motion.update(0);
+      }
     }
   };
 
