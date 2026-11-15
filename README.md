@@ -58,6 +58,8 @@ animation and playback position. Retrobution throws the equipped weapon model.
 Format 7 adds opt-in animation/weapon sounds and separate map Ambience/Music controls.
 Audio stops with hidden/closed viewers; seeking stays silent. Music streams, while
 short sounds use a bounded decoded cache. Ogg files share the existing R2 pool.
+Format 8 adds melee ribbons between the weapon's source attachment points, with
+client end-event timing and Retrobution's per-weapon colours. Older packs omit ribbons.
 Vehicle pages show mounted boy/girl previews with board or scooter rider motions;
 vehicle models retain their own default animations and texture variants.
 Vehicle trails use the client attachment points during movement animations,
@@ -98,7 +100,7 @@ URLs and decoded bytes stay the same. Cached copies live in `.cache/objects/gzip
 `.cache/objects/publication.json` records upload sizes. To prepare and measure locally
 without uploading: `npm run build -w build && node build/dist/objects/compress.js`.
 
-For local iteration after generating wiki data, with extracted Format 4–7 packs:
+For local iteration after generating wiki data, with extracted Format 4–8 packs:
 
 ```bash
 FFWIKI_RELEASE=release-41 \

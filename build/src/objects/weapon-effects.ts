@@ -1,9 +1,16 @@
-import type { WeaponShot } from '../../../shared/objects.js';
+import type { Color, MeleeTrail, WeaponShot } from '../../../shared/objects.js';
 import type { ParticleRecipe } from '../../../shared/particles.js';
 import type { Pack, Prefab, Resources } from './pack.js';
 import type { AssetPool } from './pool.js';
 import { ParticleCatalog } from './particles.js';
 import { SceneDocument } from './scene-document.js';
+
+interface TrailMaterial {
+  m_SavedProperties: {
+    m_TexEnvs: [{ name: string }, { m_Texture?: { r: number }; m_Scale: { x: number; y: number }; m_Offset: { x: number; y: number } }][];
+    m_Colors: [{ name: string }, { r: number; g: number; b: number; a: number }][];
+  };
+}
 
 interface Bullet {
   m_iParticleScript: number; m_iFireScript: number;
@@ -30,6 +37,7 @@ export class WeaponEffects {
   private compiled = new Map<string, Promise<{ model: string; duration: number } | undefined>>();
   private particles: ParticleCatalog;
   private renderers = new Map<number, number[]>();
+  private swordTrail?: MeleeTrail;
 
   constructor(private pack: Pack, private pool: AssetPool) {
     const world = pack.msgpack<Record<string, EffectRecord & { data: { m_pBulletData?: Bullet[] } }>>('areas/world.msgpack');
@@ -45,6 +53,19 @@ export class WeaponEffects {
     this.bullets = table?.data.m_pBulletData ?? [];
     for (const r of records) if (r.type === 'EffectEmitterController' && r.data.m_GameObject) this.effects.set(r.data.m_GameObject.r, r.data);
     this.materials = pack.msgpack('metadata/materials.msgpack');
+    const managers = records.filter((r) => r.type === 'SwordTrailManager');
+    const manager = managers.find((r) => pack.assetSource(r.asset) === 'main.unity3d') ?? managers[0];
+    const materialId = (manager?.data as { mat?: { r: number } } | undefined)?.mat?.r;
+    const material = materialId === undefined ? undefined : this.materials[materialId]?.[2] as unknown as TrailMaterial | undefined;
+    const properties = material?.m_SavedProperties;
+    const main = properties?.m_TexEnvs.find(([key]) => key.name === '_MainTex')?.[1];
+    const tint = properties?.m_Colors.find(([key]) => key.name === '_TintColor')?.[1];
+    const texture = main?.m_Texture && pack.resources[main.m_Texture.r]?.[2];
+    if (main && tint && texture?.file) this.swordTrail = {
+      texture: pool.add(pack, texture.file), color: [tint.r, tint.g, tint.b, tint.a],
+      uv: [main.m_Scale.x, main.m_Scale.y, main.m_Offset.x, main.m_Offset.y],
+      filter: texture.settings?.m_FilterMode ?? 1, wrap: texture.settings?.m_WrapMode ?? 0,
+    };
     this.particles = new ParticleCatalog(pack, this.materials);
   }
 
@@ -118,6 +139,18 @@ export class WeaponEffects {
     const id = name === 'vehicle_hoverboard' ? 835 : name === 'vehicle_cloud' || retrobution && name === 'vehicle_hoverboard2' ? 836 : 15;
     const effect = await this.effect(id, 1, 1.5);
     return effect ? mounts.map((mount) => ({ mount, model: effect.model })) : [];
+  }
+
+  melee(row: Record<string, string | number>, comment: string | number | undefined): MeleeTrail | undefined {
+    if (Number(row.m_iTargetMode) !== 1 || this.pack.manifest.format_version < 8) return undefined;
+    if (!this.swordTrail) { this.missing.add('weapon-sword-trail'); return undefined; }
+    let color = this.swordTrail.color;
+    if (this.pack.manifest.build === 'retrobution') {
+      color = [1, 0.73, 0.95, 1];
+      const hex = typeof comment === 'string' && /^#?([a-f0-9]{6})$/i.exec(comment);
+      if (hex) color = [0, 2, 4].map((offset) => parseInt(hex[1].slice(offset, offset + 2), 16) / 255).concat(1) as Color;
+    }
+    return { ...this.swordTrail, color };
   }
 
   async shots(row: Record<string, string | number>): Promise<WeaponShot[]> {

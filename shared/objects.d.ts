@@ -45,6 +45,14 @@ export interface WeaponShot {
     | { kind: 'grenade'; duration: number; speed: number; verticalSpeed: number; retrobution: boolean; weaponModel: boolean };
 }
 
+export interface MeleeTrail {
+  texture: string;
+  color: Color;
+  uv: [number, number, number, number];
+  filter: number;
+  wrap: number;
+}
+
 export interface WeaponAttack {
   full?: string;
   upper?: string;
@@ -68,6 +76,7 @@ export interface PreviewVariant {
   outfitSlot?: PartSlot;
   weaponShots?: WeaponShot[];
   weaponAttack?: WeaponAttack;
+  weaponTrail?: MeleeTrail;
   shaderNames?: Record<string, string>;
   vehicleEffects?: { model: string; mount: string }[];
 }

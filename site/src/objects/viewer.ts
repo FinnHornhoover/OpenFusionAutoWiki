@@ -8,6 +8,7 @@ import { compose, disposeTexture, disposeGltf, dressModel, loadModel, type Loade
 import { vehicleEffects, type VehicleEffects } from './vehicle-effects';
 import { weaponEffects, type WeaponPlayback } from './weapon-effects';
 import { ModelAnimation } from './animation';
+import { MeleeTrails } from './melee-trails';
 import { PreviewAudio, type SoundController } from './audio';
 
 export interface Viewer extends SoundController {
@@ -64,6 +65,8 @@ export async function mountViewer(container: HTMLElement, variant: PreviewVarian
   const animations: ModelAnimation[] = [];
   let vehicle: VehicleEffects | undefined;
   let weapon: WeaponPlayback | undefined;
+  let melee: MeleeTrails | undefined;
+  let trailElapsed = 0;
   let firePromise: Promise<void> | undefined;
   let fireOnce = false;
   let attackWindup = 0;
@@ -100,6 +103,7 @@ export async function mountViewer(container: HTMLElement, variant: PreviewVarian
     // resources on that path so late materials/textures are released too.
     vehicle?.dispose();
     weapon?.dispose();
+    melee?.dispose();
     animations.forEach((animation) => animation.dispose());
     models.forEach((model) => { model.dressing?.dispose(); disposeGltf(model.gltf); });
     for (const texture of textures) disposeTexture(texture);
@@ -177,10 +181,10 @@ export async function mountViewer(container: HTMLElement, variant: PreviewVarian
     if (bounds.isEmpty()) throw new Error('No visible geometry available');
     const actorHeight = bounds.getSize(new THREE.Vector3()).y;
     const viewDistance = actorHeight * 1.3;
+    const equipped = models.find((model) => model.url === new URL(`${baseUrl}/${variant.parts?.find((part) => part.slot === 'weapon')?.model}`, location.href).href);
     if (variant.weaponShots?.length) {
       const destination = actor.gltf.scene.getWorldPosition(new THREE.Vector3()).add(new THREE.Vector3(0, actorHeight * 0.5, viewDistance));
       bounds.expandByPoint(destination);
-      const equipped = models.find((model) => model.url === new URL(`${baseUrl}/${variant.parts?.find((part) => part.slot === 'weapon')?.model}`, location.href).href);
       let fallback: THREE.Object3D | undefined;
       const findMount = (name: string): THREE.Object3D | undefined => {
         for (const model of [...models].reverse()) {
@@ -210,6 +214,10 @@ export async function mountViewer(container: HTMLElement, variant: PreviewVarian
         return fallback;
       };
       weapon = weaponEffects(scene, actor.gltf.scene, variant.weaponShots, findMount, baseUrl, env, camera, signal, equipped?.nodes.get(0), (kind, shot) => { if (kind === 'impact' && shot.impactSound) void audio?.play(shot.impactSound); else if (kind === 'launch' && !animation.hasAttackSound) attackSound(); });
+    }
+    if (variant.weaponTrail && equipped) {
+      melee = await MeleeTrails.create(actor.gltf.scene, equipped, variant.weaponTrail, baseUrl, signal);
+      if (disposed || signal.aborted) { melee?.dispose(); throw new DOMException('Aborted', 'AbortError'); }
     }
     const center = bounds.getCenter(new THREE.Vector3());
     const size = bounds.getSize(new THREE.Vector3());
@@ -259,6 +267,7 @@ export async function mountViewer(container: HTMLElement, variant: PreviewVarian
       const shot = variant.weaponShots?.[index];
       if (!weapon || !shot) return;
       shotIndex = index;
+      melee?.clear(); trailElapsed = 0;
       audio?.stop();
       const saved = { name: selected, time: animation.playback.time, paused };
       const attachedTimes = animations.map((item) => item.playback.time);
@@ -285,6 +294,7 @@ export async function mountViewer(container: HTMLElement, variant: PreviewVarian
         fireOnce = !!full;
         // Longer pistol launch delays belong before recoil, not inside it.
         attackWindup = context.weapon === 'pistol' && shot.flight.kind === 'ordinary' ? Math.max(0, shot.flight.delay - 0.1) : 0;
+        melee?.update([animation.upperPlayback, animation.playback]);
         paused = false; previous = 0; invalidate();
         await waitForFire(() => (!full || animation.playback.time >= animation.playback.duration) && animation.upperPlayback.time >= animation.upperPlayback.duration);
         assertLive();
@@ -299,6 +309,7 @@ export async function mountViewer(container: HTMLElement, variant: PreviewVarian
         await waitForFire(() => !weapon!.active);
       } finally {
         fireOnce = false;
+        melee?.clear(); trailElapsed = 0;
         shotIndex = undefined;
         attackWindup = 0;
         animation.speed = 1;
@@ -320,13 +331,15 @@ export async function mountViewer(container: HTMLElement, variant: PreviewVarian
     const seek = (time: number): void => {
       audio?.stop();
       weapon?.clear();
+      melee?.clear(); trailElapsed = 0;
       animation.seek(time);
       for (const item of animations) if (item !== animation) item.seek(item.playback.duration > 0 ? time % item.playback.duration : 0);
+      melee?.update([animation.upperPlayback, animation.playback]);
       env.time.value = animation.playback.time;
       previous = 0;
       report();
     };
-    const advance = (delta: number): void => {
+    const advanceStep = (delta: number): void => {
       const attackDelta = delta - Math.min(delta, attackWindup);
       attackWindup = Math.max(0, attackWindup - delta);
       for (const item of animations) {
@@ -336,6 +349,21 @@ export async function mountViewer(container: HTMLElement, variant: PreviewVarian
       env.time.value += delta;
       vehicle?.update(delta, vehicleMovement());
       weapon?.update(delta);
+    };
+    const advance = (delta: number): void => {
+      if (!melee || delta <= 0) { advanceStep(delta); return; }
+      // Sample animated attachment poses at 60 Hz on every display refresh rate.
+      let remaining = delta;
+      while (remaining > 1e-9) {
+        const step = Math.min(remaining, 1 / 60 - trailElapsed);
+        advanceStep(step);
+        trailElapsed += step;
+        remaining -= step;
+        if (trailElapsed >= 1 / 60 - 1e-9) {
+          melee.update([animation.upperPlayback, animation.playback]);
+          trailElapsed = 0;
+        }
+      }
     };
     const draw = (time: number): void => {
       if (disposed) return;
@@ -353,6 +381,7 @@ export async function mountViewer(container: HTMLElement, variant: PreviewVarian
         advance(remaining);
         if (fireWait?.done()) { const waiting = fireWait; fireWait = undefined; waiting.resolve(); }
       } else { vehicle?.update(0, vehicleMovement()); weapon?.update(0); }
+      melee?.follow();
       renderer.render(scene, camera);
       if (time - lastReported >= 100 || paused) { report(); lastReported = time; }
       if (visible && !document.hidden && !paused && hasMotion) frame = requestAnimationFrame(draw);

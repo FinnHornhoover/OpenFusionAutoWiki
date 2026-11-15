@@ -50,6 +50,7 @@ interface LayerChannel {
 }
 
 interface AnimationLayer {
+  name: string;
   decoded: DecodedClip;
   channels: LayerChannel[];
   time: number;
@@ -120,6 +121,7 @@ export class ModelAnimation {
   speed = 1;
   private materials: MaterialTrack[] = [];
   private time = 0;
+  private name = '';
   private duration = 0;
   private generation = 0;
   private disposed = false;
@@ -208,7 +210,7 @@ export class ModelAnimation {
       const interpolant = property === 'quaternion' ? new THREE.QuaternionLinearInterpolant(track.times, track.values, 4) : new THREE.LinearInterpolant(track.times, track.values, 3);
       channels.push({ object, property, interpolant, base: object[property].toArray() });
     }
-    this.layer = { decoded, channels, time: 0, age: 0, speed, fade };
+    this.layer = { name, decoded, channels, time: 0, age: 0, speed, fade };
     this.applyTime(this.time);
   }
 
@@ -219,8 +221,8 @@ export class ModelAnimation {
     this.layer = undefined;
   }
 
-  get upperPlayback(): { time: number; duration: number } {
-    return { time: this.layer?.time ?? 0, duration: this.layer?.decoded.duration ?? 0 };
+  get upperPlayback(): { name: string; time: number; duration: number; endTime?: number } {
+    return { name: this.layer?.name ?? '', time: this.layer?.time ?? 0, duration: this.layer?.decoded.duration ?? 0, endTime: this.layer?.decoded.events.find((event) => /^(end|EndAnimation)$/i.test(event.functionName) && Number.isFinite(event.time) && event.time >= 0)?.time };
   }
 
   private restoreUpper(): void {
@@ -246,6 +248,7 @@ export class ModelAnimation {
     this.events = decoded.events;
     this.materials = decoded.materials;
     this.duration = decoded.duration;
+    this.name = name;
     this.time = 0;
     this.seek(0);
     this.beginning = true;
@@ -275,8 +278,8 @@ export class ModelAnimation {
     }
   }
 
-  get playback(): { time: number; duration: number } {
-    return { time: this.time, duration: this.duration };
+  get playback(): { name: string; time: number; duration: number; endTime?: number } {
+    return { name: this.name, time: this.time, duration: this.duration, endTime: this.events.find((event) => /^(end|EndAnimation)$/i.test(event.functionName) && Number.isFinite(event.time) && event.time >= 0)?.time };
   }
 
   seek(time: number): void {

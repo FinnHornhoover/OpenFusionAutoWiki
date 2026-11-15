@@ -114,7 +114,11 @@ export async function buildPreviews(release: Release, downloaded: DownloadedAsse
         const row = weapons.get(Number(String(item.id).slice(2)));
         if (!row) continue;
         const shots = await weaponEffects.shots(row);
-        if (shots.length) for (const variant of item.variants) { variant.weaponShots = shots; audio.weapon(variant, row, xdt); }
+        const trail = weaponEffects.melee(row, xdt.m_pWeaponItemTable.m_pItemStringData[Number(row.m_iItemName)]?.m_strComment2);
+        for (const variant of item.variants) {
+          variant.weaponTrail = trail;
+          if (shots.length) { variant.weaponShots = shots; audio.weapon(variant, row, xdt); }
+        }
       }
       const vehicles = new Map((xdt.m_pVehicleItemTable?.m_pItemData ?? []).map((row) => [Number(row.m_iItemNumber), row]));
       for (const item of entities.items) {

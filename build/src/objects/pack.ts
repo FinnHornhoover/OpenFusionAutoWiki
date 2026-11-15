@@ -82,7 +82,7 @@ export class Pack {
     }
 
     this.manifest = this.json('manifest.json');
-    if (![4, 5, 6, 7].includes(this.manifest.format_version)) throw new Error(`Expected ObjectPacks format 4–7, got ${this.manifest.format_version}`);
+    if (![4, 5, 6, 7, 8].includes(this.manifest.format_version)) throw new Error(`Expected ObjectPacks format 4–8, got ${this.manifest.format_version}`);
     for (const graph of this.json<Graph[]>('metadata/graphs.json')) this.graphs.set(graph.file, graph);
     const categories = this.json<Record<string, string>>('models/index.json');
     for (const category of Object.keys(categories)) {

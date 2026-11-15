@@ -18,7 +18,7 @@ const ARMOR_TYPES = new Set(['Body', 'Legs', 'Shoes']);
 const ACCESSORY_TYPES = new Set(['Hat', 'Glasses', 'Backpack']);
 const GENERAL_TYPES = new Set(['General', 'CRATE']);
 const TYPE_RANK = new Map<string, number>([
-  'Thrown', 'Pistol', 'Rifle', 'Shattergun', 'Rocket', 'Body', 'Legs', 'Shoes',
+  'Melee', 'Pistol', 'Shattergun', 'Rifle', 'Rocket', 'Thrown', 'Body', 'Legs', 'Shoes',
   'Hat', 'Glasses', 'Backpack', 'General', 'CRATE', 'Vehicle',
 ].map((t, i) => [t, i] as const));
 const SUPERCLASS_RANK = new Map<ItemSuperclass, number>(
