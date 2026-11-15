@@ -21,9 +21,8 @@ jobs:
       contents: read
       deployments: write
     env:
-      # The sitemap emits absolute URLs; default to the *.pages.dev project URL.
-      # Override via a repo variable when pointing a custom domain.
-      FFWIKI_BASE_URL: ${{ vars.FFWIKI_BASE_URL || 'https://openfusion-auto-wiki.pages.dev' }}
+      # Use the public domain for absolute sitemap URLs.
+      FFWIKI_BASE_URL: ${{ vars.FFWIKI_BASE_URL || 'https://fusionfall.wiki' }}
       # Authenticated GitHub API requests get a 15K/hr rate limit instead of 60/hr.
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       # Service-account JSON used to read the player-maintained item price guide.

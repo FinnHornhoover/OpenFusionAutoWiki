@@ -22,7 +22,7 @@ Optional env vars:
 
 ```env
 FFWIKI_RELEASE=latest
-FFWIKI_BASE_URL=https://openfusion-auto-wiki.pages.dev
+FFWIKI_BASE_URL=https://fusionfall.wiki
 ```
 
 Required secrets:

@@ -3,13 +3,12 @@ import { constants as fsc } from 'node:fs';
 import { join } from 'node:path';
 
 import { DATA_OUT, SITE_PUBLIC } from '../paths.js';
-import { log } from '../log.js';
 
 /** Public site root for sitemap URLs. */
 function baseUrl(): string {
   const raw = (process.env.FFWIKI_BASE_URL ?? '').trim();
   if (raw) return raw.replace(/\/+$/, '');
-  return 'https://example.com';
+  return 'https://fusionfall.wiki';
 }
 
 interface IndexRow { id: number | string; routeId?: string; }
@@ -91,9 +90,6 @@ export async function writeSitemapAndRobots(
   slugs: string[],
 ): Promise<{ totalUrls: number; base: string }> {
   const base = baseUrl();
-  if (base === 'https://example.com') {
-    log.warn('FFWIKI_BASE_URL not set — sitemap will use https://example.com (override before deploy)');
-  }
 
   let totalUrls = 0;
   for (const slug of slugs) {
