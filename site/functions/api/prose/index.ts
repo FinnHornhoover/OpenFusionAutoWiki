@@ -39,13 +39,13 @@ export async function onRequestGet({ request, env }: { request: Request; env: Pr
   try {
     const mapping = await pageMapping(env, url, build, type, route);
     if (!mapping) return Response.json({});
-    const { general, specific, wikiImages } = mapping;
+    const { general, specific, wikiImages, entityId } = mapping;
     const [generalDocument, specificDocument] = await Promise.all([
       readDocument(env, type, 'general', general),
       readDocument(env, type, 'specific', specific),
     ]);
     return Response.json(
-      { general: generalDocument, specific: specificDocument, wikiImages, scopes: ([general && 'general', specific && 'specific'] as const).filter((scope) => scope === 'general' || scope === 'specific') } satisfies PageProse,
+      { general: generalDocument, specific: specificDocument, wikiImages, entityId, scopes: ([general && 'general', specific && 'specific'] as const).filter((scope) => scope === 'general' || scope === 'specific') } satisfies PageProse,
       { headers: { 'Cache-Control': 'public, max-age=0, s-maxage=15' } },
     );
   } catch {

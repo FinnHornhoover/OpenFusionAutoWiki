@@ -2498,6 +2498,15 @@ details.dropdown > .dropdown-body {
   overflow-wrap: anywhere;
 }
 
+.prose-table {
+  border-collapse: collapse;
+}
+
+.prose-table :is(th, td) {
+  border: 1px solid var(--color-border);
+  padding: var(--space-2) var(--space-3);
+}
+
 .player-prose-body > :first-child {
   margin-block-start: 0;
 }
@@ -2606,15 +2615,16 @@ details.dropdown > .dropdown-body {
 }
 
 .prose-editor .prose-preview-build {
-  display: flex;
+  display: grid;
+  grid-template-columns: 7rem minmax(0, 22rem);
   align-items: center;
-  flex-wrap: wrap;
   gap: var(--space-2);
   margin-block: 0 var(--space-2);
 }
 
 .prose-preview-build select {
-  width: min(22rem, 100%);
+  width: 100%;
+  min-width: 0;
 }
 
 .prose-editor .prose-save-button:not(:disabled) {
@@ -2662,19 +2672,6 @@ details.dropdown > .dropdown-body {
 .prose-build-options {
   max-height: 12rem;
   overflow: auto;
-}
-
-.prose-image-picker-actions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-3);
-}
-
-.prose-icon-preview {
-  display: block;
-  max-width: 5rem;
-  max-height: 5rem;
 }
 
 @media (max-width: 760px) {
@@ -2754,9 +2751,15 @@ details.dropdown > .dropdown-body {
   caret-color: var(--color-text);
 }
 
-.prose-markdown-editor .cm-line.cm-build-specific {
-  background: var(--prose-build-background);
-  box-shadow: inset 2px 0 var(--prose-build-color);
+.prose-markdown-editor .cm-line:is(.cm-build-specific, .cm-id-specific) {
+  background-image: var(--prose-build-background, none), var(--prose-id-background, none);
+  box-shadow: inset 2px 0 var(--prose-build-color, transparent), inset -2px 0 var(--prose-id-color, transparent);
+}
+
+.prose-markdown-editor .cm-line.cm-build-specific.cm-id-specific {
+  background-size: 50% 100%;
+  background-position: left, right;
+  background-repeat: no-repeat;
 }
 
 .prose-build-legend {
@@ -2782,30 +2785,23 @@ details.dropdown > .dropdown-body {
   width: .625rem;
   height: .625rem;
   border-radius: 50%;
-  background: var(--prose-build-color);
+  background: var(--prose-legend-color);
 }
 
-.prose-heading-options {
-  display: flex;
-  flex-wrap: wrap;
-  gap: .25rem;
+.prose-markdown-editor .cm-line.cm-scope-highlighted {
+  animation: prose-scope-blink .85s ease-in-out infinite alternate;
 }
 
-.prose-markdown-editor .cm-line.cm-build-highlighted {
-  animation: prose-build-blink .85s ease-in-out infinite alternate;
-}
-
-@keyframes prose-build-blink {
+@keyframes prose-scope-blink {
   to {
-    background: color-mix(in srgb, var(--prose-build-color) 50%, transparent);
-    box-shadow: inset 4px 0 var(--prose-build-color);
+    background-color: color-mix(in srgb, var(--prose-highlight-color) 50%, transparent);
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .prose-markdown-editor .cm-line.cm-build-highlighted {
+  .prose-markdown-editor .cm-line.cm-scope-highlighted {
     animation: none;
-    background: color-mix(in srgb, var(--prose-build-color) 42%, transparent);
+    background-color: color-mix(in srgb, var(--prose-highlight-color) 42%, transparent);
   }
 }
 
@@ -2859,4 +2855,9 @@ details.dropdown > .dropdown-body {
 .prose-account {
   justify-content: space-between;
   padding-block-end: var(--space-2);
+}
+
+.prose-scope-note {
+  margin: 0 0 var(--space-2);
+  color: var(--color-text-muted);
 }

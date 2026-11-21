@@ -8,3 +8,5 @@ export const PROSE_IMAGE_TYPES = {
 } as const;
 
 export const PROSE_IMAGE_KEY = /^([a-f0-9]{64})\.(png|jpg|webp)$/;
+
+export const WIKI_ICON_KEY = /^[a-f0-9]{32}\.(png|jpe?g|webp)$/;

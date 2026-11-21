@@ -13,11 +13,11 @@ async function target({ request, env }: Context) {
   const type = url.searchParams.get('type') ?? '';
   const route = url.searchParams.get('route') ?? '';
   const scope = url.searchParams.get('scope');
-  if (!segment.test(build) || !segment.test(type) || !route || route.length > 250 || (scope !== 'general' && scope !== 'specific')) return null;
+  if (!segment.test(build) || !segment.test(type) || !route || route.length > 250 || (scope !== null && scope !== 'general')) return null;
   const mapping = await pageMapping(env, url, build, type, route);
-  const key = mapping?.[scope];
+  const key = mapping?.general;
   if (!mapping || !key || !segment.test(key)) return null;
-  return { path: `pages/${type}/${scope}/${key}.json`, mapping };
+  return { path: `pages/${type}/general/${key}.json`, mapping };
 }
 
 export async function onRequestGet(context: Context) {

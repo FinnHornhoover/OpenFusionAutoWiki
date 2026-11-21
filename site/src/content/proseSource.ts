@@ -3,9 +3,9 @@ import { inheritBuildScope, type ImageReference, type ProseBlock, type ProseDocu
 const marker = / ?<!--wiki:([a-z0-9_-]+)-->/i;
 const heading = /^(#{1,6})[ \t]+(.+)$/;
 const buildSuffix = / \{builds:\s*([^{}]+)\}$/;
-const scopeStart = /^[ \t]*::: builds\s+(.+?)\s*$/;
+const scopeStart = /^[ \t]*::: (builds|ids)\s+(.*?)\s*$/;
 const scopeEnd = /^[ \t]*:::[ \t]*$/;
-const imageLine = /^!\[((?:[^\]\\]|\\.)*)\]\((upload|wiki-image):([^\s)]+)(?: ("(?:[^"\\]|\\.)*"))?\)$/;
+const imageLine = /^!\[((?:[^\]\\]|\\.)*)\]\((upload|wiki-image|wiki-icon):([^\s)]+)(?: ("(?:[^"\\]|\\.)*"))?\)$/;
 
 function splitBuilds(value?: string) {
   return value?.split(',').map((build) => build.trim()).filter(Boolean);
@@ -22,19 +22,22 @@ function escaped(line: string) {
 }
 
 export function imageSource(image: ImageReference, alt = 'Image description', caption?: string) {
-  const target = image.kind === 'upload' ? 'upload:' + image.key : 'wiki-image:' + encodeURIComponent(image.asset).replaceAll(')', '%29');
+  const target = image.kind === 'wiki' ? 'wiki-image:' + encodeURIComponent(image.asset).replaceAll(')', '%29')
+    : (image.kind === 'icon' ? 'wiki-icon:' : 'upload:') + image.key;
   return '![' + alt.replace(/[\\\]]/g, '\\$&') + '](' + target + (caption === undefined ? '' : ' ' + JSON.stringify(caption)) + ')';
 }
 
 export function writeProseSource(document: ProseDocument) {
   const lines: string[] = [];
 
-  function blockSource(block: ProseBlock, parent?: string[]) {
+  function blockSource(block: ProseBlock, parent?: string[], parentIds?: string[]) {
     const builds = inheritBuildScope(block.builds, parent);
     const id = ' <!--wiki:' + block.id + '-->';
+    const entityIds = inheritBuildScope(block.entityIds, parentIds);
     if (builds) lines.push('::: builds ' + builds.join(', ') + id);
+    if (entityIds) lines.push('::: ids ' + entityIds.join(', ') + (builds ? '' : id));
     if (block.kind === 'scope') {
-      block.blocks.forEach((child) => blockSource(child, builds ?? parent));
+      block.blocks.forEach((child) => blockSource(child, builds ?? parent, entityIds ?? parentIds));
     } else {
       const body = block.kind === 'image'
         ? [imageSource(block.image, block.alt, block.caption)]
@@ -42,9 +45,10 @@ export function writeProseSource(document: ProseDocument) {
           const literal = line.replace(/<!--wiki(\\*):/g, '<!--wiki$1\\:');
           return escaped(literal) ? '\\' + literal : literal;
         });
-      if (!builds) body[0] += id;
+      if (!builds && !entityIds) body[0] += id;
       lines.push(...body);
     }
+    if (entityIds) lines.push(':::');
     if (builds) lines.push(':::');
   }
 
@@ -70,7 +74,9 @@ export function sourceScopeLine(line: string) {
     id,
     section: section ? text.replace(buildSuffix, '') : undefined,
     depth: section ? section[1].length - 1 : undefined,
-    builds: splitBuilds(scopedHeading?.[1] ?? block?.[1]),
+    builds: splitBuilds(scopedHeading?.[1] ?? (block?.[1] === 'builds' ? block[2] : undefined)),
+    entityIds: splitBuilds(block?.[1] === 'ids' ? block[2] : undefined),
+    scopeKind: block?.[1] as 'builds' | 'ids' | undefined,
     beginsBlock: !!block,
     endsBlock: scopeEnd.test(text),
   };
@@ -78,7 +84,7 @@ export function sourceScopeLine(line: string) {
 
 export function sourceBuildContext(lines: string[]) {
   const sections: (string[] | undefined)[] = [];
-  const blocks: { line: number; builds?: string[] }[] = [];
+  const blocks: { line: number; builds?: string[]; entityIds?: string[] }[] = [];
   let fence: string | undefined;
 
   return lines.map((raw, line) => {
@@ -99,11 +105,14 @@ export function sourceBuildContext(lines: string[]) {
     const beginsBlock = !inCode && info.beginsBlock;
     const endsBlock = !inCode && info.endsBlock;
     const builds = (beginsBlock || depth !== undefined ? info.builds : undefined) ?? parent;
+    const parentIds = activeBlock?.entityIds;
+    const entityIds = (beginsBlock ? info.entityIds : undefined) ?? parentIds;
     if (depth !== undefined) sections.push(builds);
-    if (beginsBlock) blocks.push({ line, builds });
+    if (beginsBlock) blocks.push({ line, builds, entityIds });
     if (endsBlock) blocks.pop();
     return {
-      ...info, depth, beginsBlock, endsBlock, inCode, builds, parent,
+      ...info, depth, beginsBlock, endsBlock, inCode, builds, parent, entityIds, parentIds,
+      selectedIds: info.entityIds,
       blockStart: beginsBlock ? line : activeBlock?.line,
       selectedBuilds: info.builds,
     };
@@ -122,7 +131,7 @@ export function readProseSource(source: string, previous: ProseDocument, seed: s
   const contexts = sourceBuildContext(lines);
   const reservedIds = new Set(contexts.flatMap(({ id }) => id ? [id] : []));
   const ids = new Set<string>();
-  const scopes: { id?: string; builds?: string[]; blocks: ProseBlock[]; simple: boolean }[] = [];
+  const scopes: { id?: string; builds?: string[]; entityIds?: string[]; blocks: ProseBlock[]; simple: boolean }[] = [];
   let count = 0;
   let pending: { lines: string[]; id?: string } | undefined;
   let error: string | undefined;
@@ -172,7 +181,7 @@ export function readProseSource(source: string, previous: ProseDocument, seed: s
       try {
         const imageRef: ImageReference = image[2] === 'upload'
           ? { kind: 'upload', key: image[3] }
-          : { kind: 'wiki', asset: decodeURIComponent(image[3]) };
+          : image[2] === 'wiki-icon' ? { kind: 'icon', key: image[3] } : { kind: 'wiki', asset: decodeURIComponent(image[3]) };
         add({ id: idFor(id), kind: 'image', image: imageRef, alt: image[1].replace(/\\([\\\]])/g, '$1'), caption: image[4] ? JSON.parse(image[4]) : undefined });
       } catch {
         error ??= 'An image reference or caption is invalid.';
@@ -189,11 +198,11 @@ export function readProseSource(source: string, previous: ProseDocument, seed: s
   function closeScope() {
     const scope = scopes.pop();
     if (!scope) return;
-    if (scope.simple && scope.blocks.length === 1) {
+    if (scope.simple && scope.blocks.length === 1 && scope.blocks[0].kind !== 'scope') {
       const block = scope.blocks[0];
-      add({ ...block, id: scope.id ? idFor(scope.id) : block.id, builds: scope.builds });
-    } else if (scope.builds && scope.blocks.length) {
-      add({ id: idFor(scope.id), kind: 'scope', builds: scope.builds, blocks: scope.blocks });
+      add({ ...block, id: scope.id ? idFor(scope.id) : block.id, builds: scope.builds, entityIds: scope.entityIds });
+    } else if ((scope.builds || scope.entityIds) && scope.blocks.length) {
+      add({ id: idFor(scope.id), kind: 'scope', builds: scope.builds, entityIds: scope.entityIds, blocks: scope.blocks });
     } else {
       add(...scope.blocks);
     }
@@ -204,7 +213,7 @@ export function readProseSource(source: string, previous: ProseDocument, seed: s
     if (line.endsBlock) {
       flush();
       if (scopes.length) closeScope();
-      else error ??= 'Line ' + (index + 1) + ': this ::: has no matching build scope.';
+      else error ??= 'Line ' + (index + 1) + ': this ::: has no matching scope.';
       return;
     }
     if (line.beginsBlock) {
@@ -212,8 +221,15 @@ export function readProseSource(source: string, previous: ProseDocument, seed: s
       if (!parents.length) error ??= headingRequired;
       const parent = scopes.at(-1);
       if (parent) parent.simple = false;
-      if (scopes.length >= 12) error ??= 'Use at most 12 nested build scopes.';
-      scopes.push({ id, builds: scopeFor(line.selectedBuilds, line.parent, index + 1), blocks: [], simple: true });
+      if (scopes.length >= 12) error ??= 'Use at most 12 nested scopes.';
+      const selectedIds = line.selectedIds;
+      if (selectedIds && (!selectedIds.length || selectedIds.some((value) => !/^[a-z0-9][a-z0-9_-]{0,127}$/i.test(value) || (line.parentIds && !line.parentIds.includes(value))))) {
+        error ??= 'Line ' + (index + 1) + ': enter valid IDs within the parent ID scope.';
+      }
+      scopes.push({
+        id, builds: scopeFor(line.selectedBuilds, line.parent, index + 1),
+        entityIds: inheritBuildScope(selectedIds, line.parentIds), blocks: [], simple: true,
+      });
       return;
     }
     if (line.depth !== undefined && line.section !== undefined) {
@@ -246,7 +262,7 @@ export function readProseSource(source: string, previous: ProseDocument, seed: s
     pending.lines.push(text);
   });
   flush();
-  if (scopes.length) error ??= 'Close each build-specific block with ::: on its own line.';
+  if (scopes.length) error ??= 'Close each scoped block with ::: on its own line.';
   while (scopes.length) closeScope();
   return { document: { ...previous, sections }, error };
 }

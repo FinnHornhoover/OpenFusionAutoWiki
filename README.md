@@ -54,11 +54,12 @@ canonical routes. Deployment copies the tracked maps from
 `cp -R site/prose-mappings/. site/public/data/` after `npm run build:data` and
 before `npm run build:site`, then serve the result with Pages Functions.
 
-The Buttercup pilot is mapped at `/beta-20100104/npcs/buttercup` and
-`/beta-20100104/npcs/buttercup-720`. The two routes share the general document
-`pages/npcs/general/buttercup.json` on the content repository's `dev` branch.
-The ID route also supports `pages/npcs/specific/buttercup-720.json`. An optional
-`wikiImages` map on each route maps catalog IDs to same-site asset paths.
+The Buttercup pilot shares `pages/npcs/general/buttercup.json` on the content
+repository's `dev` branch across builds and NPC IDs. Build-independent topic
+registrations are in `site/public/prose-topics/`; per-build maps can override
+them. Use `::: builds beta-20100104-fixed` or `::: ids 720` followed by a closing
+`:::` to restrict a block. Previously published files under `pages/<type>/specific/`
+still display on mapped ID pages. New edits use the shared document.
 
 For GitHub sign-in, register a GitHub App with the callback URL
 `https://fusionfall.wiki/api/auth/callback`. Set `PUBLIC_SITE_ORIGIN` to

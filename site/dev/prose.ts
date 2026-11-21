@@ -13,6 +13,7 @@ import { readBytes, type ProseBucketEnv } from '../functions/_shared/prose-stora
 import { validateDocument } from '../functions/_shared/prose-validation';
 import { onRequestGet as readImage } from '../functions/api/prose/images/[key]';
 import { onRequestPost as uploadImage } from '../functions/api/prose/images/index';
+import { PROSE_IMAGE_TYPES, WIKI_ICON_KEY } from '../src/content/images';
 import type { PageProse, ProseDocument, ProseScope } from '../src/content/document';
 
 const devCookie = 'wiki_dev_session';
@@ -105,9 +106,22 @@ export default function localProse(): Plugin {
 
       async function readMapping(request: Request) {
         const path = new URL(request.url).pathname;
+        const icon = path.startsWith('/icons/') ? path.slice('/icons/'.length) : '';
+        if (WIKI_ICON_KEY.test(icon)) {
+          const bytes = await readFile(resolve(server.config.root, 'public', 'icons', icon)).catch((error: NodeJS.ErrnoException) => {
+            if (error.code !== 'ENOENT') throw error;
+            return null;
+          });
+          if (!bytes) return new Response(null, { status: 404 });
+          const extension = icon.split('.').at(-1)?.replace('jpeg', 'jpg') as keyof typeof PROSE_IMAGE_TYPES;
+          return new Response(new Uint8Array(bytes), { headers: { 'Content-Type': PROSE_IMAGE_TYPES[extension] } });
+        }
         const match = /^\/data\/([a-z0-9_-]+)\/prose\/([a-z0-9_-]+)\.json$/i.exec(path);
-        if (!match) return new Response(null, { status: 404 });
-        const file = resolve(server.config.root, 'prose-mappings', match[1], 'prose', match[2] + '.json');
+        const staticMap = /^\/(?:prose-topics\/[a-z0-9_-]+|data\/[a-z0-9_-]+\/routes\/[a-z0-9_-]+)\.json$/i.test(path);
+        if (!match && !staticMap) return new Response(null, { status: 404 });
+        const file = match
+          ? resolve(server.config.root, 'prose-mappings', match[1], 'prose', match[2] + '.json')
+          : resolve(server.config.root, 'public', path.slice(1));
         const body = await readFile(file, 'utf8').catch((error: NodeJS.ErrnoException) => {
           if (error.code !== 'ENOENT') throw error;
           return null;
@@ -116,7 +130,7 @@ export default function localProse(): Plugin {
       }
 
       async function handle(request: Request, url: URL) {
-        const env = { PUBLIC_SITE_ORIGIN: url.origin, SESSION_SIGNING_KEY: secret, PROSE_IMAGES: bucket };
+        const env = { PUBLIC_SITE_ORIGIN: url.origin, SESSION_SIGNING_KEY: secret, PROSE_IMAGES: bucket, ASSETS: { fetch: readMapping } };
         const context = { request, env };
         const path = url.pathname;
         const method = request.method;
@@ -159,7 +173,7 @@ export default function localProse(): Plugin {
 
         if (path === '/api/prose') {
           const available: ProseScope[] = [];
-          const prose: PageProse = { wikiImages: mapping.wikiImages, scopes: available };
+          const prose: PageProse = { wikiImages: mapping.wikiImages, entityId: mapping.entityId, scopes: available };
           for (const scope of scopes) {
             const key = documentPath(scope);
             if (!key) continue;
@@ -170,7 +184,7 @@ export default function localProse(): Plugin {
         }
 
         const scope = url.searchParams.get('scope');
-        const key = scope === 'general' || scope === 'specific' ? documentPath(scope) : undefined;
+        const key = scope === null || scope === 'general' ? documentPath('general') : undefined;
         if (!key) return authError('This prose target is unavailable', 404);
         if (method === 'GET') {
           if (!await readSession(context)) return authError('Sign in to edit prose', 401);

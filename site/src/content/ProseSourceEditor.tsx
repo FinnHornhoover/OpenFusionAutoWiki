@@ -5,37 +5,46 @@ import { Compartment, EditorState } from '@codemirror/state';
 import { Decoration, EditorView, keymap, lineNumbers } from '@codemirror/view';
 import type { BuildEntry } from '../data/useManifest';
 import { inheritBuildScope, type ImageReference } from './document';
-import { imageSource, sourceBuildContext, sourceBuildScopes, sourceMarker } from './proseSource';
+import { imageSource, sourceBuildContext, sourceMarker } from './proseSource';
 
 const markerStyle = Decoration.replace({});
-function buildColor(slug: string) {
+function scopeColor(key: string) {
   let hash = 2166136261;
-  for (const character of slug) hash = Math.imul(hash ^ character.charCodeAt(0), 16777619);
+  for (const character of key) hash = Math.imul(hash ^ character.charCodeAt(0), 16777619);
   return `hsl(${(hash >>> 0) % 360} 75% 66%)`;
 }
 
-function scopeBackground(builds: string[]) {
-  const tones = builds.map((build) => `color-mix(in srgb, ${buildColor(build)} 18%, transparent)`);
-  if (tones.length === 1) return tones[0];
+function scopeBackground(keys: string[]) {
+  const tones = keys.map((key) => `color-mix(in srgb, ${scopeColor(key)} 18%, transparent)`);
+  if (tones.length === 1) return `linear-gradient(90deg, ${tones[0]}, ${tones[0]})`;
   const stops = tones.map((tone, index) => `${tone} ${index * 100 / tones.length}% ${(index + 1) * 100 / tones.length}%`);
   return `linear-gradient(90deg, ${stops.join(', ')})`;
 }
 
-function decorations(activeBuild?: string) {
+function decorations(activeScope?: string) {
   return EditorView.decorations.compute(['doc'], (state) => {
     const ranges = [];
-    const scopes = sourceBuildScopes(state.doc.toString().split('\n'));
+    const scopes = sourceBuildContext(state.doc.toString().split('\n'));
     for (let number = 1; number <= state.doc.lines; number++) {
       const line = state.doc.line(number);
-      const builds = scopes[number - 1];
-      if (builds?.length) {
-        const highlighted = activeBuild && builds.includes(activeBuild);
-        const color = buildColor(highlighted ? activeBuild : builds[0]);
-        const background = scopeBackground(builds);
-        ranges.push(Decoration.line({
-          class: highlighted ? 'cm-build-specific cm-build-highlighted' : 'cm-build-specific',
-          attributes: { style: `--prose-build-color: ${color}; --prose-build-background: ${background}` },
-        }).range(line.from));
+      const { builds, entityIds } = scopes[number - 1];
+      const idKeys = entityIds?.map((id) => 'id:' + id);
+      if (builds?.length || idKeys?.length) {
+        const classes = [];
+        const styles = [];
+        if (builds?.length) {
+          classes.push('cm-build-specific');
+          styles.push(`--prose-build-color: ${scopeColor(builds[0])}`, `--prose-build-background: ${scopeBackground(builds)}`);
+        }
+        if (idKeys?.length) {
+          classes.push('cm-id-specific');
+          styles.push(`--prose-id-color: ${scopeColor(idKeys[0])}`, `--prose-id-background: ${scopeBackground(idKeys)}`);
+        }
+        if (activeScope && (builds?.includes(activeScope) || idKeys?.includes(activeScope))) {
+          classes.push('cm-scope-highlighted');
+          styles.push(`--prose-highlight-color: ${scopeColor(activeScope)}`);
+        }
+        ranges.push(Decoration.line({ class: classes.join(' '), attributes: { style: styles.join('; ') } }).range(line.from));
       }
       const marker = sourceMarker(line.text);
       if (marker) ranges.push(markerStyle.range(line.from + marker.index, line.from + marker.index + marker[0].length));
@@ -45,31 +54,27 @@ function decorations(activeBuild?: string) {
 }
 
 const icons = {
-  heading: 'M5 5v14M19 5v14M5 12h14',
   bullet: 'M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01',
   ordered: 'M10 6h11M10 12h11M10 18h11M3 5h1v3M3 11c3-2 4 1 0 3h3M3 17h3l-1 1c2 0 2 2-2 2',
   table: 'M3 4h18v16H3zM3 9h18M3 14h18M9 4v16M15 4v16',
   link: 'M10 13a4 4 0 0 0 6 0l3-3a4 4 0 1 0-6-6l-2 2m3 5a4 4 0 0 0-6 0l-3 3a4 4 0 1 0 6 6l2-2',
-  wiki: 'M12 6c-3-2-6-2-9-1v14c3-1 6-1 9 1 3-2 6-2 9-1V5c-3-1-6-1-9 1Zm0 0v14',
   image: 'M3 4h18v16H3zM3 16l5-5 4 4 3-3 6 6M15 8h.01',
-  upload: 'M12 16V3m-5 5 5-5 5 5M4 16v5h16v-5',
-  builds: 'm12 3 9 5-9 5-9-5 9-5Zm-9 9 9 5 9-5m-18 4 9 5 9-5',
 } as const;
 
-type Panel = 'heading' | 'wiki' | 'image' | 'builds';
+type Panel = 'builds' | 'ids';
 
 interface Props {
   source: string;
   sectionId?: string;
   onChange(source: string): void;
   builds: BuildEntry[];
-  wikiImages: Record<string, string>;
+  entityId?: string;
   upload?(file: File): Promise<ImageReference>;
   disabled: boolean;
   error?: string;
 }
 
-export default function ProseSourceEditor({ source, sectionId, onChange, builds, wikiImages, upload, disabled, error }: Props) {
+export default function ProseSourceEditor({ source, sectionId, onChange, builds, entityId, upload, disabled, error }: Props) {
   const host = useRef<HTMLDivElement>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   const view = useRef<EditorView>();
@@ -78,14 +83,22 @@ export default function ProseSourceEditor({ source, sectionId, onChange, builds,
   const initialSection = useRef(sectionId);
   const [editable] = useState(() => new Compartment());
   const [scopeDecorations] = useState(() => new Compartment());
-  const [hoveredBuild, setHoveredBuild] = useState<string>();
-  const [focusedBuild, setFocusedBuild] = useState<string>();
-  const scopedBuilds = useMemo(() => [...new Set(sourceBuildScopes(source.split('\n')).flatMap((scope) => scope ?? []))], [source]);
+  const [hoveredScope, setHoveredScope] = useState<string>();
+  const [focusedScope, setFocusedScope] = useState<string>();
+  const legend = useMemo(() => {
+    const scopes = sourceBuildContext(source.split('\n'));
+    const buildKeys = new Set(scopes.flatMap(({ builds }) => builds ?? []));
+    const ids = new Set(scopes.flatMap(({ entityIds }) => entityIds ?? []));
+    return [
+      ...Array.from(buildKeys, (key) => {
+        const build = builds.find((entry) => entry.slug === key);
+        return { key, label: build?.nickname || key, title: build?.displayName ?? key };
+      }),
+      ...Array.from(ids, (id) => ({ key: 'id:' + id, label: 'ID ' + id, title: 'ID ' + id })),
+    ];
+  }, [source, builds]);
   const [panel, setPanel] = useState<Panel>();
-  const [target, setTarget] = useState('');
-  const [label, setLabel] = useState('');
-  const [asset, setAsset] = useState('');
-  const [assetSearch, setAssetSearch] = useState('');
+  const [selectedIds, setSelectedIds] = useState('');
   const [selectedBuilds, setSelectedBuilds] = useState<string[]>([]);
   const [allowedBuilds, setAllowedBuilds] = useState<string[]>();
   const [uploadError, setUploadError] = useState('');
@@ -134,8 +147,8 @@ export default function ProseSourceEditor({ source, sectionId, onChange, builds,
   }, [disabled, editable]);
 
   useEffect(() => {
-    view.current?.dispatch({ effects: scopeDecorations.reconfigure(decorations(hoveredBuild ?? focusedBuild)) });
-  }, [scopeDecorations, hoveredBuild, focusedBuild]);
+    view.current?.dispatch({ effects: scopeDecorations.reconfigure(decorations(hoveredScope ?? focusedScope)) });
+  }, [scopeDecorations, hoveredScope, focusedScope]);
 
   function insert(value: string, placement: 'inline' | 'block' | 'line' = 'inline') {
     const editor = view.current;
@@ -154,7 +167,7 @@ export default function ProseSourceEditor({ source, sectionId, onChange, builds,
     editor.focus();
   }
 
-  function scopeTarget() {
+  function scopeTarget(kind: Panel) {
     const editor = view.current;
     if (!editor) return undefined;
     const { doc, selection } = editor.state;
@@ -163,19 +176,30 @@ export default function ProseSourceEditor({ source, sectionId, onChange, builds,
     const last = doc.lineAt(Math.max(range.from, range.to - 1));
     const context = sourceBuildContext(doc.toString().split('\n'));
     const line = context[first.number - 1];
-    const opening = (range.empty || line.beginsBlock) ? line.blockStart : undefined;
+    const candidate = line.blockStart;
+    const opening = (range.empty || line.beginsBlock) && candidate !== undefined && context[candidate].scopeKind === kind
+      ? candidate : undefined;
     const existing = opening === undefined ? undefined : doc.line(opening + 1);
     const info = opening === undefined ? line : context[opening];
-    const parent = existing || line.depth !== undefined ? info.parent : info.builds;
+    const parent = kind === 'ids'
+      ? existing ? info.parentIds : info.entityIds
+      : existing ? info.parent : info.builds;
     return { first, last, info, existing, parent, context };
   }
 
   function applyScope() {
     const editor = view.current;
-    const scope = scopeTarget();
+    if (!panel) return;
+    const scope = scopeTarget(panel);
     if (!editor || !scope) return;
     const { first, last, info, existing, parent, context } = scope;
-    const value = inheritBuildScope(selectedBuilds.length ? selectedBuilds : undefined, parent)?.join(', ');
+    const selected = panel === 'ids' ? selectedIds.split(/[,\s]+/).filter(Boolean) : selectedBuilds;
+    if (selected.some((id) => !/^[a-z0-9][a-z0-9_-]{0,127}$/i.test(id) || (parent && !parent.includes(id)))) {
+      setScopeError('Choose valid values within the enclosing scope.');
+      return;
+    }
+    const value = inheritBuildScope(selected.length ? selected : undefined, parent)?.join(', ');
+    const directive = '::: ' + panel + ' ';
     if (info.inCode) {
       setScopeError('Select text outside the code fence.');
       return;
@@ -191,11 +215,11 @@ export default function ProseSourceEditor({ source, sectionId, onChange, builds,
     const marker = info.id ? ' <!--wiki:' + info.id + '-->' : '';
     if (existing) {
       if (value) {
-        editor.dispatch({ changes: { from: existing.from, to: existing.to, insert: '::: builds ' + value + marker } });
+        editor.dispatch({ changes: { from: existing.from, to: existing.to, insert: directive + value + marker } });
       } else {
         const end = context.findIndex((line, index) => index >= existing.number && line.endsBlock && line.blockStart === existing.number - 1);
         if (end === -1) {
-          setScopeError('Close the build scope before removing it.');
+          setScopeError('Close the scope before removing it.');
           return;
         }
         const { doc } = editor.state;
@@ -207,14 +231,14 @@ export default function ProseSourceEditor({ source, sectionId, onChange, builds,
         const to = body.length || lastLine.to === doc.length ? lastLine.to : lastLine.to + 1;
         editor.dispatch({ changes: { from: existing.from, to, insert: body.join('\n') } });
       }
-    } else if (info.depth !== undefined && info.section) {
-      editor.dispatch({ changes: { from: first.from, to: first.to, insert: info.section + (value ? ' {builds: ' + value + '}' : '') + marker } });
+    } else if ((info.depth !== undefined || info.beginsBlock || info.endsBlock) && value) {
+      insert(directive + value + '\n' + (panel === 'ids' ? 'ID-specific text' : 'Build-specific text') + '\n:::', 'line');
     } else if (value) {
       const { doc } = editor.state;
       const reference = sourceMarker(first.text);
       const text = doc.sliceString(first.from, last.to);
       const body = reference ? text.slice(0, reference.index) + text.slice(reference.index + reference[0].length) : text;
-      editor.dispatch({ changes: { from: first.from, to: last.to, insert: '::: builds ' + value + marker + '\n' + body + '\n:::' } });
+      editor.dispatch({ changes: { from: first.from, to: last.to, insert: directive + value + marker + '\n' + body + '\n:::' } });
     }
     setPanel(undefined);
     editor.focus();
@@ -222,22 +246,22 @@ export default function ProseSourceEditor({ source, sectionId, onChange, builds,
 
   function openPanel(next: Panel) {
     if (panel === next) { setPanel(undefined); return; }
+    setScopeError('');
+    const scope = scopeTarget(next);
     if (next === 'builds') {
-      setScopeError('');
-      const scope = scopeTarget();
       setAllowedBuilds(scope?.parent);
-      setSelectedBuilds(scope?.existing || scope?.info.depth !== undefined
-        ? (scope?.info.selectedBuilds ?? []).filter((build) => !scope?.parent || scope.parent.includes(build))
-        : []);
+      setSelectedBuilds(scope?.existing ? [...scope.info.selectedBuilds ?? []] : []);
+    } else {
+      setSelectedIds(scope?.existing ? (scope.info.selectedIds ?? []).join(', ') : entityId ?? '');
     }
     setPanel(next);
   }
 
-  function tool(icon: keyof typeof icons, name: string, action: () => void, mobile = false, active?: boolean) {
+  function tool(icon: keyof typeof icons | null, name: string, action: () => void, mobile = false, active?: boolean, text?: string) {
     return (
       <button type="button" title={name} aria-label={name} aria-pressed={active} disabled={disabled} data-desktop-only={mobile || undefined}
         onMouseDown={(event) => event.preventDefault()} onClick={action}>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={icons[icon]} /></svg>
+        {icon ? <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={icons[icon]} /></svg> : text}
       </button>
     );
   }
@@ -245,64 +269,32 @@ export default function ProseSourceEditor({ source, sectionId, onChange, builds,
   return (
     <>
       <div className="prose-source-toolbar" role="group" aria-label="Markdown tools">
-        {tool('heading', 'Add heading', () => openPanel('heading'), false, panel === 'heading')}
-        {tool('bullet', 'Bulleted list', () => insert('- First item\n- Second item', 'block'))}
-        {tool('ordered', 'Numbered list', () => insert('1. First item\n2. Second item', 'block'))}
+        {[1, 2, 3].map((level) => <span key={level}>{tool(null, 'Heading ' + level, () => insert('#'.repeat(level) + ' Heading', 'line'), false, undefined, 'H' + level)}</span>)}
+        {tool('bullet', 'Unordered list', () => insert('- First item\n- Second item', 'block'))}
+        {tool('ordered', 'Ordered list', () => insert('1. First item\n2. Second item', 'block'))}
         {tool('table', 'Insert table', () => insert('| Heading | Heading |\n| --- | --- |\n| Cell | Cell |', 'block'), true)}
-        {tool('link', 'Insert external link', () => insert('[Link text](https://example.com)'))}
-        {tool('wiki', 'Link from the Wiki', () => openPanel('wiki'), false, panel === 'wiki')}
-        {tool('image', 'Add Image from the Wiki', () => openPanel('image'), false, panel === 'image')}
-        {upload && tool('upload', 'Add image', () => fileInput.current?.click())}
-        {tool('builds', 'Set build visibility', () => openPanel('builds'), false, panel === 'builds')}
+        {tool('link', 'Insert link', () => insert('[Link text](https://example.com)'))}
+        {upload && tool('image', 'Add image', () => fileInput.current?.click())}
+        {tool(null, 'Build-specific info block', () => openPanel('builds'), false, panel === 'builds', 'BSIB')}
+        {tool(null, 'ID-specific info block', () => openPanel('ids'), false, panel === 'ids', 'IDSIB')}
       </div>
-      {scopedBuilds.length > 0 && (
-        <div className="prose-build-legend" role="group" aria-label="Build color legend">
-          {scopedBuilds.map((slug) => {
-            const build = builds.find((entry) => entry.slug === slug);
-            return (
-              <button key={slug} type="button" title={build?.displayName ?? slug}
-                style={{ '--prose-build-color': buildColor(slug) } as CSSProperties}
-                onPointerEnter={() => setHoveredBuild(slug)} onPointerLeave={() => setHoveredBuild(undefined)}
-                onFocus={() => setFocusedBuild(slug)} onBlur={() => setFocusedBuild(undefined)}>
-                <span aria-hidden="true" />{build?.nickname || slug}
-              </button>
-            );
-          })}
-        </div>
-      )}
-      {panel === 'heading' && (
-        <div className="prose-source-panel prose-heading-options" role="group" aria-label="Heading level">
-          {[1, 2, 3, 4, 5, 6].map((level) => (
-            <button key={level} type="button" disabled={disabled} onClick={() => {
-              insert('#'.repeat(level) + ' Heading', 'line');
-              setPanel(undefined);
-            }}>Heading {level}</button>
+      {legend.length > 0 && (
+        <div className="prose-build-legend" role="group" aria-label="Build and ID color legend">
+          {legend.map(({ key, label, title }) => (
+            <button key={key} type="button" title={title}
+              style={{ '--prose-legend-color': scopeColor(key) } as CSSProperties}
+              onPointerEnter={() => setHoveredScope(key)} onPointerLeave={() => setHoveredScope(undefined)}
+              onFocus={() => setFocusedScope(key)} onBlur={() => setFocusedScope(undefined)}>
+              <span aria-hidden="true" />{label}
+            </button>
           ))}
         </div>
       )}
-      {panel === 'wiki' && (
+      {panel === 'ids' && (
         <div className="prose-source-panel">
-          <label>Link text <input value={label} onChange={(event) => setLabel(event.target.value)} /></label>
-          <label>Wiki target <input value={target} placeholder="npcs/buttercup" onChange={(event) => setTarget(event.target.value)} /></label>
-          <button type="button" disabled={disabled || !label.trim() || !/^[a-z-]+\/[\w-]+$/.test(target)} onClick={() => {
-            insert('[' + label.trim().replace(/[\[\]\\]/g, '\\$&') + '](wiki:' + target + ')');
-            setPanel(undefined);
-          }}>Insert wiki link</button>
-        </div>
-      )}
-      {panel === 'image' && (
-        <div className="prose-source-panel">
-          {Object.keys(wikiImages).length === 0 ? <p>No wiki images are available for this page.</p> : <>
-            <label>Search icons <input value={assetSearch} onChange={(event) => { setAssetSearch(event.target.value); setAsset(''); }} /></label>
-            <div className="prose-image-picker-actions">
-              <select className="styled-select" aria-label="Wiki icon" value={asset} onChange={(event) => setAsset(event.target.value)}>
-                <option value="">Choose an image</option>
-                {Object.keys(wikiImages).filter((key) => key.toLowerCase().includes(assetSearch.toLowerCase())).slice(0, 100).map((key) => <option key={key}>{key}</option>)}
-              </select>
-              {asset && <img className="prose-icon-preview" src={wikiImages[asset]} alt={asset} />}
-              <button type="button" disabled={disabled || !asset} onClick={() => { insert(imageSource({ kind: 'wiki', asset }), 'line'); setPanel(undefined); }}>Insert image</button>
-            </div>
-          </>}
+          <label>Entity IDs <input value={selectedIds} placeholder="720, 773" onChange={(event) => setSelectedIds(event.target.value)} /></label>
+          <button type="button" disabled={disabled} onClick={applyScope}>Apply ID visibility</button>
+          {scopeError && <p role="alert">{scopeError}</p>}
         </div>
       )}
       {panel === 'builds' && (

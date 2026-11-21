@@ -1,10 +1,11 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useManifest } from '../data/useManifest';
-import type { ImageReference, PageProse, ProseDocument, ProseScope, ProseSection } from './document';
+import type { ImageReference, PageProse, ProseDocument, ProseSection } from './document';
 import { PROSE_IMAGE_MAX_BYTES, PROSE_IMAGE_MAX_DIMENSION, PROSE_IMAGE_TYPES } from './images';
+import { existingWikiIcon } from './wikiImageLookup';
 import { ProsePreview } from './PlayerProse';
 import ProseSourceEditor from './ProseSourceEditor';
-import { readProseSource, sourceBuildScopes, writeProseSource } from './proseSource';
+import { readProseSource, sourceBuildContext, sourceBuildScopes, writeProseSource } from './proseSource';
 
 interface Snapshot {
   revision: string | null;
@@ -19,14 +20,12 @@ interface Loaded extends Snapshot {
 interface Props {
   build: string;
   query: string;
-  scopes: ProseScope[];
-  initialScope?: ProseScope;
-  section?: { id: string; scope: ProseScope };
+  sectionId?: string;
   name: string;
-  entityId: string;
+  entityId?: string;
   pageProse: PageProse;
   onClose(): void;
-  onSave(scope: ProseScope, document: ProseDocument): void;
+  onSave(document: ProseDocument): void;
 }
 
 const SOURCE_VERSION = 2;
@@ -96,15 +95,11 @@ function restore(key: string) {
   }
 }
 
-export default function ProseEditor({ build, query, scopes, initialScope, section, name, entityId, pageProse, onClose, onSave }: Props) {
+export default function ProseEditor({ build, query, sectionId, name, entityId, pageProse, onClose, onSave }: Props) {
   const dialog = useRef<HTMLDialogElement>(null);
   const login = useRef<HTMLAnchorElement>(null);
   const localImages = useRef(new Map<string, string>());
-  const targets = { general: `${name} (All)`, specific: `${name} (${entityId})` };
   const [session, setSession] = useState<EditorSession>();
-  const [scope, setScope] = useState<ProseScope | undefined>(() => (
-    initialScope && scopes.includes(initialScope) ? initialScope : scopes.length === 1 ? scopes[0] : undefined
-  ));
   const [localPreview, setLocalPreview] = useState(false);
   const [loaded, setLoaded] = useState<Loaded>();
   const [base, setBase] = useState<Snapshot>();
@@ -123,10 +118,13 @@ export default function ProseEditor({ build, query, scopes, initialScope, sectio
   const [choices, setChoices] = useState<Record<string, 'yours' | 'saved'>>({});
   const [tab, setTab] = useState<'source' | 'preview'>('source');
   const [previewBuild, setPreviewBuild] = useState('');
+  const [previewId, setPreviewId] = useState(entityId ?? '');
+  const scopedIds = useMemo(() => [...new Set([...(entityId ? [entityId] : []),
+    ...sourceBuildContext(source.split('\n')).flatMap((line) => line.entityIds ?? [])])], [source, entityId]);
   const scopedBuilds = useMemo(() => [...new Set(sourceBuildScopes(source.split('\n')).flatMap((scope) => scope ?? []))], [source]);
   const selectedPreviewBuild = scopedBuilds.includes(previewBuild) ? previewBuild : '';
   const { manifest } = useManifest();
-  const endpoint = scope ? `/api/prose/editor?${query}&scope=${scope}` : undefined;
+  const endpoint = `/api/prose/editor?${query}`;
   const baseSource = base && writeProseSource(base.document);
   const dirty = baseSource !== undefined && source !== baseSource;
   const hasChanges = Boolean(draft && !parsed?.error && writeProseSource(draft) !== baseSource);
@@ -224,11 +222,10 @@ export default function ProseEditor({ build, query, scopes, initialScope, sectio
     onClose();
   }
 
-  function openLocal(scope: ProseScope) {
-    const path = 'localhost:' + query + ':' + scope;
-    const current: Loaded = { path, revision: null, document: pageProse[scope] ?? { version: 1, sections: [] }, wikiImages: pageProse.wikiImages };
+  function openLocal() {
+    const path = 'localhost:' + query + ':general';
+    const current: Loaded = { path, revision: null, document: pageProse.general ?? { version: 1, sections: [] }, wikiImages: pageProse.wikiImages };
     const previous = restore(draftKey(path));
-    setScope(scope);
     setLoaded(current);
     setBase(previous?.base ?? current);
     setMetadata(previous?.draft ?? current.document);
@@ -247,7 +244,10 @@ export default function ProseEditor({ build, query, scopes, initialScope, sectio
         const exceedsDimensions = Math.max(image.width, image.height) > PROSE_IMAGE_MAX_DIMENSION;
         image.close();
         if (exceedsDimensions) throw new Error('Images must be at most 4096 pixels wide and tall');
-        const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', await file.arrayBuffer()));
+        const bytes = new Uint8Array(await file.arrayBuffer());
+        const icon = await existingWikiIcon(bytes, extension, (path) => fetch(path));
+        if (icon) return { kind: 'icon', key: icon };
+        const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', bytes));
         const key = Array.from(digest, (byte) => byte.toString(16).padStart(2, '0')).join('') + '.' + extension;
         if (!localImages.current.has(key)) localImages.current.set(key, URL.createObjectURL(file));
         return { kind: 'upload', key };
@@ -264,7 +264,7 @@ export default function ProseEditor({ build, query, scopes, initialScope, sectio
   }
 
   async function save() {
-    if (localPreview || !draft || parsed?.error || !base || !endpoint || !scope || !loaded) return;
+    if (localPreview || !draft || parsed?.error || !base || !endpoint || !loaded) return;
     setSaving(true);
     setError('');
     setStatus('');
@@ -285,7 +285,7 @@ export default function ProseEditor({ build, query, scopes, initialScope, sectio
       setMetadata(result.document);
       setSource(writeProseSource(result.document));
       if (storageKey) removeDraft(storageKey);
-      onSave(scope, result.document);
+      onSave(result.document);
       setStatus('Saved.');
     } catch (failure) {
       setError(failure instanceof Error ? failure.message : 'Save failed');
@@ -335,15 +335,10 @@ export default function ProseEditor({ build, query, scopes, initialScope, sectio
   const conflicts = showingConflicts && base && draft && latest ? compareSections(base.document, draft, latest.document) : [];
   const returnUrl = new URL(window.location.href);
   returnUrl.searchParams.set('edit-prose', '1');
-  if (scope) returnUrl.searchParams.set('prose-scope', scope);
-  else returnUrl.searchParams.delete('prose-scope');
-  if (section) {
-    returnUrl.searchParams.set('prose-section', section.id);
-    returnUrl.searchParams.set('prose-section-scope', section.scope);
-  } else {
-    returnUrl.searchParams.delete('prose-section');
-    returnUrl.searchParams.delete('prose-section-scope');
-  }
+  returnUrl.searchParams.delete('prose-scope');
+  returnUrl.searchParams.delete('prose-section-scope');
+  if (sectionId) returnUrl.searchParams.set('prose-section', sectionId);
+  else returnUrl.searchParams.delete('prose-section');
   const returnTo = returnUrl.pathname + returnUrl.search + returnUrl.hash;
   return (
     <dialog className="prose-editor" data-panes={!!loaded && !!draft && !showingConflicts} ref={dialog} aria-labelledby="prose-editor-title" onCancel={(event) => {
@@ -352,7 +347,7 @@ export default function ProseEditor({ build, query, scopes, initialScope, sectio
       discard();
     }}>
       <header className="prose-editor-actions prose-editor-header">
-        <h2 id="prose-editor-title">Edit prose: {scope ? targets[scope] : name}</h2>
+        <h2 id="prose-editor-title">Edit prose: {name}</h2>
         <button className="prose-save-button" type="button" onClick={save}
           disabled={localPreview || !hasChanges || busy || !!latest}>
           {latest ? 'Resolve conflicts' : saving ? 'Saving…' : 'Save'}
@@ -381,20 +376,16 @@ export default function ProseEditor({ build, query, scopes, initialScope, sectio
               rel="noopener noreferrer" aria-label="Register for a GitHub account">Register</a>
             {loopback && !session?.development && <button type="button" onClick={() => {
               setLocalPreview(true);
-              if (scope) openLocal(scope);
+              openLocal();
             }}>Open local editor preview</button>}
           </div>
         </section>
       )}
       {!session && !error && <p role="status">Checking sign-in…</p>}
-      {(session?.user || localPreview) && !scope && (
-        <div className="prose-editor-actions">
-          {scopes.map((item) => <button key={item} type="button" disabled={busy} onClick={() => localPreview ? openLocal(item) : setScope(item)}>Edit {targets[item]}</button>)}
-        </div>
-      )}
-      {session?.user && scope && !loaded && !error && <p role="status">Loading latest prose…</p>}
+      {session?.user && !loaded && !error && <p role="status">Loading latest prose…</p>}
       {loaded && draft && (
         <>
+          <p className="prose-scope-note">Content outside build-specific and ID-specific blocks applies to all builds and all IDs on this page.</p>
           {latest && <p role="status">This document changed while you were editing.</p>}
           {showingConflicts && latest ? (
             <div>
@@ -444,10 +435,10 @@ export default function ProseEditor({ build, query, scopes, initialScope, sectio
                 <section className="prose-editor-source" role="tabpanel" id="prose-panel-source" aria-labelledby="prose-tab-source" hidden={tab !== 'source'}>
                   <ProseSourceEditor
                     source={source}
-                    sectionId={section?.scope === scope ? section?.id : undefined}
+                    sectionId={sectionId}
                     onChange={setSource}
                     builds={manifest ?? []}
-                    wikiImages={loaded.wikiImages ?? {}}
+                    entityId={entityId}
                     upload={upload}
                     disabled={busy}
                     error={parsed?.error}
@@ -461,9 +452,18 @@ export default function ProseEditor({ build, query, scopes, initialScope, sectio
                       {scopedBuilds.map((slug) => <option value={slug} key={slug}>{manifest?.find((entry) => entry.slug === slug)?.displayName ?? slug}</option>)}
                     </select>
                   </label>
+                  {scopedIds.length > 0 && (
+                    <label className="prose-preview-build">
+                      Preview ID
+                      <select className="styled-select" value={scopedIds.includes(previewId) ? previewId : ''} onChange={(event) => setPreviewId(event.target.value)}>
+                        <option value="">Any ID</option>
+                        {scopedIds.map((id) => <option key={id}>{id}</option>)}
+                      </select>
+                    </label>
+                  )}
                   <div className="prose-preview-scroll">
                     {tab === 'preview' && (
-                      <ProsePreview document={draft} build={selectedPreviewBuild || undefined} linkBuild={selectedPreviewBuild || build} wikiImages={loaded.wikiImages} localImages={localPreview ? localImages.current : undefined} preview />
+                      <ProsePreview document={draft} entityId={scopedIds.includes(previewId) ? previewId : undefined} build={selectedPreviewBuild || undefined} linkBuild={selectedPreviewBuild || build} wikiImages={loaded.wikiImages} localImages={localPreview ? localImages.current : undefined} preview />
                     )}
                   </div>
                 </section>

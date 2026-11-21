@@ -8,7 +8,7 @@ interface Entry {
   builds?: string[];
 }
 
-export type ProseBlock = Entry & (
+export type ProseBlock = Entry & { entityIds?: string[] } & (
   | { kind: 'scope'; blocks: ProseBlock[] }
   | { kind: 'markdown'; source: string }
   | { kind: 'image'; image: ImageReference; alt: string; caption?: string }
@@ -16,6 +16,7 @@ export type ProseBlock = Entry & (
 
 export type ImageReference =
   | { kind: 'upload'; key: string }
+  | { kind: 'icon'; key: string }
   | { kind: 'wiki'; asset: string };
 
 export interface ProseSection extends Entry {
@@ -35,6 +36,7 @@ export interface ProseDocument {
 export type ProseScope = 'general' | 'specific';
 
 export interface PageProse {
+  entityId?: string;
   scopes?: ProseScope[];
   general?: ProseDocument;
   specific?: ProseDocument;
@@ -48,18 +50,19 @@ export function inheritBuildScope(builds: string[] | undefined, parent: string[]
     : selected;
 }
 
-function visibleBlocks(blocks: ProseBlock[], build: string | undefined): ProseBlock[] {
+function visibleBlocks(blocks: ProseBlock[], build: string | undefined, entityId?: string): ProseBlock[] {
   return blocks.flatMap((block): ProseBlock[] => {
     if (block.builds && (!build || !block.builds.includes(build))) return [];
-    return block.kind === 'scope' ? visibleBlocks(block.blocks, build) : [block];
+    if (block.entityIds && (!entityId || !block.entityIds.includes(entityId))) return [];
+    return block.kind === 'scope' ? visibleBlocks(block.blocks, build, entityId) : [block];
   });
 }
 
-export function sectionsForBuild(sections: ProseSection[], build: string | undefined): ProseSection[] {
+export function sectionsForBuild(sections: ProseSection[], build: string | undefined, entityId?: string): ProseSection[] {
   return sections.flatMap((section) => {
     if (section.builds && (!build || !section.builds.includes(build))) return [];
-    const blocks = visibleBlocks(section.blocks, build);
-    const children = sectionsForBuild(section.sections, build);
+    const blocks = visibleBlocks(section.blocks, build, entityId);
+    const children = sectionsForBuild(section.sections, build, entityId);
     if (!blocks.length && !children.length) return [];
     return [{ ...section, blocks, sections: children }];
   });

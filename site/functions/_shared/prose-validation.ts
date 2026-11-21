@@ -1,5 +1,6 @@
 import { inheritBuildScope, type ProseBlock, type ProseDocument, type ProseSection } from '../../src/content/document';
-import { PROSE_IMAGE_KEY } from '../../src/content/images';
+import { PROSE_IMAGE_KEY, WIKI_ICON_KEY } from '../../src/content/images';
+import { optimizeWikiLinks } from './prose-links';
 import { segment, type PageMapping } from './prose';
 
 function record(value: unknown): Record<string, unknown> {
@@ -38,15 +39,23 @@ export function validateDocument(input: unknown, mapping: PageMapping, current: 
     return { id, builds: inheritBuildScope(builds, parent) };
   }
 
-  function block(input: unknown, parent?: string[], depth = 1): ProseBlock[] {
+  function block(input: unknown, parent?: string[], depth = 1, parentIds?: string[]): ProseBlock[] {
     const value = record(input);
-    const base = entry(value, parent);
+    const scope = entry(value, parent);
+    let entityIds: string[] | undefined;
+    if (value.entityIds !== undefined) {
+      if (!Array.isArray(value.entityIds) || !value.entityIds.length || value.entityIds.length > 100) throw new Error('Invalid ID scope');
+      const selected = value.entityIds.map((id) => text(id, 128));
+      if (selected.some((id) => !segment.test(id) || (parentIds && !parentIds.includes(id)))) throw new Error('Invalid ID scope');
+      entityIds = inheritBuildScope(selected, parentIds);
+    }
+    const base = { ...scope, entityIds };
     if (value.kind === 'scope') {
       if (depth > 12 || !Array.isArray(value.blocks)) throw new Error('Invalid nested build scope');
-      const blocks = value.blocks.flatMap((item) => block(item, base.builds ?? parent, depth + 1));
-      return base.builds && blocks.length ? [{ ...base, kind: 'scope', blocks }] : blocks;
+      const blocks = value.blocks.flatMap((item) => block(item, base.builds ?? parent, depth + 1, entityIds ?? parentIds));
+      return (base.builds || entityIds) && blocks.length ? [{ ...base, kind: 'scope', blocks }] : blocks;
     }
-    if (value.kind === 'markdown') return [{ ...base, kind: 'markdown', source: text(value.source, 20_000) }];
+    if (value.kind === 'markdown') return [{ ...base, kind: 'markdown', source: text(optimizeWikiLinks(text(value.source, 20_000)), 20_000) }];
     if (value.kind !== 'image') throw new Error('Unsupported block type');
     const image = record(value.image);
     const alt = text(value.alt, 500);
@@ -57,6 +66,11 @@ export function validateDocument(input: unknown, mapping: PageMapping, current: 
       uploads.add(key);
       if (uploads.size > 8) throw new Error('Use at most eight uploaded images per document');
       return [{ ...base, kind: 'image', image: { kind: 'upload', key }, alt, caption }];
+    }
+    if (image.kind === 'icon') {
+      const key = text(image.key, 80);
+      if (!WIKI_ICON_KEY.test(key)) throw new Error('Invalid wiki icon');
+      return [{ ...base, kind: 'image', image: { kind: 'icon', key }, alt, caption }];
     }
     if (image.kind !== 'wiki') throw new Error('Unsupported image reference');
     const asset = text(image.asset, 250);
