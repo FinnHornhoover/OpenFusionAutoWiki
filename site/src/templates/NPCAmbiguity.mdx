@@ -5,6 +5,10 @@ import MapSpot from '../components/MapSpot';
 
 # {props.data.name}
 
+{props.proseAction}
+
+{props.prose}
+
 <div className="entity-header">
   {props.data.icon ? <div className="entity-header-icon"><Icon src={props.data.icon} alt={props.data.name} size={192} /></div> : null}
   <div className="entity-meta muted">
@@ -14,8 +18,6 @@ import MapSpot from '../components/MapSpot';
     {props.data.status === 'out-of-game' && <span className="badge badge-warn">Out of game</span>}
   </div>
 </div>
-
-{props.proseAction}
 
 <table className="location-table source-table">
   <thead>
@@ -63,5 +65,3 @@ import MapSpot from '../components/MapSpot';
     ))}
   </tbody>
 </table>
-
-{props.prose}

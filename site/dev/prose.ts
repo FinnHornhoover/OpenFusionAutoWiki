@@ -119,13 +119,14 @@ export default function localProse(): Plugin {
         const match = /^\/data\/([a-z0-9_-]+)\/prose\/([a-z0-9_-]+)\.json$/i.exec(path);
         const staticMap = /^\/(?:prose-topics\/[a-z0-9_-]+|data\/[a-z0-9_-]+\/routes\/[a-z0-9_-]+)\.json$/i.test(path);
         if (!match && !staticMap) return new Response(null, { status: 404 });
-        const file = match
-          ? resolve(server.config.root, 'prose-mappings', match[1], 'prose', match[2] + '.json')
-          : resolve(server.config.root, 'public', path.slice(1));
-        const body = await readFile(file, 'utf8').catch((error: NodeJS.ErrnoException) => {
+        const readOptional = (file: string) => readFile(file, 'utf8').catch((error: NodeJS.ErrnoException) => {
           if (error.code !== 'ENOENT') throw error;
           return null;
         });
+        const generated = await readOptional(resolve(server.config.root, 'public', path.slice(1)));
+        const body = generated ?? (match
+          ? await readOptional(resolve(server.config.root, 'prose-mappings', match[1], 'prose', match[2] + '.json'))
+          : null);
         return body === null ? new Response(null, { status: 404 }) : new Response(body, { headers: { 'Content-Type': 'application/json' } });
       }
 
@@ -205,7 +206,8 @@ export default function localProse(): Plugin {
         const current = documents.get(key) ?? empty;
         if (current.revision !== draft.revision) return Response.json(current, { status: 409, headers: authHeaders() });
         try {
-          const { document, uploads } = validateDocument(draft.document, mapping, current.document, session.user);
+          const { document, uploads, unchanged } = validateDocument(draft.document, mapping, current.document, session.user);
+          if (unchanged) return Response.json(current, { headers: authHeaders() });
           const images = await Promise.all([...uploads].map((key) => bucket.head(key)));
           if (images.some((image) => !image)) return authError('An uploaded image could not be found', 422);
           if (images.reduce((total, image) => total + (image?.size ?? 0), 0) > 8 * 1024 * 1024) {

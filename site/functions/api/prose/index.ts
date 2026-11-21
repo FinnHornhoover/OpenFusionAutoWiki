@@ -1,17 +1,17 @@
 import type { PageProse, ProseDocument } from '../../../src/content/document';
 
-import { pageMapping, segment, validRepository, type ProseEnv } from '../../_shared/prose';
+import { proseReadToken, publishedProseIndex, type PublishedProseEnv } from '../../_shared/published-prose';
+import { pageMapping, segment, validRepository } from '../../_shared/prose';
 
-async function readDocument(env: ProseEnv, type: string, scope: 'general' | 'specific', key?: string) {
-  if (!key) return undefined;
-  if (!segment.test(key)) throw new Error('Invalid content key');
+async function readDocument(repository: string, path: string | undefined, token?: string) {
+  if (!path) return undefined;
   const response = await fetch(
-    `https://api.github.com/repos/${env.PROSE_REPOSITORY}/contents/pages/${type}/${scope}/${key}.json?ref=dev`,
+    `https://api.github.com/repos/${repository}/contents/${path}?ref=dev`,
     {
       headers: {
         Accept: 'application/vnd.github.raw+json',
         'User-Agent': 'OpenFusionAutoWiki',
-        ...(env.PROSE_READ_TOKEN ? { Authorization: `Bearer ${env.PROSE_READ_TOKEN}` } : {}),
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
       redirect: 'manual',
     },
@@ -23,7 +23,7 @@ async function readDocument(env: ProseEnv, type: string, scope: 'general' | 'spe
   return document;
 }
 
-export async function onRequestGet({ request, env }: { request: Request; env: ProseEnv }) {
+export async function onRequestGet({ request, env }: { request: Request; env: PublishedProseEnv }) {
   const url = new URL(request.url);
   const build = url.searchParams.get('build') ?? '';
   const type = url.searchParams.get('type') ?? '';
@@ -40,14 +40,28 @@ export async function onRequestGet({ request, env }: { request: Request; env: Pr
     const mapping = await pageMapping(env, url, build, type, route);
     if (!mapping) return Response.json({});
     const { general, specific, wikiImages, entityId } = mapping;
-    const [generalDocument, specificDocument] = await Promise.all([
-      readDocument(env, type, 'general', general),
-      readDocument(env, type, 'specific', specific),
-    ]);
-    return Response.json(
-      { general: generalDocument, specific: specificDocument, wikiImages, entityId, scopes: ([general && 'general', specific && 'specific'] as const).filter((scope) => scope === 'general' || scope === 'specific') } satisfies PageProse,
-      { headers: { 'Cache-Control': 'public, max-age=0, s-maxage=15' } },
-    );
+    const scopes: NonNullable<PageProse['scopes']> = [];
+    const generalPath = general && segment.test(general) ? `pages/${type}/general/${general}.json` : undefined;
+    const specificPath = specific && segment.test(specific) ? `pages/${type}/specific/${specific}.json` : undefined;
+    if (generalPath) scopes.push('general');
+    if (specificPath) scopes.push('specific');
+    const availability = { wikiImages, entityId, scopes };
+    const repository = env.PROSE_REPOSITORY;
+    const token = await proseReadToken(env, repository);
+    const index = await publishedProseIndex(repository, token);
+    const published = (path?: string) => path && (!index?.complete || index.paths.has(path)) ? path : undefined;
+    try {
+      const [generalDocument, specificDocument] = await Promise.all([
+        readDocument(repository, published(generalPath), token),
+        readDocument(repository, published(specificPath), token),
+      ]);
+      return Response.json(
+        { ...availability, general: generalDocument, specific: specificDocument } satisfies PageProse,
+        { headers: { 'Cache-Control': 'public, max-age=0, s-maxage=15' } },
+      );
+    } catch {
+      return Response.json(availability, { headers: { 'Cache-Control': 'no-store' } });
+    }
   } catch {
     return Response.json({ error: 'Prose temporarily unavailable' }, { status: 503 });
   }

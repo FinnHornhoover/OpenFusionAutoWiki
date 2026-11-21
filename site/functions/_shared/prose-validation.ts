@@ -1,5 +1,6 @@
 import { inheritBuildScope, type ProseBlock, type ProseDocument, type ProseSection } from '../../src/content/document';
 import { PROSE_IMAGE_KEY, WIKI_ICON_KEY } from '../../src/content/images';
+import { writeProseSource } from '../../src/content/proseSource';
 import { optimizeWikiLinks } from './prose-links';
 import { segment, type PageMapping } from './prose';
 
@@ -94,5 +95,5 @@ export function validateDocument(input: unknown, mapping: PageMapping, current: 
   }
 
   const document: ProseDocument = { version: 1, sections: root.sections.map((item) => section(item)), editedBy };
-  return { document, uploads };
+  return { document, uploads, unchanged: writeProseSource(document) === writeProseSource(current) };
 }

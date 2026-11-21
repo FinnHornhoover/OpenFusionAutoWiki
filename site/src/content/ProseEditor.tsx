@@ -1,10 +1,12 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useManifest } from '../data/useManifest';
-import type { ImageReference, PageProse, ProseDocument, ProseSection } from './document';
+import type { ImageReference, PageProse, ProseDocument } from './document';
 import { PROSE_IMAGE_MAX_BYTES, PROSE_IMAGE_MAX_DIMENSION, PROSE_IMAGE_TYPES } from './images';
 import { existingWikiIcon } from './wikiImageLookup';
 import { ProsePreview } from './PlayerProse';
+import ProseConflictResolver from './ProseConflictResolver';
 import ProseSourceEditor from './ProseSourceEditor';
+import { planProseMerge } from './proseMerge';
 import { readProseSource, sourceBuildContext, sourceBuildScopes, writeProseSource } from './proseSource';
 
 interface Snapshot {
@@ -66,26 +68,6 @@ async function payload(response: Response) {
   return data;
 }
 
-function versionText(section?: ProseSection) {
-  if (!section) return 'Section absent';
-  return JSON.stringify(section, (key, value) => key === 'updatedAt' || key === 'updatedAtByBuild' ? undefined : value, 2);
-}
-
-function compareSections(base: ProseDocument, draft: ProseDocument, latest: ProseDocument) {
-  const baseOrder = base.sections.map(({ id }) => id).join(',');
-  const draftOrder = draft.sections.map(({ id }) => id).join(',');
-  const preferred = baseOrder === draftOrder ? latest.sections : draft.sections;
-  const ids = [...new Set([...preferred, ...draft.sections, ...latest.sections, ...base.sections].map(({ id }) => id))];
-  return ids.map((id) => {
-    const original = base.sections.find((section) => section.id === id);
-    const yours = draft.sections.find((section) => section.id === id);
-    const saved = latest.sections.find((section) => section.id === id);
-    const mineChanged = versionText(yours) !== versionText(original);
-    const theirsChanged = versionText(saved) !== versionText(original);
-    return { id, original, yours, saved, overlap: mineChanged && theirsChanged && versionText(yours) !== versionText(saved), merged: mineChanged ? yours : saved };
-  });
-}
-
 function restore(key: string) {
   try {
     const raw = localStorage.getItem(key);
@@ -112,10 +94,10 @@ export default function ProseEditor({ build, query, sectionId, name, entityId, p
   const [error, setError] = useState('');
   const [status, setStatus] = useState('');
   const [saving, setSaving] = useState(false);
+  const [discarding, setDiscarding] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
   const [uploads, setUploads] = useState(0);
   const [resolving, setResolving] = useState(false);
-  const [choices, setChoices] = useState<Record<string, 'yours' | 'saved'>>({});
   const [tab, setTab] = useState<'source' | 'preview'>('source');
   const [previewBuild, setPreviewBuild] = useState('');
   const [previewId, setPreviewId] = useState(entityId ?? '');
@@ -127,14 +109,13 @@ export default function ProseEditor({ build, query, sectionId, name, entityId, p
   const endpoint = `/api/prose/editor?${query}`;
   const baseSource = base && writeProseSource(base.document);
   const dirty = baseSource !== undefined && source !== baseSource;
-  const hasChanges = Boolean(draft && !parsed?.error && writeProseSource(draft) !== baseSource);
   const showingConflicts = !!latest && resolving && !parsed?.error;
   const signedOut = session?.user === null && !localPreview;
   const userId = session?.user?.id;
   const storageKey = loaded && (localPreview || userId !== undefined)
     ? draftKey(loaded.path, localPreview ? undefined : userId)
     : undefined;
-  const busy = saving || loggingOut || uploads > 0;
+  const busy = saving || discarding || loggingOut || uploads > 0;
 
   const loopback = ['localhost', '127.0.0.1', '[::1]'].includes(window.location.hostname);
   useLayoutEffect(() => {
@@ -193,13 +174,12 @@ export default function ProseEditor({ build, query, sectionId, name, entityId, p
 
   const revision = base?.revision;
   useEffect(() => {
-    if (!endpoint || revision === undefined || saving || loggingOut || latest || localPreview) return;
+    if (!endpoint || revision === undefined || saving || discarding || loggingOut || latest || localPreview) return;
     const controller = new AbortController();
     const timer = window.setInterval(() => {
       fetch(endpoint, { signal: controller.signal }).then(payload).then((current: Snapshot) => {
         if (controller.signal.aborted || current.revision === revision) return;
         setLatest(current);
-        setChoices({});
         setResolving(true);
       }).catch(() => { /* Save checks the authoritative revision again. */ });
     }, 60_000);
@@ -207,7 +187,7 @@ export default function ProseEditor({ build, query, sectionId, name, entityId, p
       window.clearInterval(timer);
       controller.abort();
     };
-  }, [endpoint, revision, saving, loggingOut, latest, localPreview]);
+  }, [endpoint, revision, saving, discarding, loggingOut, latest, localPreview]);
 
   useEffect(() => {
     if (!dirty) return;
@@ -216,8 +196,23 @@ export default function ProseEditor({ build, query, sectionId, name, entityId, p
     return () => window.removeEventListener('beforeunload', warn);
   }, [dirty]);
 
-  function discard() {
-    if (busy || !window.confirm('Discard this draft?')) return;
+  async function discard() {
+    if (busy) return;
+    if (loaded) {
+      setDiscarding(true);
+      let prompt: string | undefined;
+      try {
+        const url = localPreview ? `/api/prose?${query}` : endpoint;
+        const current = await payload(await fetch(url, { cache: 'no-store' }));
+        const document: ProseDocument = localPreview ? current.general ?? { version: 1, sections: [] } : current.document;
+        if (source !== writeProseSource(document)) prompt = 'Discard this draft?';
+      } catch {
+        prompt = 'Could not check the latest saved prose. Discard this draft anyway?';
+      } finally {
+        setDiscarding(false);
+      }
+      if (!dialog.current?.open || (prompt && !window.confirm(prompt))) return;
+    }
     if (storageKey) removeDraft(storageKey);
     onClose();
   }
@@ -264,7 +259,7 @@ export default function ProseEditor({ build, query, sectionId, name, entityId, p
   }
 
   async function save() {
-    if (localPreview || !draft || parsed?.error || !base || !endpoint || !loaded) return;
+    if (busy || latest || localPreview || !draft || parsed?.error || !base || !loaded) return;
     setSaving(true);
     setError('');
     setStatus('');
@@ -277,7 +272,6 @@ export default function ProseEditor({ build, query, sectionId, name, entityId, p
       const result = await payload(response);
       if (response.status === 409) {
         setLatest(result);
-        setChoices({});
         setResolving(true);
         return;
       }
@@ -320,7 +314,6 @@ export default function ProseEditor({ build, query, sectionId, name, entityId, p
       setMetadata(undefined);
       setSource('');
       setLatest(undefined);
-      setChoices({});
       setResolving(false);
       setTab('source');
       setPreviewBuild('');
@@ -332,7 +325,18 @@ export default function ProseEditor({ build, query, sectionId, name, entityId, p
     }
   }
 
-  const conflicts = showingConflicts && base && draft && latest ? compareSections(base.document, draft, latest.document) : [];
+  const merge = useMemo(() => showingConflicts && base && draft && latest
+    ? planProseMerge(base.document, draft, latest.document) : undefined, [showingConflicts, base, draft, latest]);
+
+  function applyResolution(merged: ProseDocument) {
+    if (!latest) return;
+    setMetadata(merged);
+    setSource(writeProseSource(merged));
+    setBase(latest);
+    setLatest(undefined);
+    setResolving(false);
+  }
+
   const returnUrl = new URL(window.location.href);
   returnUrl.searchParams.set('edit-prose', '1');
   returnUrl.searchParams.delete('prose-scope');
@@ -349,10 +353,10 @@ export default function ProseEditor({ build, query, sectionId, name, entityId, p
       <header className="prose-editor-actions prose-editor-header">
         <h2 id="prose-editor-title">Edit prose: {name}</h2>
         <button className="prose-save-button" type="button" onClick={save}
-          disabled={localPreview || !hasChanges || busy || !!latest}>
+          disabled={localPreview || !draft || !!parsed?.error || !base || busy || !!latest}>
           {latest ? 'Resolve conflicts' : saving ? 'Saving…' : 'Save'}
         </button>
-        <button type="button" onClick={discard} disabled={busy}>Discard</button>
+        <button type="button" onClick={discard} disabled={busy}>{discarding ? 'Checking latest prose…' : 'Discard'}</button>
       </header>
       {error && <p role="alert">{error}</p>}
       {status && <p role="status">{status}</p>}
@@ -385,35 +389,11 @@ export default function ProseEditor({ build, query, sectionId, name, entityId, p
       {session?.user && !loaded && !error && <p role="status">Loading latest prose…</p>}
       {loaded && draft && (
         <>
-          <p className="prose-scope-note">Content outside build-specific and ID-specific blocks applies to all builds and all IDs on this page.</p>
-          {latest && <p role="status">This document changed while you were editing.</p>}
-          {showingConflicts && latest ? (
-            <div>
-              {conflicts.filter(({ overlap }) => overlap).map((item) => (
-                <fieldset key={item.id}>
-                  <legend>{item.yours?.title ?? item.saved?.title ?? item.original?.title}</legend>
-                  <div className="prose-conflict-versions">
-                    <div><h3>Original version</h3><pre>{versionText(item.original)}</pre></div>
-                    <div><h3>Your draft</h3><pre>{versionText(item.yours)}</pre></div>
-                    <div><h3>Latest saved version</h3><pre>{versionText(item.saved)}</pre></div>
-                  </div>
-                  <label><input type="radio" name={item.id} checked={choices[item.id] === 'yours'} onChange={() => setChoices({ ...choices, [item.id]: 'yours' })} /> Use your draft</label>
-                  <label><input type="radio" name={item.id} checked={choices[item.id] === 'saved'} onChange={() => setChoices({ ...choices, [item.id]: 'saved' })} /> Use latest saved version</label>
-                </fieldset>
-              ))}
-              <button type="button" disabled={busy || conflicts.some(({ overlap, id }) => overlap && !choices[id])} onClick={() => {
-                const sections = conflicts.flatMap((item) => {
-                  const section = item.overlap ? item[choices[item.id]] : item.merged;
-                  return section ? [section] : [];
-                });
-                const merged = { ...draft, sections };
-                setMetadata(merged);
-                setSource(writeProseSource(merged));
-                setBase(latest);
-                setLatest(undefined);
-                setResolving(false);
-              }}>{conflicts.some(({ overlap }) => overlap) ? 'Apply conflict choices' : 'Apply merged changes'}</button>
-            </div>
+          {!showingConflicts && <p className="prose-scope-note">Content outside build-specific and ID-specific blocks applies to all builds and all IDs on this page.</p>}
+          {latest && !showingConflicts && <p role="status">This document changed while you were editing.</p>}
+          {merge ? (
+            <ProseConflictResolver decisions={merge.decisions} merge={merge.apply}
+              context={{ build, builds: manifest ?? [], wikiImages: loaded.wikiImages }} busy={busy} onApply={applyResolution} />
           ) : (
             <>
               <div className="prose-editor-tabs" role="tablist" aria-label="Editor view">

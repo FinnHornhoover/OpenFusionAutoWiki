@@ -4,7 +4,7 @@ import Markdown, { defaultUrlTransform } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import Dropdown from '../components/Dropdown';
 import { useRouteMap } from '../data/routeMap';
-import { sectionsForBuild, type PageProse, type ProseDocument, type ProseSection } from './document';
+import { sectionsForBuild, type PageProse, type ProseBlock, type ProseDocument, type ProseSection } from './document';
 
 import { PROSE_IMAGE_KEY, WIKI_ICON_KEY } from './images';
 
@@ -75,6 +75,27 @@ function ProseMarkdown({ build, source }: { build?: string; source: string }) {
 
 const subsectionHeadings = ['h3', 'h4', 'h5', 'h6'] as const;
 
+export function ProseBlockContent({ block, build, wikiImages, localImages }: {
+  block: Exclude<ProseBlock, { kind: 'scope' }>;
+  build?: string;
+  wikiImages?: PageProse['wikiImages'];
+  localImages?: ReadonlyMap<string, string>;
+}) {
+  if (block.kind === 'markdown') return <ProseMarkdown build={build} source={block.source} />;
+  const local = block.image.kind === 'upload' ? localImages?.get(block.image.key) : undefined;
+  const src = local ?? (block.image.kind === 'upload'
+    ? PROSE_IMAGE_KEY.test(block.image.key) ? `/api/prose/images/${block.image.key}` : undefined
+    : block.image.kind === 'icon' ? WIKI_ICON_KEY.test(block.image.key) ? `/icons/${block.image.key}` : undefined
+    : wikiImages?.[block.image.asset]);
+  if (!src || (!local && (!src.startsWith('/') || src.startsWith('//') || src.includes('\\')))) return null;
+  return (
+    <figure>
+      <div className="table-scroll" tabIndex={0}><img src={src} alt={block.alt} loading="lazy" /></div>
+      {block.caption && <figcaption>{block.caption}</figcaption>}
+    </figure>
+  );
+}
+
 function Section({ section, build, linkBuild, wikiImages, localImages, preview, onEdit, depth = 0 }: {
   section: ProseSection;
   build?: string;
@@ -87,22 +108,9 @@ function Section({ section, build, linkBuild, wikiImages, localImages, preview, 
 }) {
   const body = (
     <>
-      {section.blocks.map((block) => {
-        if (block.kind === 'markdown') return <ProseMarkdown key={block.id} build={linkBuild ?? build} source={block.source} />;
-        if (block.kind === 'scope') return null;
-        const local = block.image.kind === 'upload' ? localImages?.get(block.image.key) : undefined;
-        const src = local ?? (block.image.kind === 'upload'
-          ? PROSE_IMAGE_KEY.test(block.image.key) ? `/api/prose/images/${block.image.key}` : undefined
-          : block.image.kind === 'icon' ? WIKI_ICON_KEY.test(block.image.key) ? `/icons/${block.image.key}` : undefined
-          : wikiImages?.[block.image.asset]);
-        if (!src || (!local && (!src.startsWith('/') || src.startsWith('//') || src.includes('\\')))) return null;
-        return (
-          <figure key={block.id}>
-            <div className="table-scroll" tabIndex={0}><img src={src} alt={block.alt} loading="lazy" /></div>
-            {block.caption && <figcaption>{block.caption}</figcaption>}
-          </figure>
-        );
-      })}
+      {section.blocks.map((block) => block.kind !== 'scope' && (
+        <ProseBlockContent key={block.id} block={block} build={linkBuild ?? build} wikiImages={wikiImages} localImages={localImages} />
+      ))}
       {section.sections.map((child) => <Section key={child.id} section={child} build={build} linkBuild={linkBuild} wikiImages={wikiImages} localImages={localImages} preview={preview} depth={depth + 1} />)}
     </>
   );

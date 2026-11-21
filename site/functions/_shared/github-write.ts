@@ -43,7 +43,7 @@ export function githubRequest(path: string, token: string, body?: unknown) {
   });
 }
 
-export async function installationToken(env: GitHubWriteEnv, repository: string) {
+export async function installationToken(env: GitHubWriteEnv, repository: string, contents: 'read' | 'write' = 'write') {
   if (!env.GITHUB_APP_ID || !env.GITHUB_APP_PRIVATE_KEY || !/^\d+$/.test(env.GITHUB_APP_INSTALLATION_ID ?? '')) {
     throw new Error('Missing GitHub App configuration');
   }
@@ -57,7 +57,7 @@ export async function installationToken(env: GitHubWriteEnv, repository: string)
   const response = await githubRequest(
     `/app/installations/${env.GITHUB_APP_INSTALLATION_ID}/access_tokens`,
     encoded + '.' + base64url(new Uint8Array(signature)),
-    { repositories: [repository.split('/')[1]], permissions: { contents: 'write' } },
+    { repositories: [repository.split('/')[1]], permissions: { contents } },
   );
   if (!response.ok) throw new Error('GitHub App token unavailable');
   const { token } = await response.json() as { token?: string };

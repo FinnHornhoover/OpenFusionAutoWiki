@@ -1,6 +1,7 @@
 import { authError, authHeaders, mutationSession, readSession, type AuthEnv } from '../../_shared/auth';
 import { branchHead, commitDocument, documentAt, installationToken, type GitHubWriteEnv } from '../../_shared/github-write';
 import { pageMapping, segment, validRepository, type ProseEnv } from '../../_shared/prose';
+import { noteProsePublication } from '../../_shared/published-prose';
 import { readBytes, reserveMutation, type ProseBucketEnv } from '../../_shared/prose-storage';
 import { validateDocument } from '../../_shared/prose-validation';
 
@@ -77,6 +78,7 @@ export async function onRequestPost(context: Context) {
       } catch (error) {
         return authError(error instanceof Error ? error.message : 'Invalid document', 422);
       }
+      if (validated.unchanged) return Response.json(current, { headers: authHeaders() });
       const images = await Promise.all([...validated.uploads].map((key) => bucket.head(key)));
       if (images.some((image) => !image)) return authError('An uploaded image could not be found', 422);
       if (images.reduce((total, image) => total + (image?.size ?? 0), 0) > 8 * 1024 * 1024) {
@@ -84,6 +86,7 @@ export async function onRequestPost(context: Context) {
       }
       const commit = await commitDocument(repository, token, page.path, head, validated.document);
       if (commit) {
+        noteProsePublication(repository, page.path);
         return Response.json({ ...commit, document: validated.document }, { headers: authHeaders() });
       }
       const next = await branchHead(repository, token);

@@ -21,7 +21,8 @@ without failing the rest of the build.
 For the prose editor, open `http://localhost:5173/beta-20100104/npcs/buttercup`
 and click the pencil, then **Login**. On the loopback Vite dev server this signs
 you in as `@local-editor`. Saves and uploads live in memory until Vite restarts.
-The dev server reads route mappings directly from `site/prose-mappings/`.
+The dev server reads the generated mappings from `site/public/data/`. If the
+entity data is already built, run `npm run build:prose -w build` to refresh them.
 
 Optional env vars:
 
@@ -48,18 +49,22 @@ Pages environment. For a private content repository, supply a read-only
 `PROSE_READ_TOKEN` secret limited to that repository. Bind the contribution-image
 bucket as `PROSE_IMAGES` in the same environment.
 
-The read endpoint uses `site/public/data/<build>/prose/<type>.json` to resolve
-canonical routes. Deployment copies the tracked maps from
-`site/prose-mappings/` after data generation. For local Wrangler testing, run
-`cp -R site/prose-mappings/. site/public/data/` after `npm run build:data` and
-before `npm run build:site`, then serve the result with Pages Functions.
+The data build generates `site/public/data/<build>/prose/<type>.json` for
+canonical entity routes and ambiguity pages. Rebuild these maps from existing
+route data with `npm run build:prose -w build`. The output is included in
+`npm run build:site` for Wrangler and deployment.
 
-The Buttercup pilot shares `pages/npcs/general/buttercup.json` on the content
-repository's `dev` branch across builds and NPC IDs. Build-independent topic
-registrations are in `site/public/prose-topics/`; per-build maps can override
-them. Use `::: builds beta-20100104-fixed` or `::: ids 720` followed by a closing
+Pages in the same entity type share a prose document when they have the same
+topic slug. Ambiguity members share their topic's document and get their own
+ID selector. Shared topic overrides live in `site/public/prose-topics/` and
+build-specific route overrides live in `site/prose-mappings/`. The generator
+merges both. No empty prose documents are created. The first save creates the
+document on `dev`.
+
+Use `::: builds beta-20100104-fixed` or `::: ids 720` followed by a closing
 `:::` to restrict a block. Previously published files under `pages/<type>/specific/`
-still display on mapped ID pages. New edits use the shared document.
+still display on mapped ID pages. New edits use the shared document at
+`pages/<type>/general/<topic>.json`.
 
 For GitHub sign-in, register a GitHub App with the callback URL
 `https://fusionfall.wiki/api/auth/callback`. Set `PUBLIC_SITE_ORIGIN` to

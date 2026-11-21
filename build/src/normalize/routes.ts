@@ -4,6 +4,7 @@ import { join } from 'node:path';
 
 import { chunkOf } from '../chunk.js';
 import { DATA_OUT } from '../paths.js';
+import { writeProseMapping } from './prose.js';
 import { slugify } from './slug.js';
 import type { Npc, NpcAmbiguity } from './types.js';
 
@@ -181,6 +182,7 @@ export async function writeRouteMaps(slug: string, types: readonly EntityType[])
 
     await writeFile(join(DATA_OUT, slug, 'index', `${type}.json`), JSON.stringify(indexed));
     await writeFile(join(dir, `${type}.json`), JSON.stringify(routeMap));
+    await writeProseMapping(slug, type, routeMap);
     totalRoutes += rows.length;
     totalAliases += Object.keys(routeMap).length;
   }

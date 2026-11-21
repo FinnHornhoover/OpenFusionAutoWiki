@@ -28,6 +28,7 @@ function RouteAmbiguityPage({ build, type, title, matches, prose, proseAction }:
     <section className="entity-page ambiguity-page">
       <h1>{title}</h1>
       {proseAction}
+      {prose}
       <p className="muted">Multiple {type.replace(/-/g, ' ')} match this name.</p>
       <div className="entity-index-list">
         {matches.map((match) => (
@@ -40,7 +41,6 @@ function RouteAmbiguityPage({ build, type, title, matches, prose, proseAction }:
           </Link>
         ))}
       </div>
-      {prose}
     </section>
   );
 }
