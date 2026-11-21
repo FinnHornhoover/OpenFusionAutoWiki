@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import PlayerProse from '../content/PlayerProse';
 import Icon from '../components/Icon';
 import EntityPageSkeleton from '../components/EntityPageSkeleton';
 import ErrorState from '../components/ErrorState';
@@ -22,7 +23,7 @@ import NanoTemplate from '../templates/Nano.mdx';
 import NPCTemplate from '../templates/NPC.mdx';
 import NPCAmbiguityTemplate from '../templates/NPCAmbiguity.mdx';
 
-function RouteAmbiguityPage({ build, type, title, matches }: { build: string; type: string; title: string; matches: { id: number | string; name: string; routeId: string; icon: string; detail: string }[] }) {
+function RouteAmbiguityPage({ build, type, title, matches, prose }: { prose: React.ReactNode; build: string; type: string; title: string; matches: { id: number | string; name: string; routeId: string; icon: string; detail: string }[] }) {
   return (
     <section className="entity-page ambiguity-page">
       <h1>{title}</h1>
@@ -38,6 +39,7 @@ function RouteAmbiguityPage({ build, type, title, matches }: { build: string; ty
           </Link>
         ))}
       </div>
+      {prose}
     </section>
   );
 }
@@ -104,8 +106,13 @@ export default function EntityPage() {
   if (loading) {
     return showSkeleton ? <EntityPageSkeleton /> : null;
   }
+  const proseRoute = canonical ?? id;
+  const prose = build && type && proseRoute
+    ? <PlayerProse build={build} type={type} route={proseRoute} />
+    : null;
+
   if (ambiguity && build && type) {
-    return <RouteAmbiguityPage build={build} type={type} title={ambiguity.title} matches={ambiguity.matches} />;
+    return <RouteAmbiguityPage build={build} type={type} title={ambiguity.title} matches={ambiguity.matches} prose={prose} />;
   }
   if (notFound || !entity) {
     return (
@@ -117,7 +124,7 @@ export default function EntityPage() {
   }
 
   if (type === 'missions') {
-    return <section className="entity-page mission-page"><Breadcrumb build={build} buildLabel={buildLabel} type="missions" label="Missions" /><MissionTemplate data={entity as Mission} /></section>;
+    return <section className="entity-page mission-page"><Breadcrumb build={build} buildLabel={buildLabel} type="missions" label="Missions" /><MissionTemplate data={entity as Mission} />{prose}</section>;
   }
   if (type === 'npcs') {
     return (
@@ -126,32 +133,33 @@ export default function EntityPage() {
         {'kind' in (entity as object) && (entity as NpcAmbiguity).kind === 'npc-ambiguity'
           ? <NPCAmbiguityTemplate data={entity as NpcAmbiguity} build={build} />
           : <NPCTemplate data={entity as Npc} build={build} />}
+        {prose}
       </section>
     );
   }
   if (type === 'items') {
-    return <section className="entity-page item-page"><Breadcrumb build={build} buildLabel={buildLabel} type="items" label="Items" /><ItemTemplate data={entity as Item} build={build} /></section>;
+    return <section className="entity-page item-page"><Breadcrumb build={build} buildLabel={buildLabel} type="items" label="Items" /><ItemTemplate data={entity as Item} build={build} />{prose}</section>;
   }
   if (type === 'item-sets') {
-    return <section className="entity-page item-set-page"><Breadcrumb build={build} buildLabel={buildLabel} type="item-sets" label="Item Sets" /><ItemSetTemplate data={entity as ItemSet} build={build} /></section>;
+    return <section className="entity-page item-set-page"><Breadcrumb build={build} buildLabel={buildLabel} type="item-sets" label="Item Sets" /><ItemSetTemplate data={entity as ItemSet} build={build} />{prose}</section>;
   }
   if (type === 'codes') {
-    return <section className="entity-page code-page"><Breadcrumb build={build} buildLabel={buildLabel} type="codes" label="Codes" /><CodeTemplate data={entity as Code} /></section>;
+    return <section className="entity-page code-page"><Breadcrumb build={build} buildLabel={buildLabel} type="codes" label="Codes" /><CodeTemplate data={entity as Code} />{prose}</section>;
   }
   if (type === 'monsters') {
-    return <section className="entity-page monster-page"><Breadcrumb build={build} buildLabel={buildLabel} type="monsters" label="Monsters" /><MonsterTemplate data={entity as Mob} build={build} /></section>;
+    return <section className="entity-page monster-page"><Breadcrumb build={build} buildLabel={buildLabel} type="monsters" label="Monsters" /><MonsterTemplate data={entity as Mob} build={build} />{prose}</section>;
   }
   if (type === 'areas') {
-    return <section className="entity-page area-page"><Breadcrumb build={build} buildLabel={buildLabel} type="areas" label="Areas" /><AreaTemplate data={entity as Area} build={build} /></section>;
+    return <section className="entity-page area-page"><Breadcrumb build={build} buildLabel={buildLabel} type="areas" label="Areas" /><AreaTemplate data={entity as Area} build={build} />{prose}</section>;
   }
   if (type === 'instances') {
-    return <section className="entity-page instance-page"><Breadcrumb build={build} buildLabel={buildLabel} type="instances" label="Instances" /><InstanceTemplate data={entity as Instance} /></section>;
+    return <section className="entity-page instance-page"><Breadcrumb build={build} buildLabel={buildLabel} type="instances" label="Instances" /><InstanceTemplate data={entity as Instance} />{prose}</section>;
   }
   if (type === 'infected-zones') {
-    return <section className="entity-page infected-zone-page"><Breadcrumb build={build} buildLabel={buildLabel} type="infected-zones" label="Infected Zones" /><InfectedZoneTemplate data={entity as InfectedZone} /></section>;
+    return <section className="entity-page infected-zone-page"><Breadcrumb build={build} buildLabel={buildLabel} type="infected-zones" label="Infected Zones" /><InfectedZoneTemplate data={entity as InfectedZone} />{prose}</section>;
   }
   if (type === 'nanos') {
-    return <section className="entity-page nano-page"><Breadcrumb build={build} buildLabel={buildLabel} type="nanos" label="Nanos" /><NanoTemplate data={entity as Nano} build={build} /></section>;
+    return <section className="entity-page nano-page"><Breadcrumb build={build} buildLabel={buildLabel} type="nanos" label="Nanos" /><NanoTemplate data={entity as Nano} build={build} />{prose}</section>;
   }
 
   return (

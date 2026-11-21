@@ -15,7 +15,9 @@
     "ff-three": "https://codeload.github.com/kamilprzyb2/ff-three/tar.gz/b951781d08f9b9b41af04e0acc32bccf4fc1457d",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "react-markdown": "^9.1.0",
     "react-router-dom": "^6.26.2",
+    "remark-gfm": "^4.0.1",
     "three": "^0.186.0"
   },
   "devDependencies": {
