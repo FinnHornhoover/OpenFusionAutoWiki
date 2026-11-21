@@ -45,7 +45,7 @@ export async function onRequestGet({ request, env }: { request: Request; env: Pr
       readDocument(env, type, 'specific', specific),
     ]);
     return Response.json(
-      { general: generalDocument, specific: specificDocument, wikiImages } satisfies PageProse,
+      { general: generalDocument, specific: specificDocument, wikiImages, scopes: ([general && 'general', specific && 'specific'] as const).filter((scope) => scope === 'general' || scope === 'specific') } satisfies PageProse,
       { headers: { 'Cache-Control': 'public, max-age=0, s-maxage=15' } },
     );
   } catch {

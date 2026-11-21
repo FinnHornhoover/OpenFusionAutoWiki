@@ -2443,3 +2443,113 @@ details.dropdown > .dropdown-body {
 .player-prose-section summary small {
   margin-inline-start: var(--space-2);
 }
+
+.prose-editor {
+  width: min(75rem, calc(100% - 2rem));
+  max-height: 90dvh;
+  overflow: auto;
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-elevated);
+  color: var(--color-text);
+}
+
+.prose-editor::backdrop {
+  background: rgb(0 0 0 / 65%);
+}
+
+.prose-editor-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-block: var(--space-2);
+}
+
+.prose-editor-actions h2 {
+  margin: 0 auto 0 0;
+}
+
+.prose-editor-panes,
+.prose-conflict-versions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+
+.prose-conflict-versions {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.prose-conflict-versions pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.prose-editor-tabs {
+  display: none;
+}
+
+.prose-editor fieldset {
+  min-width: 0;
+  margin: var(--space-2) 0;
+  border: 1px solid var(--color-border);
+}
+
+.prose-editor label {
+  display: block;
+  margin-block: var(--space-2);
+}
+
+.prose-editor textarea {
+  display: block;
+  width: 100%;
+  resize: vertical;
+}
+
+.prose-editor input,
+.prose-editor select {
+  max-width: 100%;
+}
+
+.prose-block-editor {
+  margin-block: var(--space-2);
+  padding: var(--space-2);
+  border: 1px solid var(--color-border);
+}
+
+.prose-scope[data-specific="true"],
+.prose-section-editor[data-specific="true"],
+.prose-block-editor[data-specific="true"] {
+  border-inline-start: 3px solid var(--color-link);
+  padding-inline-start: var(--space-2);
+}
+
+.prose-build-options {
+  max-height: 12rem;
+  overflow: auto;
+}
+
+.prose-icon-preview {
+  display: block;
+  max-width: 5rem;
+  max-height: 5rem;
+}
+
+@media (max-width: 760px) {
+  .prose-editor-tabs {
+    display: flex;
+    gap: var(--space-2);
+  }
+
+  .prose-editor-panes,
+  .prose-conflict-versions {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .prose-editor-panes[data-tab="source"] .prose-editor-preview,
+  .prose-editor-panes[data-tab="preview"] .prose-editor-source {
+    display: none;
+  }
+}

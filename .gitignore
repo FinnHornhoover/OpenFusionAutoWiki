@@ -32,3 +32,6 @@ google-service-account.json
 # planning md files in the repo
 *.md
 !README.md
+
+# ignore private key for GitHub app
+*.pem

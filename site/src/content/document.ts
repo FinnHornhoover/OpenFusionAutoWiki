@@ -31,7 +31,10 @@ export interface ProseDocument {
   sections: ProseSection[];
 }
 
+export type ProseScope = 'general' | 'specific';
+
 export interface PageProse {
+  scopes?: ProseScope[];
   general?: ProseDocument;
   specific?: ProseDocument;
   wikiImages?: Record<string, string>;
