@@ -36,6 +36,21 @@ GOOGLE_SERVICE_ACCOUNT_JSON=...
 
 The workflow at [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) deploys to Cloudflare Pages on pushes to `main`.
 
+### Player prose preview
+
+Set `PROSE_REPOSITORY` to the content repository's `owner/name` in the Cloudflare
+Pages environment. For a private content repository, supply a read-only
+`PROSE_READ_TOKEN` secret limited to that repository. Bind the contribution-image
+bucket as `PROSE_IMAGES` in the same environment.
+
+The read endpoint uses `site/public/data/<build>/prose/<type>.json` to resolve
+canonical routes. For a staging fixture, create a map such as
+`{"buttercup":{"general":"buttercup"},"buttercup-42":{"general":"buttercup","specific":"buttercup-42"}}`
+and put the corresponding version 1 documents under
+`pages/<type>/general/` and `pages/<type>/specific/` on the content repository's
+`dev` branch. The route keys must match the deployed site's canonical routes.
+An optional `wikiImages` map on each route maps catalog IDs to same-site asset paths.
+
 ### 3D previews (R2)
 
 Models, textures, animations and audio share a content-addressed R2 pool across builds
