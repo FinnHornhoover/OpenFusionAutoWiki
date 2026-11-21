@@ -1,0 +1,79 @@
+import type { ProseBlock, ProseDocument, ProseSection } from '../../src/content/document';
+import { PROSE_IMAGE_KEY } from '../../src/content/images';
+import { segment, type PageMapping } from './prose';
+
+function record(value: unknown): Record<string, unknown> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Invalid document structure');
+  return value as Record<string, unknown>;
+}
+
+function text(value: unknown, length: number) {
+  if (typeof value !== 'string' || value.length > length) throw new Error('Invalid text field');
+  return value;
+}
+
+export function validateDocument(input: unknown, mapping: PageMapping, current: ProseDocument, editedBy: NonNullable<ProseDocument['editedBy']>) {
+  const root = record(input);
+  if (root.version !== 1 || !Array.isArray(root.sections)) throw new Error('Invalid document format');
+  const previous = new Map<string, ProseSection>();
+  function index(sections: ProseSection[]) {
+    for (const section of sections) {
+      previous.set(section.id, section);
+      index(section.sections);
+    }
+  }
+  index(current.sections);
+  const ids = new Set<string>();
+  const uploads = new Set<string>();
+  const now = new Date().toISOString();
+
+  function entry(value: Record<string, unknown>, parent?: string[]) {
+    const id = text(value.id, 128);
+    if (!segment.test(id) || ids.has(id) || ids.size >= 300) throw new Error('Invalid or duplicate section or block ID');
+    ids.add(id);
+    if (value.builds === undefined) return { id };
+    if (!Array.isArray(value.builds) || !value.builds.length || value.builds.length > 100) throw new Error('Invalid build scope');
+    const builds = value.builds.map((build) => text(build, 128));
+    if (builds.some((build) => !segment.test(build) || (parent && !parent.includes(build)))) throw new Error('Invalid build scope');
+    return { id, builds: [...new Set(builds)].sort() };
+  }
+
+  function block(input: unknown, parent?: string[]): ProseBlock {
+    const value = record(input);
+    const base = entry(value, parent);
+    if (value.kind === 'markdown') return { ...base, kind: 'markdown', source: text(value.source, 20_000) };
+    if (value.kind !== 'image') throw new Error('Unsupported block type');
+    const image = record(value.image);
+    const alt = text(value.alt, 500);
+    const caption = value.caption === undefined ? undefined : text(value.caption, 1000);
+    if (image.kind === 'upload') {
+      const key = text(image.key, 80);
+      if (!PROSE_IMAGE_KEY.test(key)) throw new Error('Invalid upload reference');
+      uploads.add(key);
+      if (uploads.size > 8) throw new Error('Use at most eight uploaded images per document');
+      return { ...base, kind: 'image', image: { kind: 'upload', key }, alt, caption };
+    }
+    if (image.kind !== 'wiki') throw new Error('Unsupported image reference');
+    const asset = text(image.asset, 250);
+    if (!mapping.wikiImages || !Object.hasOwn(mapping.wikiImages, asset)) throw new Error('Unknown wiki image');
+    return { ...base, kind: 'image', image: { kind: 'wiki', asset }, alt, caption };
+  }
+
+  function section(input: unknown, parent?: string[], depth = 1): ProseSection {
+    const value = record(input);
+    if (depth > 3 || !Array.isArray(value.blocks) || !Array.isArray(value.sections)) throw new Error('Invalid section structure');
+    const base = entry(value, parent);
+    const title = text(value.title, 250).trim();
+    if (!title) throw new Error('Section titles are required');
+    const scope = base.builds ?? parent;
+    const blocks = value.blocks.map((item) => block(item, scope));
+    const sections = value.sections.map((item) => section(item, scope, depth + 1));
+    const old = previous.get(base.id);
+    const next = { ...base, title, blocks, sections };
+    const unchanged = old && JSON.stringify({ id: old.id, builds: old.builds, title: old.title, blocks: old.blocks, sections: old.sections }) === JSON.stringify(next);
+    return { ...next, updatedAt: unchanged ? old.updatedAt : now, updatedAtByBuild: unchanged ? old.updatedAtByBuild : undefined };
+  }
+
+  const document: ProseDocument = { version: 1, sections: root.sections.map((item) => section(item)), editedBy };
+  return { document, uploads };
+}

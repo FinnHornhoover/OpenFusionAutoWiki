@@ -26,6 +26,7 @@ export interface ProseSection extends Entry {
 }
 
 export interface ProseDocument {
+  editedBy?: { id: number; login: string };
   version: 1;
   sections: ProseSection[];
 }

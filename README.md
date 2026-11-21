@@ -59,6 +59,12 @@ in the Pages environment. Add `GITHUB_APP_CLIENT_SECRET` and
 key with `openssl rand -hex 32`. For staging, use its exact HTTPS origin,
 register its callback URL, and use a separate session key.
 
+For saves, give the App Contents read/write permission and install it only on
+the prose repository. Add `GITHUB_APP_ID` and `GITHUB_APP_INSTALLATION_ID`
+as text variables and the full generated PEM as the `GITHUB_APP_PRIVATE_KEY`
+secret. Create `dev` from `main` if needed. The save service commits to
+`dev`; maintainers handle promotions to `main`.
+
 ### 3D previews (R2)
 
 Models, textures, animations and audio share a content-addressed R2 pool across builds
