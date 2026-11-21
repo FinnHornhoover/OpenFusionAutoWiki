@@ -51,6 +51,14 @@ and put the corresponding version 1 documents under
 `dev` branch. The route keys must match the deployed site's canonical routes.
 An optional `wikiImages` map on each route maps catalog IDs to same-site asset paths.
 
+For GitHub sign-in, register a GitHub App with the callback URL
+`https://fusionfall.wiki/api/auth/callback`. Set `PUBLIC_SITE_ORIGIN` to
+`https://fusionfall.wiki` and `GITHUB_APP_CLIENT_ID` to the App's client ID
+in the Pages environment. Add `GITHUB_APP_CLIENT_SECRET` and
+`SESSION_SIGNING_KEY` as encrypted secrets. Generate an independent session
+key with `openssl rand -hex 32`. For staging, use its exact HTTPS origin,
+register its callback URL, and use a separate session key.
+
 ### 3D previews (R2)
 
 Models, textures, animations and audio share a content-addressed R2 pool across builds

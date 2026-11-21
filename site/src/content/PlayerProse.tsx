@@ -5,6 +5,8 @@ import remarkGfm from 'remark-gfm';
 import { useRouteMap } from '../data/routeMap';
 import { sectionsForBuild, type PageProse, type ProseSection } from './document';
 
+import { PROSE_IMAGE_KEY } from './images';
+
 const WIKI_PREFIX = 'wiki:';
 const LICENSE_URL = 'https://creativecommons.org/licenses/by-sa/3.0/';
 
@@ -43,7 +45,7 @@ function Section({ section, build, wikiImages }: { section: ProseSection; build:
       {section.blocks.map((block) => {
         if (block.kind === 'markdown') return <ProseMarkdown key={block.id} build={build} source={block.source} />;
         const src = block.image.kind === 'upload'
-          ? /^[a-f0-9]{64}\.(png|jpg|webp)$/.test(block.image.key) ? `/api/prose/images/${block.image.key}` : undefined
+          ? PROSE_IMAGE_KEY.test(block.image.key) ? `/api/prose/images/${block.image.key}` : undefined
           : wikiImages?.[block.image.asset];
         if (!src || !src.startsWith('/') || src.startsWith('//') || src.includes('\\')) return null;
         return (
