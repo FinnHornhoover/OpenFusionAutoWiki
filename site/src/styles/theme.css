@@ -2086,6 +2086,32 @@ details.dropdown > .dropdown-body {
   flex-shrink: 0;
 }
 
+.npc-ambiguity-identity,
+.npc-ambiguity-link {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.npc-ambiguity-map {
+  display: grid;
+  place-items: center;
+  flex: 0 0 48px;
+}
+
+.npc-ambiguity-labels {
+  display: grid;
+  gap: var(--space-1);
+  overflow-wrap: anywhere;
+}
+
+.npc-ambiguity-location {
+  font-size: .875rem;
+  font-weight: 400;
+}
+
 .pager {
   display: flex;
   align-items: center;

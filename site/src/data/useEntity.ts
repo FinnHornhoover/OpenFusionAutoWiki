@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { LruCache } from './lruCache';
-import { loadRouteMap, type RouteAmbiguityTarget } from './routeMap';
+import { loadRouteMap, type RouteAmbiguityTarget, type RouteMap } from './routeMap';
+import type { Npc, NpcAmbiguity } from './types';
 
 const CHUNK_SIZE = 250;
 
@@ -53,6 +54,28 @@ async function loadChunk(slug: string, type: string, chunk: number): Promise<Rec
   return p;
 }
 
+async function loadNpcAmbiguity(slug: string, target: RouteAmbiguityTarget, routes: RouteMap): Promise<RouteAmbiguityTarget> {
+  const bucket = await loadChunk(slug, 'npcs', 0).catch(() => undefined);
+  const group = bucket?.[target.canonical] as NpcAmbiguity | undefined;
+  const members = new Map(group?.kind === 'npc-ambiguity' ? group.members.map((member) => [member.id, member]) : []);
+  const matches = await Promise.all(target.matches.map(async (match) => {
+    const member = members.get(Number(match.id));
+    if (member) {
+      const { icon, mapIcon, inGame, firstLocation } = member;
+      return { ...match, icon, npc: { mapIcon, inGame, firstLocation } };
+    }
+
+    // Different NPC names can normalize to the same route without sharing a named group.
+    const route = routes[match.routeId];
+    if (route?.kind !== 'entity') return match;
+    const records = await loadChunk(slug, 'npcs', route.chunk).catch(() => undefined);
+    const npc = records?.[String(route.id)] as Npc | undefined;
+    if (!npc) return match;
+    return { ...match, icon: npc.icon, npc: { mapIcon: npc.mapIcon, inGame: npc.inGame, firstLocation: npc.locations[0] ?? null } };
+  }));
+  return { ...target, matches };
+}
+
 export interface UseEntityResult<T> {
   entity: T | null;
   ambiguity: RouteAmbiguityTarget | null;
@@ -90,7 +113,7 @@ export function useEntity<T>(
     if (!key) return;
     let alive = true;
 
-    loadRouteMap(slug!, type!).then((routes) => {
+    loadRouteMap(slug!, type!).then(async (routes) => {
       if (!alive) return null;
       const target = routes[id!];
       if (!target) {
@@ -98,7 +121,10 @@ export function useEntity<T>(
         return null;
       }
       if (target.kind === 'ambiguity') {
-        setState({ key, result: { entity: null, ambiguity: target, canonical: target.canonical, loading: false, notFound: false, error: null } });
+        const ambiguity = type === 'npcs' ? await loadNpcAmbiguity(slug!, target, routes) : target;
+        if (alive) {
+          setState({ key, result: { entity: null, ambiguity, canonical: target.canonical, loading: false, notFound: false, error: null } });
+        }
         return null;
       }
       return loadChunk(slug!, type!, target.chunk).then((bucket) => ({ bucket, target }));

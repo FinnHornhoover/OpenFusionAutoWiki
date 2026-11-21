@@ -4,7 +4,9 @@ import PlayerProse, { type PlayerProseSlots } from '../content/PlayerProse';
 import Icon from '../components/Icon';
 import EntityPageSkeleton from '../components/EntityPageSkeleton';
 import ErrorState from '../components/ErrorState';
+import NpcAmbiguityIdentity from '../components/NpcAmbiguityIdentity';
 import { ENTITY_TITLES } from '../data/entityTitles';
+import type { RouteAmbiguityMatch } from '../data/routeMap';
 import type { Area, Code, InfectedZone, Instance, Item, ItemSet, Mission, Mob, Nano, Npc, NpcAmbiguity } from '../data/types';
 import { useBuildEntry } from '../data/useBuildEntry';
 import { useBuildMeta } from '../data/useBuildMeta';
@@ -23,7 +25,7 @@ import NanoTemplate from '../templates/Nano.mdx';
 import NPCTemplate from '../templates/NPC.mdx';
 import NPCAmbiguityTemplate from '../templates/NPCAmbiguity.mdx';
 
-function RouteAmbiguityPage({ build, type, title, matches, prose, proseAction }: PlayerProseSlots & { build: string; type: string; title: string; matches: { id: number | string; name: string; routeId: string; icon: string; detail: string }[] }) {
+function RouteAmbiguityPage({ build, type, title, matches, prose, proseAction }: PlayerProseSlots & { build: string; type: string; title: string; matches: RouteAmbiguityMatch[] }) {
   return (
     <section className="entity-page ambiguity-page">
       <h1>{title}</h1>
@@ -31,7 +33,15 @@ function RouteAmbiguityPage({ build, type, title, matches, prose, proseAction }:
       {prose}
       <p className="muted">Multiple {type.replace(/-/g, ' ')} match this name.</p>
       <div className="entity-index-list">
-        {matches.map((match) => (
+        {type === 'npcs' ? matches.map(({ npc, detail, id, routeId, name, icon }) => {
+          const inGame = npc?.inGame ?? !/(^| - )out of game$/i.test(detail);
+          return (
+            <div key={id} className={inGame ? 'entity-index-row' : 'entity-index-row entity-index-row-muted'}>
+              <NpcAmbiguityIdentity build={build} routeId={routeId} id={id} name={name} icon={icon}
+                mapIcon={npc?.mapIcon} location={npc?.firstLocation} inGame={inGame} />
+            </div>
+          );
+        }) : matches.map((match) => (
           <Link key={String(match.id)} className="entity-index-row" to={`/${build}/${type}/${match.routeId}`}>
             {match.icon ? <Icon src={match.icon} alt={match.name} size={48} className={type === 'items' ? 'icon-item' : undefined} /> : null}
             <span className="entity-index-main">
