@@ -241,7 +241,10 @@ export function readProseSource(source: string, previous: ProseDocument, seed: s
       const builds = scopeFor(line.selectedBuilds, line.parent, index + 1);
       const sectionId = idFor(id);
       const old = original.get(sectionId);
-      const section: ProseSection = { id: sectionId, title, builds, updatedAt: old?.updatedAt ?? date, updatedAtByBuild: old?.updatedAtByBuild, blocks: [], sections: [] };
+      const section: ProseSection = {
+        id: sectionId, title, builds, updatedAt: old?.updatedAt ?? date,
+        updatedAtForAnyBuild: old?.updatedAtForAnyBuild, updatedAtByBuild: old?.updatedAtByBuild, blocks: [], sections: [],
+      };
       const parent = parents.at(-1);
       (parent ? parent.sections : sections).push(section);
       parents.push(section);

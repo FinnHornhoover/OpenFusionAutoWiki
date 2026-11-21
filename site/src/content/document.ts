@@ -22,13 +22,20 @@ export type ImageReference =
 export interface ProseSection extends Entry {
   title: string;
   updatedAt: string;
+  updatedAtForAnyBuild?: string;
   updatedAtByBuild?: Record<string, string>;
   blocks: ProseBlock[];
   sections: ProseSection[];
 }
 
+export interface ProseContributor {
+  id: number;
+  login: string;
+}
+
 export interface ProseDocument {
-  editedBy?: { id: number; login: string };
+  editedBy?: ProseContributor;
+  contributors?: ProseContributor[];
   version: 1;
   sections: ProseSection[];
 }
@@ -50,9 +57,18 @@ export function inheritBuildScope(builds: string[] | undefined, parent: string[]
     : selected;
 }
 
+export function proseSectionDate(section: ProseSection, build?: string) {
+  const dates = section.updatedAtByBuild;
+  return build && dates && Object.hasOwn(dates, build) ? dates[build] : section.updatedAtForAnyBuild ?? section.updatedAt;
+}
+
+export function allowsBuild(builds: string[] | undefined, build: string | undefined) {
+  return !builds || (!!build && builds.includes(build));
+}
+
 function visibleBlocks(blocks: ProseBlock[], build: string | undefined, entityId?: string): ProseBlock[] {
   return blocks.flatMap((block): ProseBlock[] => {
-    if (block.builds && (!build || !block.builds.includes(build))) return [];
+    if (!allowsBuild(block.builds, build)) return [];
     if (block.entityIds && (!entityId || !block.entityIds.includes(entityId))) return [];
     return block.kind === 'scope' ? visibleBlocks(block.blocks, build, entityId) : [block];
   });
@@ -60,7 +76,7 @@ function visibleBlocks(blocks: ProseBlock[], build: string | undefined, entityId
 
 export function sectionsForBuild(sections: ProseSection[], build: string | undefined, entityId?: string): ProseSection[] {
   return sections.flatMap((section) => {
-    if (section.builds && (!build || !section.builds.includes(build))) return [];
+    if (!allowsBuild(section.builds, build)) return [];
     const blocks = visibleBlocks(section.blocks, build, entityId);
     const children = sectionsForBuild(section.sections, build, entityId);
     if (!blocks.length && !children.length) return [];

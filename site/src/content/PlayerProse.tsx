@@ -4,7 +4,7 @@ import Markdown, { defaultUrlTransform } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import Dropdown from '../components/Dropdown';
 import { useRouteMap } from '../data/routeMap';
-import { sectionsForBuild, type PageProse, type ProseBlock, type ProseDocument, type ProseSection } from './document';
+import { proseSectionDate, sectionsForBuild, type PageProse, type ProseBlock, type ProseDocument, type ProseSection } from './document';
 
 import { PROSE_IMAGE_KEY, WIKI_ICON_KEY } from './images';
 
@@ -125,7 +125,7 @@ function Section({ section, build, linkBuild, wikiImages, localImages, preview, 
     );
   }
 
-  const date = (build ? section.updatedAtByBuild?.[build] : undefined) ?? section.updatedAt;
+  const date = proseSectionDate(section, build);
   const dropdown = (
     <Dropdown className="player-prose-section" open={preview} summary={
       <h2>{section.title} <small className="muted">Last edited <time dateTime={date}>{date.slice(0, 10)}</time></small></h2>
@@ -152,9 +152,25 @@ export function ProsePreview({ document, build, entityId, linkBuild, wikiImages,
   preview?: boolean;
   onEdit?(sectionId: string): void;
 }) {
-  return sectionsForBuild(document.sections, build, entityId).map((section) => (
-    <Section key={section.id} section={section} build={build} linkBuild={linkBuild} wikiImages={wikiImages} localImages={localImages} preview={preview} onEdit={onEdit} />
-  ));
+  const sections = sectionsForBuild(document.sections, build, entityId);
+  const contributors = document.contributors ?? (document.editedBy ? [document.editedBy] : []);
+  return (
+    <>
+      {sections.map((section) => (
+        <Section key={section.id} section={section} build={build} linkBuild={linkBuild} wikiImages={wikiImages} localImages={localImages} preview={preview} onEdit={onEdit} />
+      ))}
+      {!preview && sections.length > 0 && contributors.length > 0 && (
+        <div className="player-prose-credits muted">
+          <span>Contributors</span>
+          <ul aria-label="Prose contributors">
+            {contributors.map(({ id, login }) => (
+              <li key={id}><a href={`https://github.com/${encodeURIComponent(login)}`}>@{login}</a></li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </>
+  );
 }
 
 export interface PlayerProseSlots {

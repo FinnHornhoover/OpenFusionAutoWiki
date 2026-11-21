@@ -2465,6 +2465,24 @@ details.dropdown > .dropdown-body {
   margin-block: var(--space-4);
 }
 
+.player-prose-credits,
+.player-prose-credits ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-2);
+}
+
+.player-prose-credits {
+  margin-block: var(--space-2) var(--space-4);
+  font-size: .875rem;
+}
+
+.player-prose-credits ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
 .prose-button,
 .prose-editor button,
 .prose-editor input::file-selector-button {

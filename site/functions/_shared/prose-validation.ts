@@ -2,6 +2,7 @@ import { inheritBuildScope, type ProseBlock, type ProseDocument, type ProseSecti
 import { PROSE_IMAGE_KEY, WIKI_ICON_KEY } from '../../src/content/images';
 import { writeProseSource } from '../../src/content/proseSource';
 import { optimizeWikiLinks } from './prose-links';
+import { withProseMetadata } from './prose-metadata';
 import { segment, type PageMapping } from './prose';
 
 function record(value: unknown): Record<string, unknown> {
@@ -17,14 +18,6 @@ function text(value: unknown, length: number) {
 export function validateDocument(input: unknown, mapping: PageMapping, current: ProseDocument, editedBy: NonNullable<ProseDocument['editedBy']>) {
   const root = record(input);
   if (root.version !== 1 || !Array.isArray(root.sections)) throw new Error('Invalid document format');
-  const previous = new Map<string, ProseSection>();
-  function index(sections: ProseSection[]) {
-    for (const section of sections) {
-      previous.set(section.id, section);
-      index(section.sections);
-    }
-  }
-  index(current.sections);
   const ids = new Set<string>();
   const uploads = new Set<string>();
   const now = new Date().toISOString();
@@ -88,12 +81,11 @@ export function validateDocument(input: unknown, mapping: PageMapping, current: 
     const scope = base.builds ?? parent;
     const blocks = value.blocks.flatMap((item) => block(item, scope));
     const sections = value.sections.map((item) => section(item, scope, depth + 1));
-    const old = previous.get(base.id);
-    const next = { ...base, title, blocks, sections };
-    const unchanged = old && JSON.stringify({ id: old.id, builds: old.builds, title: old.title, blocks: old.blocks, sections: old.sections }) === JSON.stringify(next);
-    return { ...next, updatedAt: unchanged ? old.updatedAt : now, updatedAtByBuild: unchanged ? old.updatedAtByBuild : undefined };
+    return { ...base, title, blocks, sections, updatedAt: now };
   }
 
-  const document: ProseDocument = { version: 1, sections: root.sections.map((item) => section(item)), editedBy };
-  return { document, uploads, unchanged: writeProseSource(document) === writeProseSource(current) };
+  const sections = root.sections.map((item) => section(item));
+  const unchanged = writeProseSource({ version: 1, sections }) === writeProseSource(current);
+  const document = unchanged ? current : withProseMetadata(sections, current, editedBy, now);
+  return { document, uploads, unchanged };
 }

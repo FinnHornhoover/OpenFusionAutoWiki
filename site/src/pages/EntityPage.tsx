@@ -25,9 +25,16 @@ import NanoTemplate from '../templates/Nano.mdx';
 import NPCTemplate from '../templates/NPC.mdx';
 import NPCAmbiguityTemplate from '../templates/NPCAmbiguity.mdx';
 
-function RouteAmbiguityPage({ build, type, title, matches, prose, proseAction }: PlayerProseSlots & { build: string; type: string; title: string; matches: RouteAmbiguityMatch[] }) {
+function RouteAmbiguityPage({ build, buildLabel, type, title, matches, prose, proseAction }: PlayerProseSlots & {
+  build: string;
+  buildLabel: string;
+  type: string;
+  title: string;
+  matches: RouteAmbiguityMatch[];
+}) {
   return (
     <section className="entity-page ambiguity-page">
+      <Breadcrumb build={build} buildLabel={buildLabel} type={type} label={ENTITY_TITLES[type] ?? type} />
       <h1>{title}</h1>
       {proseAction}
       {prose}
@@ -132,7 +139,8 @@ export default function EntityPage() {
 
   const renderPage = ({ prose, proseAction }: PlayerProseSlots) => {
     if (ambiguity && build && type) {
-      return <RouteAmbiguityPage build={build} type={type} title={ambiguity.title} matches={ambiguity.matches} prose={prose} proseAction={proseAction} />;
+      return <RouteAmbiguityPage build={build} buildLabel={buildLabel ?? build} type={type} title={ambiguity.title}
+        matches={ambiguity.matches} prose={prose} proseAction={proseAction} />;
     }
     if (!entity) return null;
 

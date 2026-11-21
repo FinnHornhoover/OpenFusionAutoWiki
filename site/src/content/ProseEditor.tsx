@@ -31,6 +31,7 @@ interface Props {
 }
 
 const SOURCE_VERSION = 2;
+const SERVER_METADATA = new Set(['editedBy', 'contributors', 'updatedAt', 'updatedAtForAnyBuild', 'updatedAtByBuild']);
 
 interface EditorSession {
   user: { id: number; login: string } | null;
@@ -267,7 +268,7 @@ export default function ProseEditor({ build, query, sectionId, name, entityId, p
       const response = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-Wiki-CSRF': session?.csrf ?? '' },
-        body: JSON.stringify({ revision: base.revision, document: draft }),
+        body: JSON.stringify({ revision: base.revision, document: draft }, (key, value) => SERVER_METADATA.has(key) ? undefined : value),
       });
       const result = await payload(response);
       if (response.status === 409) {
