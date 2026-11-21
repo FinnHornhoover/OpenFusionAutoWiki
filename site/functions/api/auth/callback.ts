@@ -26,7 +26,7 @@ export async function onRequestGet(context: AuthContext) {
         code,
         code_verifier: attempt.verifier,
       }),
-      redirect: 'error',
+      redirect: 'manual',
     });
     if (!exchange.ok) throw new Error('Access token exchange failed');
     const { access_token: token }: { access_token?: string } = await exchange.json();
@@ -34,7 +34,7 @@ export async function onRequestGet(context: AuthContext) {
 
     const profile = await fetch('https://api.github.com/user', {
       headers: { Accept: 'application/vnd.github+json', Authorization: `Bearer ${token}`, 'User-Agent': 'OpenFusionAutoWiki' },
-      redirect: 'error',
+      redirect: 'manual',
     });
     if (!profile.ok) throw new Error('Profile lookup failed');
     const { id, login }: { id: number; login: string } = await profile.json();

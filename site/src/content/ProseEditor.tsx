@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useManifest } from '../data/useManifest';
 import type { ImageReference, PageProse, ProseDocument, ProseScope, ProseSection } from './document';
-import { PROSE_IMAGE_MAX_BYTES } from './images';
+import { PROSE_IMAGE_MAX_BYTES, PROSE_IMAGE_MAX_DIMENSION, PROSE_IMAGE_TYPES } from './images';
 import { ProsePreview } from './PlayerProse';
-import ProseSectionEditor, { move, newSection } from './ProseSectionEditor';
+import ProseSourceEditor from './ProseSourceEditor';
+import { readProseSource, sourceBuildScopes, writeProseSource } from './proseSource';
 
 interface Snapshot {
   revision: string | null;
@@ -19,11 +20,46 @@ interface Props {
   build: string;
   query: string;
   scopes: ProseScope[];
+  initialScope?: ProseScope;
+  section?: { id: string; scope: ProseScope };
+  name: string;
+  entityId: string;
+  pageProse: PageProse;
   onClose(): void;
   onSave(scope: ProseScope, document: ProseDocument): void;
 }
 
-const scopeLabel = { general: 'General page', specific: 'This ID' };
+const SOURCE_VERSION = 2;
+
+interface EditorSession {
+  user: { id: number; login: string } | null;
+  csrf?: string;
+  development?: boolean;
+}
+
+interface StoredDraft {
+  base: Snapshot;
+  draft: ProseDocument;
+  source?: string;
+  sourceVersion?: number;
+}
+
+function draftKey(path: string, userId?: number) {
+  return 'wiki-prose:' + (userId === undefined ? path : `github:${userId}:${path}`);
+}
+
+function storeDraft(key: string, draft: StoredDraft) {
+  try {
+    localStorage.setItem(key, JSON.stringify(draft));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function removeDraft(key: string) {
+  try { localStorage.removeItem(key); } catch { /* Storage may be disabled. */ }
+}
 
 async function payload(response: Response) {
   const data = await response.json();
@@ -51,36 +87,73 @@ function compareSections(base: ProseDocument, draft: ProseDocument, latest: Pros
   });
 }
 
-function restore(path: string) {
+function restore(key: string) {
   try {
-    const raw = localStorage.getItem('wiki-prose:' + path);
-    return raw ? JSON.parse(raw) as { base: Snapshot; draft: ProseDocument } : undefined;
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) as StoredDraft : undefined;
   } catch {
     return undefined;
   }
 }
 
-export default function ProseEditor({ build, query, scopes, onClose, onSave }: Props) {
+export default function ProseEditor({ build, query, scopes, initialScope, section, name, entityId, pageProse, onClose, onSave }: Props) {
   const dialog = useRef<HTMLDialogElement>(null);
-  const [session, setSession] = useState<{ user: { login: string } | null; csrf?: string }>();
-  const [scope, setScope] = useState<ProseScope | undefined>(scopes.length === 1 ? scopes[0] : undefined);
+  const login = useRef<HTMLAnchorElement>(null);
+  const localImages = useRef(new Map<string, string>());
+  const targets = { general: `${name} (All)`, specific: `${name} (${entityId})` };
+  const [session, setSession] = useState<EditorSession>();
+  const [scope, setScope] = useState<ProseScope | undefined>(() => (
+    initialScope && scopes.includes(initialScope) ? initialScope : scopes.length === 1 ? scopes[0] : undefined
+  ));
+  const [localPreview, setLocalPreview] = useState(false);
   const [loaded, setLoaded] = useState<Loaded>();
   const [base, setBase] = useState<Snapshot>();
-  const [draft, setDraft] = useState<ProseDocument>();
+  const [source, setSource] = useState('');
+  const [metadata, setMetadata] = useState<ProseDocument>();
+  const [draftIdentity] = useState(() => ({ id: crypto.randomUUID(), date: new Date().toISOString() }));
+  const parsed = useMemo(() => metadata && readProseSource(source, metadata, draftIdentity.id, draftIdentity.date), [source, metadata, draftIdentity]);
+  const draft = parsed?.document;
   const [latest, setLatest] = useState<Snapshot>();
   const [error, setError] = useState('');
   const [status, setStatus] = useState('');
   const [saving, setSaving] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
   const [uploads, setUploads] = useState(0);
   const [resolving, setResolving] = useState(false);
   const [choices, setChoices] = useState<Record<string, 'yours' | 'saved'>>({});
   const [tab, setTab] = useState<'source' | 'preview'>('source');
-  const [previewBuild, setPreviewBuild] = useState(build);
+  const [previewBuild, setPreviewBuild] = useState('');
+  const scopedBuilds = useMemo(() => [...new Set(sourceBuildScopes(source.split('\n')).flatMap((scope) => scope ?? []))], [source]);
+  const selectedPreviewBuild = scopedBuilds.includes(previewBuild) ? previewBuild : '';
   const { manifest } = useManifest();
   const endpoint = scope ? `/api/prose/editor?${query}&scope=${scope}` : undefined;
-  const dirty = draft && base && JSON.stringify(draft) !== JSON.stringify(base.document);
+  const baseSource = base && writeProseSource(base.document);
+  const dirty = baseSource !== undefined && source !== baseSource;
+  const hasChanges = Boolean(draft && !parsed?.error && writeProseSource(draft) !== baseSource);
+  const showingConflicts = !!latest && resolving && !parsed?.error;
+  const signedOut = session?.user === null && !localPreview;
+  const userId = session?.user?.id;
+  const storageKey = loaded && (localPreview || userId !== undefined)
+    ? draftKey(loaded.path, localPreview ? undefined : userId)
+    : undefined;
+  const busy = saving || loggingOut || uploads > 0;
 
-  useEffect(() => { dialog.current?.showModal(); }, []);
+  const loopback = ['localhost', '127.0.0.1', '[::1]'].includes(window.location.hostname);
+  useLayoutEffect(() => {
+    const modal = dialog.current!;
+    const opener = document.activeElement;
+    const previousOverflow = document.body.style.overflow;
+    const imageUrls = localImages.current;
+    modal.showModal();
+    document.body.style.overflow = 'hidden';
+    return () => {
+      modal.close();
+      for (const url of imageUrls.values()) URL.revokeObjectURL(url);
+      imageUrls.clear();
+      document.body.style.overflow = previousOverflow;
+      if (opener instanceof HTMLElement && opener.isConnected) opener.focus({ preventScroll: true });
+    };
+  }, []);
   useEffect(() => {
     const controller = new AbortController();
     fetch('/api/auth/session', { signal: controller.signal }).then(payload).then(setSession)
@@ -89,39 +162,54 @@ export default function ProseEditor({ build, query, scopes, onClose, onSave }: P
   }, []);
 
   useEffect(() => {
-    if (!endpoint || !session?.user) return;
+    if (!endpoint || userId === undefined || localPreview) return;
     const controller = new AbortController();
     fetch(endpoint, { signal: controller.signal }).then(payload).then((current: Loaded) => {
       if (controller.signal.aborted) return;
-      const previous = restore(current.path);
+      const key = draftKey(current.path, userId);
+      const legacyKey = draftKey(current.path);
+      const savedDraft = restore(key);
+      const previous = savedDraft ?? restore(legacyKey);
+      if (!savedDraft && previous && storeDraft(key, previous)) removeDraft(legacyKey);
       setLoaded(current);
       setBase(previous?.base ?? current);
-      setDraft(previous?.draft ?? current.document);
-      if (previous && previous.base.revision !== current.revision) setLatest(current);
+      setMetadata(previous?.draft ?? current.document);
+      setSource(previous?.sourceVersion === SOURCE_VERSION && previous.source !== undefined ? previous.source : writeProseSource(previous?.draft ?? current.document));
+      if (previous && previous.base.revision !== current.revision) {
+        setLatest(current);
+        setResolving(true);
+      }
     }).catch((failure: Error) => { if (!controller.signal.aborted) setError(failure.message); });
     return () => controller.abort();
-  }, [endpoint, session?.user]);
+  }, [endpoint, userId, localPreview]);
 
   useEffect(() => {
-    if (!loaded || !base || !draft || !dirty) return;
-    try { localStorage.setItem('wiki-prose:' + loaded.path, JSON.stringify({ base, draft })); }
-    catch { /* The draft remains available in this editor. */ }
-  }, [loaded, base, draft, dirty]);
+    if (!storageKey || !base || !draft) return;
+    if (dirty) storeDraft(storageKey, { base, draft, source, sourceVersion: SOURCE_VERSION });
+    else removeDraft(storageKey);
+  }, [storageKey, base, draft, dirty, source]);
+
+  useEffect(() => {
+    if (signedOut) login.current?.focus({ preventScroll: true });
+  }, [signedOut]);
 
   const revision = base?.revision;
   useEffect(() => {
-    if (!endpoint || revision === undefined || saving || latest) return;
+    if (!endpoint || revision === undefined || saving || loggingOut || latest || localPreview) return;
     const controller = new AbortController();
     const timer = window.setInterval(() => {
       fetch(endpoint, { signal: controller.signal }).then(payload).then((current: Snapshot) => {
-        if (!controller.signal.aborted && current.revision !== revision) setLatest(current);
+        if (controller.signal.aborted || current.revision === revision) return;
+        setLatest(current);
+        setChoices({});
+        setResolving(true);
       }).catch(() => { /* Save checks the authoritative revision again. */ });
     }, 60_000);
     return () => {
       window.clearInterval(timer);
       controller.abort();
     };
-  }, [endpoint, revision, saving, latest]);
+  }, [endpoint, revision, saving, loggingOut, latest, localPreview]);
 
   useEffect(() => {
     if (!dirty) return;
@@ -130,15 +218,40 @@ export default function ProseEditor({ build, query, scopes, onClose, onSave }: P
     return () => window.removeEventListener('beforeunload', warn);
   }, [dirty]);
 
-  function close() {
-    if (saving || uploads) return;
-    if (!dirty || window.confirm('Close the editor? Your draft is kept on this device when local storage is available.')) onClose();
+  function discard() {
+    if (busy || !window.confirm('Discard this draft?')) return;
+    if (storageKey) removeDraft(storageKey);
+    onClose();
+  }
+
+  function openLocal(scope: ProseScope) {
+    const path = 'localhost:' + query + ':' + scope;
+    const current: Loaded = { path, revision: null, document: pageProse[scope] ?? { version: 1, sections: [] }, wikiImages: pageProse.wikiImages };
+    const previous = restore(draftKey(path));
+    setScope(scope);
+    setLoaded(current);
+    setBase(previous?.base ?? current);
+    setMetadata(previous?.draft ?? current.document);
+    setSource(previous?.sourceVersion === SOURCE_VERSION && previous.source !== undefined ? previous.source : writeProseSource(previous?.draft ?? current.document));
   }
 
   async function upload(file: File): Promise<ImageReference> {
     if (file.size > PROSE_IMAGE_MAX_BYTES) throw new Error('Images must be 2 MiB or smaller');
     setUploads((count) => count + 1);
     try {
+      if (localPreview) {
+        const extension = (Object.keys(PROSE_IMAGE_TYPES) as (keyof typeof PROSE_IMAGE_TYPES)[])
+          .find((type) => PROSE_IMAGE_TYPES[type] === file.type);
+        if (!extension) throw new Error('Choose a PNG, JPEG, or WebP image');
+        const image = await createImageBitmap(file).catch(() => { throw new Error('Choose a readable image'); });
+        const exceedsDimensions = Math.max(image.width, image.height) > PROSE_IMAGE_MAX_DIMENSION;
+        image.close();
+        if (exceedsDimensions) throw new Error('Images must be at most 4096 pixels wide and tall');
+        const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', await file.arrayBuffer()));
+        const key = Array.from(digest, (byte) => byte.toString(16).padStart(2, '0')).join('') + '.' + extension;
+        if (!localImages.current.has(key)) localImages.current.set(key, URL.createObjectURL(file));
+        return { kind: 'upload', key };
+      }
       const response = await fetch('/api/prose/images', {
         method: 'POST',
         headers: { 'X-Wiki-CSRF': session?.csrf ?? '' },
@@ -151,7 +264,7 @@ export default function ProseEditor({ build, query, scopes, onClose, onSave }: P
   }
 
   async function save() {
-    if (!draft || !base || !endpoint || !scope || !loaded) return;
+    if (localPreview || !draft || parsed?.error || !base || !endpoint || !scope || !loaded) return;
     setSaving(true);
     setError('');
     setStatus('');
@@ -164,14 +277,16 @@ export default function ProseEditor({ build, query, scopes, onClose, onSave }: P
       const result = await payload(response);
       if (response.status === 409) {
         setLatest(result);
-        setResolving(false);
+        setChoices({});
+        setResolving(true);
         return;
       }
       setBase(result);
-      setDraft(result.document);
-      try { localStorage.removeItem('wiki-prose:' + loaded.path); } catch { /* Storage may be disabled. */ }
+      setMetadata(result.document);
+      setSource(writeProseSource(result.document));
+      if (storageKey) removeDraft(storageKey);
       onSave(scope, result.document);
-      setStatus('Saved to the wiki.');
+      setStatus('Saved.');
     } catch (failure) {
       setError(failure instanceof Error ? failure.message : 'Save failed');
     } finally {
@@ -179,30 +294,109 @@ export default function ProseEditor({ build, query, scopes, onClose, onSave }: P
     }
   }
 
-  const conflicts = resolving && base && draft && latest ? compareSections(base.document, draft, latest.document) : [];
+  async function logout() {
+    if (busy || !session?.user || !session.csrf) return;
+    const kept = !dirty || (storageKey && base && draft && storeDraft(storageKey, {
+      base, draft, source, sourceVersion: SOURCE_VERSION,
+    }));
+    const prompt = !dirty ? 'Log out of the wiki?' : kept
+      ? 'Log out of the wiki? Your draft will be kept on this device.'
+      : 'Log out and discard this unsaved draft?';
+    if (!window.confirm(prompt)) return;
+
+    setLoggingOut(true);
+    setError('');
+    try {
+      const response = await fetch('/api/auth/logout', { method: 'POST', headers: { 'X-Wiki-CSRF': session.csrf } });
+      if (response.status === 403) {
+        const current: EditorSession = await payload(await fetch('/api/auth/session'));
+        if (current.user) throw new Error('Could not log out. Please try again.');
+      } else if (!response.ok) {
+        throw new Error('Could not log out. Please try again.');
+      }
+      setSession({ user: null, development: session.development });
+      setLoaded(undefined);
+      setBase(undefined);
+      setMetadata(undefined);
+      setSource('');
+      setLatest(undefined);
+      setChoices({});
+      setResolving(false);
+      setTab('source');
+      setPreviewBuild('');
+      setStatus('');
+    } catch (failure) {
+      setError(failure instanceof Error ? failure.message : 'Could not log out. Please try again.');
+    } finally {
+      setLoggingOut(false);
+    }
+  }
+
+  const conflicts = showingConflicts && base && draft && latest ? compareSections(base.document, draft, latest.document) : [];
   const returnUrl = new URL(window.location.href);
   returnUrl.searchParams.set('edit-prose', '1');
+  if (scope) returnUrl.searchParams.set('prose-scope', scope);
+  else returnUrl.searchParams.delete('prose-scope');
+  if (section) {
+    returnUrl.searchParams.set('prose-section', section.id);
+    returnUrl.searchParams.set('prose-section-scope', section.scope);
+  } else {
+    returnUrl.searchParams.delete('prose-section');
+    returnUrl.searchParams.delete('prose-section-scope');
+  }
   const returnTo = returnUrl.pathname + returnUrl.search + returnUrl.hash;
   return (
-    <dialog className="prose-editor" ref={dialog} aria-labelledby="prose-editor-title" onCancel={(event) => { event.preventDefault(); close(); }}>
-      <header className="prose-editor-actions">
-        <h2 id="prose-editor-title">Edit prose {scope && '· ' + scopeLabel[scope]}</h2>
-        <button type="button" onClick={close} disabled={saving || uploads > 0}>Close</button>
+    <dialog className="prose-editor" data-panes={!!loaded && !!draft && !showingConflicts} ref={dialog} aria-labelledby="prose-editor-title" onCancel={(event) => {
+      if (event.target !== event.currentTarget) return;
+      event.preventDefault();
+      discard();
+    }}>
+      <header className="prose-editor-actions prose-editor-header">
+        <h2 id="prose-editor-title">Edit prose: {scope ? targets[scope] : name}</h2>
+        <button className="prose-save-button" type="button" onClick={save}
+          disabled={localPreview || !hasChanges || busy || !!latest}>
+          {latest ? 'Resolve conflicts' : saving ? 'Saving…' : 'Save'}
+        </button>
+        <button type="button" onClick={discard} disabled={busy}>Discard</button>
       </header>
       {error && <p role="alert">{error}</p>}
       {status && <p role="status">{status}</p>}
-      {session?.user === null && <a href={`/api/auth/login?${new URLSearchParams({ returnTo })}`}>Sign in with GitHub</a>}
+      {session?.user && (
+        <div className="prose-editor-actions prose-account">
+          <p>Signed in with GitHub as <strong>@{session.user.login}</strong></p>
+          <button type="button" onClick={logout} disabled={busy}>{loggingOut ? 'Logging out…' : 'Log out'}</button>
+        </div>
+      )}
+      {signedOut && (
+        <section className="prose-sign-in">
+          <p>You need a GitHub account to edit this wiki.</p>
+          <div className="prose-editor-actions">
+            <a className="prose-button prose-github-login" ref={login} aria-label="Login with GitHub" href={`/api/auth/login?${new URLSearchParams({ returnTo })}`}>
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true">
+                <path d="M12 .75a11.25 11.25 0 0 0-3.557 21.923c.562.104.768-.244.768-.542 0-.267-.01-.975-.015-1.914-3.13.68-3.79-1.508-3.79-1.508-.512-1.301-1.25-1.647-1.25-1.647-1.022-.699.077-.685.077-.685 1.13.08 1.725 1.16 1.725 1.16 1.005 1.722 2.637 1.224 3.28.936.102-.728.393-1.224.714-1.506-2.498-.284-5.124-1.249-5.124-5.561 0-1.229.44-2.233 1.16-3.02-.116-.285-.503-1.43.11-2.98 0 0 .946-.303 3.094 1.153A10.78 10.78 0 0 1 12 6.18c.956.005 1.92.129 2.82.379 2.147-1.456 3.092-1.153 3.092-1.153.614 1.55.227 2.695.111 2.98.722.787 1.159 1.791 1.159 3.02 0 4.323-2.63 5.274-5.137 5.553.404.35.765 1.039.765 2.095 0 1.512-.014 2.732-.014 3.104 0 .301.203.651.774.541A11.25 11.25 0 0 0 12 .75Z" />
+              </svg>
+              Login
+            </a>
+            <a className="prose-button prose-github-register" href="https://github.com/signup" target="_blank"
+              rel="noopener noreferrer" aria-label="Register for a GitHub account">Register</a>
+            {loopback && !session?.development && <button type="button" onClick={() => {
+              setLocalPreview(true);
+              if (scope) openLocal(scope);
+            }}>Open local editor preview</button>}
+          </div>
+        </section>
+      )}
       {!session && !error && <p role="status">Checking sign-in…</p>}
-      {session?.user && !scope && (
+      {(session?.user || localPreview) && !scope && (
         <div className="prose-editor-actions">
-          {scopes.map((item) => <button key={item} type="button" onClick={() => setScope(item)}>{scopeLabel[item]}</button>)}
+          {scopes.map((item) => <button key={item} type="button" disabled={busy} onClick={() => localPreview ? openLocal(item) : setScope(item)}>Edit {targets[item]}</button>)}
         </div>
       )}
       {session?.user && scope && !loaded && !error && <p role="status">Loading latest prose…</p>}
       {loaded && draft && (
         <>
           {latest && <p role="status">This document changed while you were editing.</p>}
-          {resolving && latest ? (
+          {showingConflicts && latest ? (
             <div>
               {conflicts.filter(({ overlap }) => overlap).map((item) => (
                 <fieldset key={item.id}>
@@ -216,52 +410,64 @@ export default function ProseEditor({ build, query, scopes, onClose, onSave }: P
                   <label><input type="radio" name={item.id} checked={choices[item.id] === 'saved'} onChange={() => setChoices({ ...choices, [item.id]: 'saved' })} /> Use latest saved version</label>
                 </fieldset>
               ))}
-              <button type="button" disabled={conflicts.some(({ overlap, id }) => overlap && !choices[id])} onClick={() => {
+              <button type="button" disabled={busy || conflicts.some(({ overlap, id }) => overlap && !choices[id])} onClick={() => {
                 const sections = conflicts.flatMap((item) => {
                   const section = item.overlap ? item[choices[item.id]] : item.merged;
                   return section ? [section] : [];
                 });
-                setDraft({ ...draft, sections });
+                const merged = { ...draft, sections };
+                setMetadata(merged);
+                setSource(writeProseSource(merged));
                 setBase(latest);
                 setLatest(undefined);
                 setResolving(false);
-                setStatus('Conflict choices applied. Review your draft before saving.');
-              }}>Apply conflict choices</button>
+              }}>{conflicts.some(({ overlap }) => overlap) ? 'Apply conflict choices' : 'Apply merged changes'}</button>
             </div>
           ) : (
             <>
-              <div className="prose-editor-tabs" aria-label="Editor view">
-                <button type="button" aria-pressed={tab === 'source'} onClick={() => setTab('source')}>Source</button>
-                <button type="button" aria-pressed={tab === 'preview'} onClick={() => setTab('preview')}>Preview</button>
+              <div className="prose-editor-tabs" role="tablist" aria-label="Editor view">
+                {(['source', 'preview'] as const).map((pane) => (
+                  <button key={pane} id={`prose-tab-${pane}`} type="button" role="tab" aria-selected={tab === pane}
+                    aria-controls={`prose-panel-${pane}`} tabIndex={tab === pane ? 0 : -1} onClick={() => setTab(pane)}
+                    onKeyDown={(event) => {
+                      if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+                      event.preventDefault();
+                      const next = event.key === 'Home' ? 'source' : event.key === 'End' ? 'preview' : pane === 'source' ? 'preview' : 'source';
+                      setTab(next);
+                      dialog.current?.querySelector<HTMLButtonElement>(`#prose-tab-${next}`)?.focus();
+                    }}>
+                    {pane === 'source' ? 'Source' : 'Preview'}
+                  </button>
+                ))}
               </div>
-              <div className="prose-editor-panes" data-tab={tab}>
-                <section className="prose-editor-source">
-                  <h3>Source</h3>
-                  <fieldset disabled={saving || uploads > 0}>
-                    {draft.sections.map((section, index) => (
-                      <ProseSectionEditor key={section.id} section={section} builds={manifest ?? []} wikiImages={loaded.wikiImages ?? {}} upload={upload}
-                        onChange={(next) => setDraft({ ...draft, sections: draft.sections.map((item) => item.id === section.id ? next : item) })}
-                        onRemove={() => setDraft({ ...draft, sections: draft.sections.filter((item) => item.id !== section.id) })}
-                        onMove={(direction) => setDraft({ ...draft, sections: move(draft.sections, index, direction) })}
-                      />
-                    ))}
-                    <button type="button" onClick={() => setDraft({ ...draft, sections: [...draft.sections, newSection()] })}>Add section</button>
-                  </fieldset>
+              <div className="prose-editor-panes">
+                <section className="prose-editor-source" role="tabpanel" id="prose-panel-source" aria-labelledby="prose-tab-source" hidden={tab !== 'source'}>
+                  <ProseSourceEditor
+                    source={source}
+                    sectionId={section?.scope === scope ? section?.id : undefined}
+                    onChange={setSource}
+                    builds={manifest ?? []}
+                    wikiImages={loaded.wikiImages ?? {}}
+                    upload={upload}
+                    disabled={busy}
+                    error={parsed?.error}
+                  />
                 </section>
-                <section className="prose-editor-preview">
-                  <h3>Preview</h3>
-                  <label>Preview build <select value={previewBuild} onChange={(event) => setPreviewBuild(event.target.value)}>
-                    {(manifest ?? []).map(({ slug, displayName }) => <option value={slug} key={slug}>{displayName}</option>)}
-                    {!manifest?.some(({ slug }) => slug === build) && <option value={build}>{build}</option>}
-                  </select></label>
-                  <ProsePreview document={draft} build={previewBuild} wikiImages={loaded.wikiImages} preview />
+                <section className="prose-editor-preview" role="tabpanel" id="prose-panel-preview" aria-labelledby="prose-tab-preview" hidden={tab !== 'preview'}>
+                  <label className="prose-preview-build">
+                    Preview build
+                    <select className="styled-select" value={selectedPreviewBuild} onChange={(event) => setPreviewBuild(event.target.value)}>
+                      <option value="">Any build</option>
+                      {scopedBuilds.map((slug) => <option value={slug} key={slug}>{manifest?.find((entry) => entry.slug === slug)?.displayName ?? slug}</option>)}
+                    </select>
+                  </label>
+                  <div className="prose-preview-scroll">
+                    {tab === 'preview' && (
+                      <ProsePreview document={draft} build={selectedPreviewBuild || undefined} linkBuild={selectedPreviewBuild || build} wikiImages={loaded.wikiImages} localImages={localPreview ? localImages.current : undefined} preview />
+                    )}
+                  </div>
                 </section>
               </div>
-              <footer className="prose-editor-actions">
-                {latest
-                  ? <button type="button" disabled={uploads > 0} onClick={() => { setChoices({}); setResolving(true); }}>Resolve page conflicts</button>
-                  : <button type="button" disabled={!dirty || saving || uploads > 0} onClick={save}>{saving ? 'Saving…' : 'Save'}</button>}
-              </footer>
             </>
           )}
         </>

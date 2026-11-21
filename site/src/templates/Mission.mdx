@@ -17,6 +17,8 @@ import MissionOfferEmails from '../components/MissionOfferEmails';
   </div>
 </div>
 
+{props.proseAction}
+
 <div className="mission-givers">
   {props.data.startNPC && (
     <div className="mission-giver-box">
@@ -39,6 +41,8 @@ import MissionOfferEmails from '../components/MissionOfferEmails';
 </div>
 
 <MissionRequirementGraph mission={props.data} />
+
+{props.prose}
 
 {(props.data.requiredMissions.length > 0 || props.data.requiredNano || props.data.requiredGuide) && (
   <Dropdown summary="Requirements">

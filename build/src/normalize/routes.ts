@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import { chunkOf } from '../chunk.js';
 import { DATA_OUT } from '../paths.js';
 import { slugify } from './slug.js';
+import type { Npc, NpcAmbiguity } from './types.js';
 
 type EntityType = 'missions' | 'npcs' | 'items' | 'item-sets' | 'codes' | 'monsters' | 'areas' | 'instances' | 'infected-zones' | 'nanos';
 
@@ -52,6 +53,19 @@ async function loadIndex(slug: string, type: EntityType): Promise<IndexRow[]> {
   return JSON.parse(await readFile(path, 'utf8')) as IndexRow[];
 }
 
+async function loadNpcMemberIcons(slug: string): Promise<Map<number, string>> {
+  // Named NPC ambiguity records live in chunk zero with their per-ID portraits.
+  const path = join(DATA_OUT, slug, 'npcs', '0.json');
+  const icons = new Map<number, string>();
+  if (!(await exists(path))) return icons;
+  const rows = JSON.parse(await readFile(path, 'utf8')) as Record<string, Npc | NpcAmbiguity>;
+  for (const row of Object.values(rows)) {
+    if (!('kind' in row) || row.kind !== 'npc-ambiguity') continue;
+    for (const member of row.members) icons.set(member.id, member.icon);
+  }
+  return icons;
+}
+
 function semanticSource(type: EntityType, row: IndexRow): string {
   return type === 'codes' ? row.code || row.name || String(row.id) : row.name || String(row.id);
 }
@@ -87,6 +101,9 @@ export async function writeRouteMaps(slug: string, types: readonly EntityType[])
 
   for (const type of types) {
     const rows = await loadIndex(slug, type);
+    const npcIcons = type === 'npcs' && rows.some((row) => (row.members?.length ?? 0) > 1)
+      ? await loadNpcMemberIcons(slug)
+      : undefined;
     const exactRows: Array<{ row: IndexRow; id: number | string; base: string; name: string; icon: string; detail: string }> = [];
 
     for (const row of rows) {
@@ -98,7 +115,7 @@ export async function writeRouteMaps(slug: string, types: readonly EntityType[])
             id: member.id,
             base,
             name: row.name,
-            icon: row.icon || '',
+            icon: npcIcons?.get(member.id) ?? row.icon ?? '',
             detail: detailFor(row, member),
           });
         }

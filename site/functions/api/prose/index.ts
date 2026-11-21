@@ -13,7 +13,7 @@ async function readDocument(env: ProseEnv, type: string, scope: 'general' | 'spe
         'User-Agent': 'OpenFusionAutoWiki',
         ...(env.PROSE_READ_TOKEN ? { Authorization: `Bearer ${env.PROSE_READ_TOKEN}` } : {}),
       },
-      redirect: 'error',
+      redirect: 'manual',
     },
   );
   if (response.status === 404) return undefined;

@@ -1,4 +1,4 @@
-import type { ProseBlock, ProseDocument, ProseSection } from '../../src/content/document';
+import { inheritBuildScope, type ProseBlock, type ProseDocument, type ProseSection } from '../../src/content/document';
 import { PROSE_IMAGE_KEY } from '../../src/content/images';
 import { segment, type PageMapping } from './prose';
 
@@ -35,13 +35,18 @@ export function validateDocument(input: unknown, mapping: PageMapping, current: 
     if (!Array.isArray(value.builds) || !value.builds.length || value.builds.length > 100) throw new Error('Invalid build scope');
     const builds = value.builds.map((build) => text(build, 128));
     if (builds.some((build) => !segment.test(build) || (parent && !parent.includes(build)))) throw new Error('Invalid build scope');
-    return { id, builds: [...new Set(builds)].sort() };
+    return { id, builds: inheritBuildScope(builds, parent) };
   }
 
-  function block(input: unknown, parent?: string[]): ProseBlock {
+  function block(input: unknown, parent?: string[], depth = 1): ProseBlock[] {
     const value = record(input);
     const base = entry(value, parent);
-    if (value.kind === 'markdown') return { ...base, kind: 'markdown', source: text(value.source, 20_000) };
+    if (value.kind === 'scope') {
+      if (depth > 12 || !Array.isArray(value.blocks)) throw new Error('Invalid nested build scope');
+      const blocks = value.blocks.flatMap((item) => block(item, base.builds ?? parent, depth + 1));
+      return base.builds && blocks.length ? [{ ...base, kind: 'scope', blocks }] : blocks;
+    }
+    if (value.kind === 'markdown') return [{ ...base, kind: 'markdown', source: text(value.source, 20_000) }];
     if (value.kind !== 'image') throw new Error('Unsupported block type');
     const image = record(value.image);
     const alt = text(value.alt, 500);
@@ -51,22 +56,22 @@ export function validateDocument(input: unknown, mapping: PageMapping, current: 
       if (!PROSE_IMAGE_KEY.test(key)) throw new Error('Invalid upload reference');
       uploads.add(key);
       if (uploads.size > 8) throw new Error('Use at most eight uploaded images per document');
-      return { ...base, kind: 'image', image: { kind: 'upload', key }, alt, caption };
+      return [{ ...base, kind: 'image', image: { kind: 'upload', key }, alt, caption }];
     }
     if (image.kind !== 'wiki') throw new Error('Unsupported image reference');
     const asset = text(image.asset, 250);
     if (!mapping.wikiImages || !Object.hasOwn(mapping.wikiImages, asset)) throw new Error('Unknown wiki image');
-    return { ...base, kind: 'image', image: { kind: 'wiki', asset }, alt, caption };
+    return [{ ...base, kind: 'image', image: { kind: 'wiki', asset }, alt, caption }];
   }
 
   function section(input: unknown, parent?: string[], depth = 1): ProseSection {
     const value = record(input);
-    if (depth > 3 || !Array.isArray(value.blocks) || !Array.isArray(value.sections)) throw new Error('Invalid section structure');
+    if (depth > 6 || !Array.isArray(value.blocks) || !Array.isArray(value.sections)) throw new Error('Invalid section structure');
     const base = entry(value, parent);
     const title = text(value.title, 250).trim();
     if (!title) throw new Error('Section titles are required');
     const scope = base.builds ?? parent;
-    const blocks = value.blocks.map((item) => block(item, scope));
+    const blocks = value.blocks.flatMap((item) => block(item, scope));
     const sections = value.sections.map((item) => section(item, scope, depth + 1));
     const old = previous.get(base.id);
     const next = { ...base, title, blocks, sections };

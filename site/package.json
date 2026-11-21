@@ -9,6 +9,10 @@
     "preview": "vite preview --port 8080 --host"
   },
   "dependencies": {
+    "@codemirror/commands": "^6.11.1",
+    "@codemirror/lang-markdown": "^6.5.2",
+    "@codemirror/state": "^6.7.6",
+    "@codemirror/view": "^6.43.15",
     "@mdx-js/react": "^3.0.1",
     "@types/dagre": "^0.7.54",
     "dagre": "^0.8.5",

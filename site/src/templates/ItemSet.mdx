@@ -3,7 +3,10 @@ import EntityLink from '../components/EntityLink';
 
 # {props.data.name}
 
-<ModelPreview build={props.build} type="item-sets" id={props.data.id} name={props.data.name} />
+<div className="model-preview entity-action-row">
+  <ModelPreview build={props.build} type="item-sets" id={props.data.id} name={props.data.name} />
+  {props.proseAction}
+</div>
 
 <table className="location-table source-table entity-index-table">
   <thead>
@@ -23,3 +26,5 @@ import EntityLink from '../components/EntityLink';
     ))}
   </tbody>
 </table>
+
+{props.prose}

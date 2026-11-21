@@ -32,7 +32,7 @@ function privateKeyBytes(pem: string) {
 export function githubRequest(path: string, token: string, body?: unknown) {
   return fetch(api + path, {
     method: body === undefined ? 'GET' : 'POST',
-    redirect: 'error',
+    redirect: 'manual',
     headers: {
       Authorization: `Bearer ${token}`,
       Accept: 'application/vnd.github+json',

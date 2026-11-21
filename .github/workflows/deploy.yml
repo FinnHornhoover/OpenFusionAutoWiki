@@ -75,6 +75,9 @@ jobs:
         env:
           FFWIKI_RELEASE: ${{ steps.ffinfo.outputs.tag }}
 
+      - name: Copy prose route mappings
+        run: cp -R site/prose-mappings/. site/public/data/
+
       - name: Build site (Vite + MDX)
         run: npm run build:site
 

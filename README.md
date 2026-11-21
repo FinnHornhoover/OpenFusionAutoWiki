@@ -18,6 +18,11 @@ exists at the repository root or `GOOGLE_SERVICE_ACCOUNT_JSON` contains the
 service-account JSON (or a path to it). Missing credentials leave prices absent
 without failing the rest of the build.
 
+For the prose editor, open `http://localhost:5173/beta-20100104/npcs/buttercup`
+and click the pencil, then **Login**. On the loopback Vite dev server this signs
+you in as `@local-editor`. Saves and uploads live in memory until Vite restarts.
+The dev server reads route mappings directly from `site/prose-mappings/`.
+
 Optional env vars:
 
 ```env
@@ -44,12 +49,16 @@ Pages environment. For a private content repository, supply a read-only
 bucket as `PROSE_IMAGES` in the same environment.
 
 The read endpoint uses `site/public/data/<build>/prose/<type>.json` to resolve
-canonical routes. For a staging fixture, create a map such as
-`{"buttercup":{"general":"buttercup"},"buttercup-42":{"general":"buttercup","specific":"buttercup-42"}}`
-and put the corresponding version 1 documents under
-`pages/<type>/general/` and `pages/<type>/specific/` on the content repository's
-`dev` branch. The route keys must match the deployed site's canonical routes.
-An optional `wikiImages` map on each route maps catalog IDs to same-site asset paths.
+canonical routes. Deployment copies the tracked maps from
+`site/prose-mappings/` after data generation. For local Wrangler testing, run
+`cp -R site/prose-mappings/. site/public/data/` after `npm run build:data` and
+before `npm run build:site`, then serve the result with Pages Functions.
+
+The Buttercup pilot is mapped at `/beta-20100104/npcs/buttercup` and
+`/beta-20100104/npcs/buttercup-720`. The two routes share the general document
+`pages/npcs/general/buttercup.json` on the content repository's `dev` branch.
+The ID route also supports `pages/npcs/specific/buttercup-720.json`. An optional
+`wikiImages` map on each route maps catalog IDs to same-site asset paths.
 
 For GitHub sign-in, register a GitHub App with the callback URL
 `https://fusionfall.wiki/api/auth/callback`. Set `PUBLIC_SITE_ORIGIN` to

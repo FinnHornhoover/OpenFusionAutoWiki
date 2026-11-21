@@ -20,6 +20,7 @@ export async function onRequestGet(context: AuthContext) {
     state: attempt.state,
     code_challenge: base64url(new Uint8Array(digest)),
     code_challenge_method: 'S256',
+    prompt: 'select_account',
   }).toString();
   const headers = authHeaders();
   headers.append('Set-Cookie', cookie(ATTEMPT_COOKIE, await signCookie(ATTEMPT_COOKIE, attempt, config.secret), ATTEMPT_SECONDS));
