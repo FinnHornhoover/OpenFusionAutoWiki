@@ -79,6 +79,7 @@ export function sourceScopeLine(line: string) {
     scopeKind: block?.[1] as 'builds' | 'ids' | undefined,
     beginsBlock: !!block,
     endsBlock: scopeEnd.test(text),
+    isImage: imageLine.test(text),
   };
 }
 
@@ -250,7 +251,7 @@ export function readProseSource(source: string, previous: ProseDocument, seed: s
       parents.push(section);
       return;
     }
-    if (!line.inCode && imageLine.test(text)) {
+    if (!line.inCode && line.isImage) {
       flush();
       if (id && scopes.length) scopes[scopes.length - 1].simple = false;
       pending = { id, lines: [text] };

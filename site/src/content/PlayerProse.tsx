@@ -55,6 +55,7 @@ function ProseMarkdown({ build, source }: { build?: string; source: string }) {
         h3: ({ children }) => <h4>{children}</h4>,
         h4: ({ children }) => <h5>{children}</h5>,
         h5: ({ children }) => <h6>{children}</h6>,
+        blockquote: ({ children }) => <blockquote className="prose-quote">{children}</blockquote>,
         a: ({ href, children }) => {
           if (href?.startsWith(BUILD_LINK_PREFIX)) {
             const path = href.slice(BUILD_LINK_PREFIX.length);
@@ -89,7 +90,7 @@ export function ProseBlockContent({ block, build, wikiImages, localImages }: {
     : wikiImages?.[block.image.asset]);
   if (!src || (!local && (!src.startsWith('/') || src.startsWith('//') || src.includes('\\')))) return null;
   return (
-    <figure>
+    <figure className="prose-figure">
       <div className="table-scroll" tabIndex={0}><img src={src} alt={block.alt} loading="lazy" /></div>
       {block.caption && <figcaption>{block.caption}</figcaption>}
     </figure>

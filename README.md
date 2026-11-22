@@ -74,6 +74,11 @@ in the Pages environment. Add `GITHUB_APP_CLIENT_SECRET` and
 key with `openssl rand -hex 32`. For staging, use its exact HTTPS origin,
 register its callback URL, and use a separate session key.
 
+Set the GitHub App's visibility to public so players can authorize sign-in.
+Players only need to authorize the app when they sign in through the wiki.
+After setup, test login from `https://fusionfall.wiki` with a GitHub account
+outside the app owner's account or organization.
+
 For saves, give the App Contents read/write permission and install it only on
 the prose repository. Add `GITHUB_APP_ID` and `GITHUB_APP_INSTALLATION_ID`
 as text variables and the full generated PEM as the `GITHUB_APP_PRIVATE_KEY`

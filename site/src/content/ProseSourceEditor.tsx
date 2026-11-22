@@ -56,6 +56,7 @@ function decorations(activeScope?: string) {
 const icons = {
   bullet: 'M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01',
   ordered: 'M10 6h11M10 12h11M10 18h11M3 5h1v3M3 11c3-2 4 1 0 3h3M3 17h3l-1 1c2 0 2 2-2 2',
+  quote: 'M10 7H5a2 2 0 0 0-2 2v4h7v-3c0 4-1 6-4 8M21 7h-5a2 2 0 0 0-2 2v4h7v-3c0 4-1 6-4 8',
   table: 'M3 4h18v16H3zM3 9h18M3 14h18M9 4v16M15 4v16',
   link: 'M10 13a4 4 0 0 0 6 0l3-3a4 4 0 1 0-6-6l-2 2m3 5a4 4 0 0 0-6 0l-3 3a4 4 0 1 0 6 6l2-2',
   image: 'M3 4h18v16H3zM3 16l5-5 4 4 3-3 6 6M15 8h.01',
@@ -101,7 +102,7 @@ export default function ProseSourceEditor({ source, sectionId, onChange, builds,
   const [selectedIds, setSelectedIds] = useState('');
   const [selectedBuilds, setSelectedBuilds] = useState<string[]>([]);
   const [allowedBuilds, setAllowedBuilds] = useState<string[]>();
-  const [uploadError, setUploadError] = useState('');
+  const [toolbarError, setToolbarError] = useState('');
   const [scopeError, setScopeError] = useState('');
   change.current = onChange;
 
@@ -164,6 +165,32 @@ export default function ProseSourceEditor({ source, sectionId, onChange, builds,
     const after = standalone && anchor < doc.length ? separator : '';
     const text = before + value + after;
     editor.dispatch({ changes: { from: standalone ? anchor : from, to: anchor, insert: text }, selection: { anchor: (standalone ? anchor : from) + before.length + value.length } });
+    editor.focus();
+  }
+
+  function insertBlockquote() {
+    const editor = view.current;
+    if (!editor) return;
+    const { doc, selection } = editor.state;
+    const { from, to, empty } = selection.main;
+    const first = doc.lineAt(from);
+    const last = doc.lineAt(Math.max(from, to - 1));
+    const lines = sourceBuildContext(doc.toString().split('\n')).slice(first.number - 1, last.number);
+    if (lines.some((line) => line.inCode || (!empty && (line.section || line.beginsBlock || line.endsBlock || line.isImage)))) {
+      setToolbarError('Select prose text to quote.');
+      return;
+    }
+    if (empty) {
+      insert('> Quote text', 'block');
+      return;
+    }
+    const before = first.number > 1 && doc.line(first.number - 1).text.trim() ? '\n' : '';
+    const after = last.number < doc.lines && doc.line(last.number + 1).text.trim() ? '\n' : '';
+    const quote = doc.sliceString(first.from, last.to).split('\n').map((line) => line ? '> ' + line : '>').join('\n');
+    editor.dispatch({
+      changes: { from: first.from, to: last.to, insert: before + quote + after },
+      selection: { anchor: first.from + before.length + quote.length },
+    });
     editor.focus();
   }
 
@@ -260,7 +287,10 @@ export default function ProseSourceEditor({ source, sectionId, onChange, builds,
   function tool(icon: keyof typeof icons | null, name: string, action: () => void, mobile = false, active?: boolean, text?: string) {
     return (
       <button type="button" title={name} aria-label={name} aria-pressed={active} disabled={disabled} data-desktop-only={mobile || undefined}
-        onMouseDown={(event) => event.preventDefault()} onClick={action}>
+        onMouseDown={(event) => event.preventDefault()} onClick={() => {
+          setToolbarError('');
+          action();
+        }}>
         {icon ? <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={icons[icon]} /></svg> : text}
       </button>
     );
@@ -272,6 +302,7 @@ export default function ProseSourceEditor({ source, sectionId, onChange, builds,
         {[1, 2, 3].map((level) => <span key={level}>{tool(null, 'Heading ' + level, () => insert('#'.repeat(level) + ' Heading', 'line'), false, undefined, 'H' + level)}</span>)}
         {tool('bullet', 'Unordered list', () => insert('- First item\n- Second item', 'block'))}
         {tool('ordered', 'Ordered list', () => insert('1. First item\n2. Second item', 'block'))}
+        {tool('quote', 'Insert blockquote', insertBlockquote)}
         {tool('table', 'Insert table', () => insert('| Heading | Heading |\n| --- | --- |\n| Cell | Cell |', 'block'), true)}
         {tool('link', 'Insert link', () => insert('[Link text](https://example.com)'))}
         {upload && tool('image', 'Add image', () => fileInput.current?.click())}
@@ -315,11 +346,10 @@ export default function ProseSourceEditor({ source, sectionId, onChange, builds,
         const file = event.target.files?.[0];
         event.target.value = '';
         if (!file) return;
-        setUploadError('');
         try { insert(imageSource(await upload(file)), 'line'); }
-        catch (failure) { setUploadError(failure instanceof Error ? failure.message : 'Upload failed'); }
+        catch (failure) { setToolbarError(failure instanceof Error ? failure.message : 'Upload failed'); }
       }} />}
-      {uploadError && <p role="alert">{uploadError}</p>}
+      {toolbarError && <p role="alert">{toolbarError}</p>}
       <div className="prose-markdown-editor" ref={host} />
       {error && <p role="alert">{error}</p>}
     </>
