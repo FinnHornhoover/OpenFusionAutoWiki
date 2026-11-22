@@ -20,8 +20,6 @@ import MissionOfferEmails from '../components/MissionOfferEmails';
 
 <AmbiguityLink />
 
-{props.proseAction}
-
 <div className="mission-givers">
   {props.data.startNPC && (
     <div className="mission-giver-box">
@@ -45,8 +43,6 @@ import MissionOfferEmails from '../components/MissionOfferEmails';
 
 <MissionRequirementGraph mission={props.data} />
 
-{props.prose}
-
 {(props.data.requiredMissions.length > 0 || props.data.requiredNano || props.data.requiredGuide) && (
   <Dropdown summary="Requirements">
     <ul className="ref-list">
@@ -64,6 +60,10 @@ import MissionOfferEmails from '../components/MissionOfferEmails';
     </ul>
   </Dropdown>
 )}
+
+{props.proseAction}
+
+{props.prose}
 
 <MissionOfferEmails tasks={props.data.tasks} />
 
