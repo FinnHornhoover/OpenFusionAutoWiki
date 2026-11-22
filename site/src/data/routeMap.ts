@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { LruCache } from './lruCache';
+import type { NpcAmbiguityMember } from './types';
 
 export interface RouteEntityTarget {
   kind: 'entity';
@@ -14,6 +15,7 @@ export interface RouteAmbiguityMatch {
   routeId: string;
   icon: string;
   detail: string;
+  npc?: Pick<NpcAmbiguityMember, 'mapIcon' | 'inGame' | 'firstLocation'>;
 }
 
 export interface RouteAmbiguityTarget {

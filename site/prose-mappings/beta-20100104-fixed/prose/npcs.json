@@ -1,0 +1,15 @@
+{
+  "buttercup": {
+    "general": "buttercup",
+    "wikiImages": {
+      "Buttercup": "/icons/dc437666dc1c334f11ea560e9c069956.png"
+    }
+  },
+  "buttercup-720": {
+    "general": "buttercup",
+    "specific": "buttercup-720",
+    "wikiImages": {
+      "Buttercup": "/icons/dc437666dc1c334f11ea560e9c069956.png"
+    }
+  }
+}

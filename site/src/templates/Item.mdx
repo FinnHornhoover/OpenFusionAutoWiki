@@ -24,11 +24,12 @@ import { formatDurationSeconds } from '../data/formatTime';
   </div>
 </div>
 
-<div className="model-preview item-actions">
+<div className="model-preview entity-action-row">
   <ModelPreview build={props.build} type="items" id={props.data.id} name={props.data.name} />
   {props.data.typeId >= 0 && props.data.typeId <= 3 && ['Common', 'Uncommon', 'Rare', 'Ultra Rare'].includes(props.data.rarity) && (
     <Link className="model-preview-action" to={'/' + props.build + '/combinations?style=' + encodeURIComponent(props.data.id)}>Plan combinations</Link>
   )}
+  {props.proseAction}
 </div>
 
 {props.data.description && (
@@ -51,6 +52,8 @@ import { formatDurationSeconds } from '../data/formatTime';
   <><dt>Tradeable</dt><dd>{props.data.tradeable ? 'Yes' : 'No'}</dd></>
   <><dt>Sellable</dt><dd>{props.data.sellable ? 'Yes' : 'No'}</dd></>
 </dl>
+
+{props.prose}
 
 {(() => {
   const areaIdFor = (areaZone) => {

@@ -23,7 +23,10 @@ import { formatDurationSeconds } from '../data/formatTime';
   </div>
 </div>
 
-<ModelPreview build={props.build} type="monsters" id={props.data.id} name={props.data.name} />
+<div className="model-preview entity-action-row">
+  <ModelPreview build={props.build} type="monsters" id={props.data.id} name={props.data.name} />
+  {props.proseAction}
+</div>
 
 {props.data.comment && (
   <blockquote className="npc-comment">{props.data.comment}</blockquote>
@@ -47,6 +50,8 @@ import { formatDurationSeconds } from '../data/formatTime';
   {(props.data.respawnTime || props.data.respawnSeconds > 0) && <><dt>Respawn</dt><dd>{props.data.respawnTime || formatDurationSeconds(props.data.respawnSeconds)}</dd></>}
 </dl>
 
+
+{props.prose}
 
 {props.data.locationGroups.length > 0 && (
   <Dropdown summary={`Spawn locations (${props.data.locationGroups.length} group${props.data.locationGroups.length === 1 ? '' : 's'})`} open>

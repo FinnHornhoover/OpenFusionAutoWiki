@@ -23,12 +23,17 @@ import { transportIcon } from '../data/mapMarkers';
   </div>
 </div>
 
-<ModelPreview build={props.build} type="npcs" id={props.data.id} name={props.data.name} />
+<div className="model-preview entity-action-row">
+  <ModelPreview build={props.build} type="npcs" id={props.data.id} name={props.data.name} />
+  {props.proseAction}
+</div>
 
 {props.data.comment.trim() && (
   <blockquote className="npc-comment">"{props.data.comment.trim()}"</blockquote>
 )}
 
+
+{props.prose}
 
 {props.data.locations.length > 0 && (
   <Dropdown summary={`Spawn locations (${props.data.locations.length})`} open>

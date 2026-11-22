@@ -22,6 +22,7 @@ interface MapSpotProps {
   size?: number;
   extent?: number;
   icon?: string;
+  compact?: boolean;
 }
 
 export default function MapSpot({
@@ -38,6 +39,7 @@ export default function MapSpot({
   size = 256,
   extent,
   icon,
+  compact = false,
 }: MapSpotProps) {
   const { build = '' } = useParams();
   const areaLabel = title && title !== 'Unknown - Unknown' ? <span className="map-spot-area">{title}</span> : null;
@@ -46,7 +48,7 @@ export default function MapSpot({
     : instanceID > 0 ? <span className="map-spot-instance">Instance {instanceID}</span> : null;
   const map = <Minimap x={x} y={y} size={size} extent={extent} points={points} paths={paths} fitContent={fitContent} icon={icon} title={title} />;
   const coordinates = <span className="map-spot-coordinates">({x}, {y}, {z})</span>;
-  const content = (
+  const content = compact ? map : (
     <>
       {areaLabel}
       {instanceLabel}

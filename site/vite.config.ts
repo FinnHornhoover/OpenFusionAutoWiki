@@ -4,6 +4,7 @@ import mdx from '@mdx-js/rollup';
 import { createReadStream, existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import type { Connect, Plugin } from 'vite';
+import localProse from './dev/prose';
 
 function localObjects(): Plugin {
   const serve: Connect.NextHandleFunction = (request, response, next) => {
@@ -24,6 +25,7 @@ function localObjects(): Plugin {
 export default defineConfig({
   plugins: [
     localObjects(),
+    localProse(),
     {
       // MDX must run before @vitejs/plugin-react so JSX in .mdx files gets HMR via Fast Refresh.
       enforce: 'pre',

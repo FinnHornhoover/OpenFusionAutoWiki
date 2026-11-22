@@ -24,13 +24,18 @@ import { transportIcon, warpIcon, warpDestinationPath } from '../data/mapMarkers
   </div>
 </div>
 
-<AreaPreview build={props.build} id={props.data.id} name={props.data.name} />
+<div className="model-preview entity-action-row">
+  <AreaPreview build={props.build} id={props.data.id} name={props.data.name} />
+  {props.proseAction}
+</div>
 
 {props.data.width > 0 && props.data.height > 0 && (
   <div className="area-map">
     <AreaMap area={props.data} build={props.build} />
   </div>
 )}
+
+{props.prose}
 
 {props.data.infectedZone && (
   <Dropdown summary="Infected Zone" open>

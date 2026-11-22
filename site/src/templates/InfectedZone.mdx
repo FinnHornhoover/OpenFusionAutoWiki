@@ -21,6 +21,8 @@ import { warpIcon } from '../data/mapMarkers';
   </div>
 </div>
 
+{props.proseAction}
+
 <dl className="stat-grid">
   <dt>Pod count</dt>
   <dd>{props.data.podCount.toLocaleString()}</dd>
@@ -35,6 +37,8 @@ import { warpIcon } from '../data/mapMarkers';
   <dt>Time factor</dt>
   <dd>{props.data.timeFactor}</dd>
 </dl>
+
+{props.prose}
 
 <Dropdown summary="Score and FM calculator" open>
   <InfectedZoneCalculator data={props.data} />

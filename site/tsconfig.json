@@ -17,5 +17,5 @@
     "noEmit": true,
     "types": []
   },
-  "include": ["src", "src/**/*.mdx", "vite.config.ts"]
+  "include": ["src", "src/**/*.mdx", "functions", "vite.config.ts"]
 }

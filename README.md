@@ -18,6 +18,12 @@ exists at the repository root or `GOOGLE_SERVICE_ACCOUNT_JSON` contains the
 service-account JSON (or a path to it). Missing credentials leave prices absent
 without failing the rest of the build.
 
+For the prose editor, open `http://localhost:5173/beta-20100104/npcs/buttercup`
+and click the pencil, then **Login**. On the loopback Vite dev server this signs
+you in as `@local-editor`. Saves and uploads live in memory until Vite restarts.
+The dev server reads the generated mappings from `site/public/data/`. If the
+entity data is already built, run `npm run build:prose -w build` to refresh them.
+
 Optional env vars:
 
 ```env
@@ -35,6 +41,71 @@ GOOGLE_SERVICE_ACCOUNT_JSON=...
 ## Deployment (Cloudflare Pages)
 
 The workflow at [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) deploys to Cloudflare Pages on pushes to `main`.
+
+### Player prose preview
+
+Set `PROSE_REPOSITORY` to the content repository's `owner/name` in the Cloudflare
+Pages environment. For a private content repository, supply a read-only
+`PROSE_READ_TOKEN` secret limited to that repository. Bind the contribution-image
+bucket as `PROSE_IMAGES` in the same environment.
+
+The data build generates `site/public/data/<build>/prose/<type>.json` for
+canonical entity routes and ambiguity pages. Rebuild these maps from existing
+route data with `npm run build:prose -w build`. The output is included in
+`npm run build:site` for Wrangler and deployment.
+
+Pages in the same entity type share a prose document when they have the same
+topic slug. Ambiguity members share their topic's document and get their own
+ID selector. Shared topic overrides live in `site/public/prose-topics/` and
+build-specific route overrides live in `site/prose-mappings/`. The generator
+merges both. No empty prose documents are created. The first save creates the
+document on `dev`.
+
+Use `::: builds beta-20100104-fixed` or `::: ids 720` followed by a closing
+`:::` to restrict a block. Previously published files under `pages/<type>/specific/`
+still display on mapped ID pages. New edits use the shared document at
+`pages/<type>/general/<topic>.json`.
+
+For GitHub sign-in, register a GitHub App with the callback URL
+`https://fusionfall.wiki/api/auth/callback`. Set `PUBLIC_SITE_ORIGIN` to
+`https://fusionfall.wiki` and `GITHUB_APP_CLIENT_ID` to the App's client ID
+in the Pages environment. Add `GITHUB_APP_CLIENT_SECRET` and
+`SESSION_SIGNING_KEY` as encrypted secrets. Generate an independent session
+key with `openssl rand -hex 32`. For staging, use its exact HTTPS origin,
+register its callback URL, and use a separate session key.
+
+For saves, give the App Contents read/write permission and install it only on
+the prose repository. Add `GITHUB_APP_ID` and `GITHUB_APP_INSTALLATION_ID`
+as text variables and the full generated PEM as the `GITHUB_APP_PRIVATE_KEY`
+secret. Create `dev` from `main` if needed. The save service commits to
+`dev`; maintainers handle promotions to `main`.
+
+### Player prose releases
+
+Merge `dev` into `main` in the prose repository to approve a release snapshot.
+Review redistribution rights for the referenced images during the merge.
+Optional image credits and rights can be committed in
+`image-attribution.json`. Key each record by its ZIP path
+(`images/uploads/<key>` or `images/icons/<key>`) and use fields such as
+`creator`, `sourceUrl`, and `license`.
+
+Set the `PROSE_RELEASE_TOKEN` GitHub Actions secret in OpenFusionAutoWiki to a
+fine-grained token with **Contents: Read and write** access to the prose
+repository so AutoWiki can request a release. The AutoWiki Actions variable
+`PROSE_REPOSITORY` defaults to `FinnHornhoover/OpenFusionWikiProse`.
+
+A successful Pages deploy that also published the shared 3D assets requests
+a release in the prose repository. To release on demand from OpenFusionWikiProse,
+open **Actions → Release player prose → Run workflow**. The workflow uses the
+prose repository's built-in Actions token to publish one ZIP per `main`
+snapshot. Release progress and errors appear in the prose repository's
+Actions tab.
+
+The exporter and local ZIP instructions live in
+[OpenFusionWikiProse](https://github.com/FinnHornhoover/OpenFusionWikiProse#zip-releases).
+Keep the release workflow on that repository's default branch. Set
+`FFWIKI_BASE_URL` in its Actions variables if the wiki origin differs from
+`https://fusionfall.wiki`.
 
 ### 3D previews (R2)
 
