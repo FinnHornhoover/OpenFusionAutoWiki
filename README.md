@@ -80,6 +80,33 @@ as text variables and the full generated PEM as the `GITHUB_APP_PRIVATE_KEY`
 secret. Create `dev` from `main` if needed. The save service commits to
 `dev`; maintainers handle promotions to `main`.
 
+### Player prose releases
+
+Merge `dev` into `main` in the prose repository to approve a release snapshot.
+Review redistribution rights for the referenced images during the merge.
+Optional image credits and rights can be committed in
+`image-attribution.json`. Key each record by its ZIP path
+(`images/uploads/<key>` or `images/icons/<key>`) and use fields such as
+`creator`, `sourceUrl`, and `license`.
+
+Set the `PROSE_RELEASE_TOKEN` GitHub Actions secret in OpenFusionAutoWiki to a
+fine-grained token with **Contents: Read and write** access to the prose
+repository so AutoWiki can request a release. The AutoWiki Actions variable
+`PROSE_REPOSITORY` defaults to `FinnHornhoover/OpenFusionWikiProse`.
+
+A successful Pages deploy that also published the shared 3D assets requests
+a release in the prose repository. To release on demand from OpenFusionWikiProse,
+open **Actions → Release player prose → Run workflow**. The workflow uses the
+prose repository's built-in Actions token to publish one ZIP per `main`
+snapshot. Release progress and errors appear in the prose repository's
+Actions tab.
+
+The exporter and local ZIP instructions live in
+[OpenFusionWikiProse](https://github.com/FinnHornhoover/OpenFusionWikiProse#zip-releases).
+Keep the release workflow on that repository's default branch. Set
+`FFWIKI_BASE_URL` in its Actions variables if the wiki origin differs from
+`https://fusionfall.wiki`.
+
 ### 3D previews (R2)
 
 Models, textures, animations and audio share a content-addressed R2 pool across builds
