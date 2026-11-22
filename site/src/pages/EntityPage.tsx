@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import PlayerProse, { type PlayerProseSlots } from '../content/PlayerProse';
-import Icon from '../components/Icon';
+import EntityAmbiguityList from '../components/EntityAmbiguityList';
 import EntityPageSkeleton from '../components/EntityPageSkeleton';
 import ErrorState from '../components/ErrorState';
 import NpcAmbiguityIdentity from '../components/NpcAmbiguityIdentity';
@@ -48,15 +48,7 @@ function RouteAmbiguityPage({ build, buildLabel, type, title, matches, prose, pr
                 mapIcon={npc?.mapIcon} location={npc?.firstLocation} inGame={inGame} />
             </div>
           );
-        }) : matches.map((match) => (
-          <Link key={String(match.id)} className="entity-index-row" to={`/${build}/${type}/${match.routeId}`}>
-            {match.icon ? <Icon src={match.icon} alt={match.name} size={48} className={type === 'items' ? 'icon-item' : undefined} /> : null}
-            <span className="entity-index-main">
-              <span className="entity-index-link">{match.name}</span>
-              {match.detail ? <span className="muted ambiguity-match-detail">{match.detail}</span> : null}
-            </span>
-          </Link>
-        ))}
+        }) : <EntityAmbiguityList build={build} type={type} matches={matches} />}
       </div>
     </section>
   );

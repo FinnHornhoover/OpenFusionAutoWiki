@@ -62,7 +62,7 @@ export default function NanoIndex({ build, rows, loading }: Props) {
   }, [visibleRows, q, activeTab, effectiveHideUnobtainable]);
 
   const { sortedRows, sortHeader, resetSortButton } = useIndexSort(filtered, {
-    name: r => r.name, level: r => r.awardLevel ?? 0, type: r => r.nanoType,
+    id: r => r.id, name: r => r.name, level: r => r.awardLevel ?? 0, type: r => r.nanoType,
   }, () => setPage(0));
   const renderedRows = sortedRows.slice(0, (page + 1) * PAGE_SIZE);
   const hasMore = renderedRows.length < filtered.length;
@@ -125,6 +125,7 @@ export default function NanoIndex({ build, rows, loading }: Props) {
             <table className="location-table source-table entity-index-table">
               <thead>
                 <tr>
+                  {sortHeader('id', 'ID')}
                   {sortHeader('name', 'Nano')}
                   {sortHeader('level', 'Level')}
                   {sortHeader('type', 'Type')}
@@ -133,6 +134,7 @@ export default function NanoIndex({ build, rows, loading }: Props) {
               <tbody>
                 {renderedRows.map((r) => (
                   <tr key={r.id} className={r.obtainable === false ? 'entity-index-row-muted' : undefined}>
+                    <td><code className="entity-index-id-code">{r.id}</code></td>
                     <td>
                       <div className="entity-index-name">
                         {r.icon

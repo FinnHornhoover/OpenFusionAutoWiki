@@ -1,3 +1,4 @@
+import AmbiguityLink from '../components/AmbiguityLink';
 import Currency from '../components/Currency';
 import DropChance from '../components/DropChance';
 import Dropdown from '../components/Dropdown';
@@ -20,6 +21,8 @@ import { warpIcon } from '../data/mapMarkers';
     {props.data.areaZone && <span className="badge badge-category">{props.data.areaZone}</span>}
   </div>
 </div>
+
+<AmbiguityLink />
 
 {props.proseAction}
 

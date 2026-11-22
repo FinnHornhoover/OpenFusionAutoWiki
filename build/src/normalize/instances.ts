@@ -2,7 +2,7 @@ import AdmZip from 'adm-zip';
 
 import { writeChunks, writeIndex } from '../chunk.js';
 import type { IconMap } from '../icons.js';
-import { iconFor, itemRef } from './refs.js';
+import { iconFor, infectedZoneName, itemRef } from './refs.js';
 import { slugify } from './slug.js';
 import type { Instance, InstanceIndexEntry, InstanceWarp, Ref } from './types.js';
 
@@ -156,9 +156,15 @@ function normalizeInstance(
 }
 
 function indexEntry(inst: Instance): InstanceIndexEntry {
+  const entrance = inst.entryWarps.find((warp) => warp.npc && warp.entryLocation?.instanceID === 0)
+    ?? inst.entryWarps.find((warp) => warp.npc && warp.entryLocation)
+    ?? inst.entryWarps.find((warp) => warp.npc)
+    ?? inst.entryWarps[0];
   return {
     id: inst.id,
     name: inst.name,
+    areaZone: inst.areaZone,
+    firstEntry: entrance ? { npc: entrance.npc, entryLocation: entrance.entryLocation } : null,
     inGame: inst.inGame,
     infectedZoneId: inst.infectedZoneId,
     infectedZoneName: inst.infectedZoneName,
@@ -187,7 +193,7 @@ export async function normalizeInstances(
     for (const row of Array.isArray(rawInfectedZones) ? rawInfectedZones : Object.values(rawInfectedZones)) {
       const id = row?.ID ?? 0;
       const name = row?.Name?.trim() ?? '';
-      if (id > 0 && name) infectedZoneNames.set(id, name);
+      if (id > 0 && name) infectedZoneNames.set(id, infectedZoneName(id, name));
     }
   }
   const instanceNames = new Map<number, string>();

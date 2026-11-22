@@ -1,7 +1,7 @@
 import AdmZip from 'adm-zip';
 
 import { chunkOf, writeChunks, writeIndex } from '../chunk.js';
-import { iconFor, itemChunkKey, itemRef, missionRef, monsterRef, npcRef } from './refs.js';
+import { iconFor, infectedZoneName, itemChunkKey, itemRef, missionRef, monsterRef, npcRef } from './refs.js';
 import { slugify } from './slug.js';
 import type {
   Item,
@@ -342,7 +342,7 @@ function normalizeSource(
           ? {
               type: 'infected-zone',
               id: infectedZoneId,
-              name: r.InstanceName || 'Infected Zone #' + infectedZoneId,
+              name: infectedZoneName(infectedZoneId, r.InstanceName),
               icon: '/ui/ep/ep_big_' + String(infectedZoneId).padStart(2, '0') + '.png',
             }
           : null,

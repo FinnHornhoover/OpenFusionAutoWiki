@@ -63,6 +63,12 @@ export function instanceRef(id: number, name: string): Ref | null {
   return { type: 'instance', id, name: name || `Instance #${id}` };
 }
 
+export function infectedZoneName(id: number, name?: string): string {
+  const title = name?.trim() || `Infected Zone #${id}`;
+  // EPIDs 2–5 are the Future versions of the four repeated infected zones.
+  return id >= 2 && id <= 5 && !title.endsWith(' (Future)') ? title + ' (Future)' : title;
+}
+
 /**
  * Many JSON files use compound keys like "0701::Dee Dee" — the part before "::"
  * is a zero-padded numeric id, the part after is the display name. This parser

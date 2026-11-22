@@ -1,3 +1,4 @@
+import AmbiguityLink from '../components/AmbiguityLink';
 import Currency from '../components/Currency';
 import Dropdown from '../components/Dropdown';
 import EntityLink from '../components/EntityLink';
@@ -14,6 +15,8 @@ import { warpIcon } from '../data/mapMarkers';
     {props.data.inGame === false && <span className="badge badge-warn">Out of game</span>}
   </div>
 </div>
+
+<AmbiguityLink />
 
 {props.proseAction}
 

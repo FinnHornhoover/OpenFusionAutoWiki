@@ -23,7 +23,7 @@ export function useIndexSort<T>(rows: T[], columns: Record<string, (row: T) => S
   function sortHeader(key: string, label: string) {
     const active = sort?.key === key;
     return (
-      <th aria-sort={active ? (sort.descending ? 'descending' : 'ascending') : 'none'}>
+      <th className={key === 'id' ? 'entity-index-id-column' : undefined} aria-sort={active ? (sort.descending ? 'descending' : 'ascending') : 'none'}>
         <button
           type="button"
           className="index-sort-button"

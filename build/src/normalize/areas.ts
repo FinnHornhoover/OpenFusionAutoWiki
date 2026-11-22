@@ -2,7 +2,7 @@ import AdmZip from 'adm-zip';
 import { isWorldBoss, monsterMapIcon } from './monsterClassification.js';
 
 import { writeChunks, writeIndex } from '../chunk.js';
-import { iconFor, itemRef } from './refs.js';
+import { iconFor, infectedZoneName, itemRef } from './refs.js';
 import { slugify } from './slug.js';
 import type {
   Area,
@@ -707,7 +707,7 @@ function buildInfectedZoneIndex(zip: AdmZip): Map<number, { name: string; icon: 
     const id = row.ID ?? 0;
     if (id <= 0) continue;
     out.set(id, {
-      name: row.Name ?? `Infected Zone #${id}`,
+      name: infectedZoneName(id, row.Name),
       icon: `/ui/ep/ep_big_${String(id).padStart(2, '0')}.png`,
     });
   }

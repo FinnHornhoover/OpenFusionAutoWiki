@@ -45,7 +45,7 @@ export async function writeProseMapping(build: string, type: string, routes: Rou
 
   const entries = Object.entries(routes).flatMap(([route, target]) => {
     if (route !== target.canonical) return [];
-    const topic = topics.get(route) ?? route;
+    const topic = target.kind === 'entity' && target.proseTopic ? target.proseTopic : topics.get(route) ?? route;
     const mapping = {
       general: documentKey(topic),
       entityId: target.kind === 'entity' ? String(target.id) : undefined,

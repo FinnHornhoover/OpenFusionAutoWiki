@@ -1,3 +1,4 @@
+import AmbiguityLink from '../components/AmbiguityLink';
 import ModelPreview from '../components/ModelPreview';
 import Currency from '../components/Currency';
 import Dropdown from '../components/Dropdown';
@@ -22,6 +23,8 @@ import { transportIcon } from '../data/mapMarkers';
     )}
   </div>
 </div>
+
+<AmbiguityLink />
 
 <div className="model-preview entity-action-row">
   <ModelPreview build={props.build} type="npcs" id={props.data.id} name={props.data.name} />

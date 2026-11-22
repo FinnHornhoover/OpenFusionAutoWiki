@@ -253,6 +253,8 @@ function indexEntry(mob: Mob): MobIndexEntry {
     id: mob.id,
     name: mob.name,
     icon: mob.icon,
+    mapIcon: mob.mapIcon,
+    firstLocation: mob.locations[0] ?? null,
     level: mob.level,
     standardHP: mob.standardHP,
     colorType: mob.colorType,

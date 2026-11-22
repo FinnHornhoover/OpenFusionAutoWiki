@@ -123,7 +123,7 @@ export default function MissionIndex({ build, rows, loading }: Props) {
   }, [visibleRows, q, activeTab, activeDifficulties, activeLevels]);
 
   const { sortedRows, sortHeader, resetSortButton } = useIndexSort(filtered, {
-    name: r => r.name, level: r => r.level, difficulty: r => r.difficulty, type: r => missionTypeRank(r.type),
+    id: r => r.id, name: r => r.name, level: r => r.level, difficulty: r => r.difficulty, type: r => missionTypeRank(r.type),
   }, () => setPage(0));
   const renderedRows = sortedRows.slice(0, (page + 1) * PAGE_SIZE);
   const hasMore = renderedRows.length < filtered.length;
@@ -240,6 +240,7 @@ export default function MissionIndex({ build, rows, loading }: Props) {
             <table className="location-table source-table entity-index-table">
               <thead>
                 <tr>
+                  {sortHeader('id', 'ID')}
                   {sortHeader('name', 'Mission')}
                   {sortHeader('level', 'Level')}
                   {sortHeader('difficulty', 'Difficulty')}
@@ -249,6 +250,7 @@ export default function MissionIndex({ build, rows, loading }: Props) {
               <tbody>
                 {renderedRows.map((r) => (
                   <tr key={r.id} className={r.inGame === false ? 'entity-index-row-muted' : undefined}>
+                    <td><code className="entity-index-id-code">{r.id}</code></td>
                     <td>
                       <div className="entity-index-name">
                         {r.displayNPC?.icon

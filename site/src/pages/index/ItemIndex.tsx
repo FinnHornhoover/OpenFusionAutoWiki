@@ -179,7 +179,7 @@ export default function ItemIndex({ build, rows, loading }: Props) {
   }, [rows, activeClass, activeType, activeRarity, activeLevels, q, effectiveHideUnobtainable]);
 
   const { sortedRows, sortHeader, resetSortButton } = useIndexSort(filtered, {
-    name: r => r.name, level: r => r.contentLevel ?? 0, rarity: r => rarityRank(r.rarity),
+    id: r => r.id, name: r => r.name, level: r => r.contentLevel ?? 0, rarity: r => rarityRank(r.rarity),
   }, () => setPage(0));
   const renderedRows = sortedRows.slice(0, (page + 1) * PAGE_SIZE);
   const hasMore = renderedRows.length < filtered.length;
@@ -311,6 +311,7 @@ export default function ItemIndex({ build, rows, loading }: Props) {
             <table className="location-table source-table entity-index-table">
               <thead>
                 <tr>
+                  {sortHeader('id', 'ID')}
                   {sortHeader('name', 'Item')}
                   {sortHeader('level', 'Level')}
                   {sortHeader('rarity', 'Rarity')}
@@ -319,6 +320,7 @@ export default function ItemIndex({ build, rows, loading }: Props) {
               <tbody>
                 {renderedRows.map((r) => (
                   <tr key={r.id} className={r.obtainable ? undefined : 'entity-index-row-muted'}>
+                    <td><code className="entity-index-id-code">{r.id}</code></td>
                     <td>
                       <div className="entity-index-name">
                         {r.icon

@@ -14,6 +14,7 @@ interface IndexRow {
   id: number | string;
   name: string;
   code?: string;
+  zoneName?: string;
   icon?: string;
   members?: Array<{ id: number; category?: string; inGame?: boolean }>;
   routeId?: string;
@@ -24,6 +25,7 @@ export interface RouteEntityTarget {
   id: number | string;
   chunk: number;
   canonical: string;
+  proseTopic?: string;
 }
 
 export interface RouteAmbiguityMatch {
@@ -68,6 +70,7 @@ async function loadNpcMemberIcons(slug: string): Promise<Map<number, string>> {
 }
 
 function semanticSource(type: EntityType, row: IndexRow): string {
+  if (type === 'areas') return [row.name, row.zoneName].filter(Boolean).join(' - ') || String(row.id);
   return type === 'codes' ? row.code || row.name || String(row.id) : row.name || String(row.id);
 }
 
@@ -167,9 +170,18 @@ export async function writeRouteMaps(slug: string, types: readonly EntityType[])
           id: entry.id,
           chunk: entityChunk(type, entry.id),
           canonical,
+          proseTopic: type === 'areas' || type === 'infected-zones'
+            ? slugify(entry.row.name.replace(/ \(Future\)$/, ''))
+            : undefined,
         };
         routeMap[canonical] = target;
         if (!collides || String(entry.id) !== base) routeMap[String(entry.id)] = target;
+        if (target.proseTopic) {
+          routeMap[disambiguatedId(target.proseTopic, entry.id)] = target;
+          if (rows.filter((row) => slugify(row.name.replace(/ \(Future\)$/, '')) === target.proseTopic).length === 1) {
+            routeMap[target.proseTopic] = target;
+          }
+        }
       }
     }
 

@@ -1,3 +1,4 @@
+import AmbiguityLink from '../components/AmbiguityLink';
 import ModelPreview from '../components/ModelPreview';
 import Dropdown from '../components/Dropdown';
 import EntityLink from '../components/EntityLink';
@@ -14,6 +15,8 @@ import { formatDurationSeconds } from '../data/formatTime';
     {props.data.obtainable === false && <span className="badge badge-warn">unobtainable</span>}
   </div>
 </div>
+
+<AmbiguityLink />
 
 <div className="model-preview entity-action-row">
   <ModelPreview build={props.build} type="nanos" id={props.data.id} name={props.data.name} />

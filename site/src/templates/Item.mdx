@@ -1,3 +1,4 @@
+import AmbiguityLink from '../components/AmbiguityLink';
 import ModelPreview from '../components/ModelPreview';
 import Currency from '../components/Currency';
 import { Link } from 'react-router-dom';
@@ -23,6 +24,8 @@ import { formatDurationSeconds } from '../data/formatTime';
     {!props.data.obtainable && <span className="badge badge-warn">unobtainable</span>}
   </div>
 </div>
+
+<AmbiguityLink />
 
 <div className="model-preview entity-action-row">
   <ModelPreview build={props.build} type="items" id={props.data.id} name={props.data.name} />

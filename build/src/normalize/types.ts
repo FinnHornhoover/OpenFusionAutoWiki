@@ -527,6 +527,8 @@ export interface MobIndexEntry {
   routeId?: string;
   name: string;
   icon: string;
+  mapIcon: string;
+  firstLocation: MobLocation | null;
   level: number;
   standardHP: number;
   colorType: string;
@@ -587,6 +589,8 @@ export interface InstanceIndexEntry {
   id: number;
   routeId?: string;
   name: string;
+  areaZone: string;
+  firstEntry: Pick<InstanceWarp, 'npc' | 'entryLocation'> | null;
   inGame: boolean;
   infectedZoneId: number;
   infectedZoneName: string;

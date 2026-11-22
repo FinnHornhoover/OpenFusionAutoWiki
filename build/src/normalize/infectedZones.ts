@@ -2,7 +2,7 @@ import AdmZip from 'adm-zip';
 
 import { writeChunks, writeIndex } from '../chunk.js';
 import type { IconMap } from '../icons.js';
-import { iconFor, itemRef } from './refs.js';
+import { iconFor, infectedZoneName, itemRef } from './refs.js';
 import { slugify } from './slug.js';
 import type { CrateDrop, InfectedZone, InfectedZoneIndexEntry, InfectedZoneRankReward, InstanceWarp, Ref } from './types.js';
 
@@ -239,7 +239,7 @@ function normalizeInfectedZone(raw: RawInfectedZone, iconMap: IconMap, missionLe
   const maxScore = raw.ScoreCap ?? 0;
   return {
     id,
-    name: raw.Name?.trim() || `Infected Zone #${id}`,
+    name: infectedZoneName(id, raw.Name),
     icon: `/ui/ep/ep_big_${String(id).padStart(2, '0')}.png`,
     areaZone: raw.AreaZone ?? firstEntry?.entryLocation?.areaZone ?? '',
     areaId: raw.AreaZone && raw.AreaZone !== 'Unknown - Unknown' ? slugify(raw.AreaZone) : firstEntry?.entryLocation?.areaId ?? '',
