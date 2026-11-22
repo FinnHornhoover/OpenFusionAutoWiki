@@ -70,10 +70,52 @@ jobs:
           path: .cache/iconmaps
           key: iconmaps-${{ steps.ffinfo.outputs.tag }}-v1
 
-      - name: Build pipeline (download + normalize)
-        run: npm run build:data
+      - name: Resolve 3D cache inputs
+        id: objects-inputs
+        if: env.FFWIKI_OBJECTS_URL != ''
+        env:
+          FFINFO_TAG: ${{ steps.ffinfo.outputs.tag }}
+          R2_BUCKET: ${{ vars.R2_BUCKET }}
+        shell: bash
+        run: |
+          tag=$(jq -nr --arg tag "$FFINFO_TAG" '$tag | @uri')
+          release=$(curl -fsSL --retry 2 -H "Authorization: Bearer $GITHUB_TOKEN" \
+            "https://api.github.com/repos/FinnHornhoover/FFObjectPacks/releases/tags/$tag")
+          packs=$(jq -ceS '[.assets[] | select(.name | test("\\.zip$"; "i")) |
+            {id, name, size, digest, updated_at}] | sort_by(.name) | select(length > 0)' <<< "$release")
+          key=$(printf '%s\0' "$FFINFO_TAG" "$packs" "$FFWIKI_OBJECTS_URL" "$R2_BUCKET" "${FFWIKI_BUILDS:-}" "$(node --version)" |
+            sha256sum | cut -d ' ' -f 1)
+          echo "key=$key" >> "$GITHUB_OUTPUT"
+
+      - name: Restore prepared 3D preview data
+        id: preview-cache
+        if: env.FFWIKI_OBJECTS_URL != ''
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            site/public/data/*/previews/**/*.json
+            .cache/objects/publication.json
+          key: previews-v1-${{ runner.os }}-${{ runner.arch }}-${{ steps.objects-inputs.outputs.key }}-${{ hashFiles('build/src/**/*.ts', 'build/src/**/*.json', 'build/tsconfig.json', 'shared/**/*.ts', 'shared/**/*.json', 'fixed_data/**/*.json', 'package-lock.json') }}
+
+      - name: Compile data build tools
+        run: npm run build -w build
+
+      - name: Verify cached 3D assets in R2
+        id: cached-publication
+        if: steps.preview-cache.outputs.cache-hit == 'true'
+        run: node build/dist/objects/upload.js --verify-cached
         env:
           FFWIKI_RELEASE: ${{ steps.ffinfo.outputs.tag }}
+          R2_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET: ${{ vars.R2_BUCKET }}
+
+      - name: Build pipeline (download + normalize)
+        run: node build/dist/index.js
+        env:
+          FFWIKI_RELEASE: ${{ steps.ffinfo.outputs.tag }}
+          FFWIKI_REUSE_PREVIEWS: ${{ steps.cached-publication.outputs.verified }}
 
       - name: Build site (Vite + MDX)
         run: npm run build:site
@@ -94,16 +136,32 @@ jobs:
             exit 1
           fi
 
-      - name: Publish shared 3D assets to R2
+      - name: Publish or reuse shared 3D assets in R2
         id: publish-objects
         if: env.FFWIKI_OBJECTS_URL != ''
-        run: npm run upload:objects
+        run: |
+          if [[ "$REUSE_PREVIEWS" == true ]]; then
+            echo "Reusing the verified 3D assets in R2."
+          else
+            node build/dist/objects/upload.js
+          fi
         env:
+          REUSE_PREVIEWS: ${{ steps.cached-publication.outputs.verified }}
           R2_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
           R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
           R2_BUCKET: ${{ vars.R2_BUCKET }}
           R2_UPLOAD_CONCURRENCY: ${{ vars.R2_UPLOAD_CONCURRENCY || '48' }}
+
+      - name: Cache published 3D preview data
+        if: steps.publish-objects.outcome == 'success' && steps.preview-cache.outputs.cache-hit != 'true' && steps.preview-cache.outputs.cache-primary-key != ''
+        continue-on-error: true
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            site/public/data/*/previews/**/*.json
+            .cache/objects/publication.json
+          key: ${{ steps.preview-cache.outputs.cache-primary-key }}
 
       - name: Deploy to Cloudflare Pages
         uses: cloudflare/wrangler-action@v3

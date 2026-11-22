@@ -193,7 +193,8 @@ async function main(): Promise<void> {
   const sitemap = await writeSitemapAndRobots(slugs);
   log.done(`sitemap: ${sitemap.totalUrls.toLocaleString()} URLs across ${slugs.length} per-build sitemaps; base=${sitemap.base}`);
 
-  await buildPreviews(release, downloaded);
+  if (process.env.FFWIKI_REUSE_PREVIEWS === 'true') log.done('reusing verified cached 3D previews');
+  else await buildPreviews(release, downloaded);
   log.done('build complete');
 }
 

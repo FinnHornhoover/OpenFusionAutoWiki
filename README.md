@@ -166,6 +166,11 @@ before R2 publication. Uploads use 48 workers (override with the repository vari
 `R2_UPLOAD_CONCURRENCY`), skip existing assets, and retain older deployment assets.
 `npm run upload:objects` runs publication alone.
 
+The deploy workflow caches the generated preview JSON and publication manifest
+after publishing to R2. A matching cache skips preview generation and gzip
+preparation once the workflow verifies the assets in R2. A cache miss or missing
+asset runs the full 3D build and publication.
+
 Publication gzip-compresses GLB/BIN/JSON files when smaller and sets `Content-Encoding`.
 URLs and decoded bytes stay the same. Cached copies live in `.cache/objects/gzip-v1`;
 `.cache/objects/publication.json` records upload sizes. To prepare and measure locally
