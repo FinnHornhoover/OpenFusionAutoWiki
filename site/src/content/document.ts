@@ -24,6 +24,9 @@ export interface ProseSection extends Entry {
   updatedAt: string;
   updatedAtForAnyBuild?: string;
   updatedAtByBuild?: Record<string, string>;
+  editedBy?: ProseContributor;
+  editedByForAnyBuild?: ProseContributor | null;
+  editedByByBuild?: Record<string, ProseContributor | null>;
   blocks: ProseBlock[];
   sections: ProseSection[];
 }
@@ -60,6 +63,12 @@ export function inheritBuildScope(builds: string[] | undefined, parent: string[]
 export function proseSectionDate(section: ProseSection, build?: string) {
   const dates = section.updatedAtByBuild;
   return build && dates && Object.hasOwn(dates, build) ? dates[build] : section.updatedAtForAnyBuild ?? section.updatedAt;
+}
+
+export function proseSectionEditor(section: ProseSection, build?: string, fallback?: ProseContributor) {
+  if (build && section.editedByByBuild && Object.hasOwn(section.editedByByBuild, build)) return section.editedByByBuild[build] ?? undefined;
+  if (section.editedByForAnyBuild !== undefined) return section.editedByForAnyBuild ?? undefined;
+  return section.editedBy ?? fallback;
 }
 
 export function allowsBuild(builds: string[] | undefined, build: string | undefined) {

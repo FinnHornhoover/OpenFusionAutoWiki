@@ -244,7 +244,9 @@ export function readProseSource(source: string, previous: ProseDocument, seed: s
       const old = original.get(sectionId);
       const section: ProseSection = {
         id: sectionId, title, builds, updatedAt: old?.updatedAt ?? date,
-        updatedAtForAnyBuild: old?.updatedAtForAnyBuild, updatedAtByBuild: old?.updatedAtByBuild, blocks: [], sections: [],
+        updatedAtForAnyBuild: old?.updatedAtForAnyBuild, updatedAtByBuild: old?.updatedAtByBuild,
+        editedBy: old?.editedBy, editedByForAnyBuild: old?.editedByForAnyBuild, editedByByBuild: old?.editedByByBuild,
+        blocks: [], sections: [],
       };
       const parent = parents.at(-1);
       (parent ? parent.sections : sections).push(section);

@@ -1,5 +1,5 @@
 import {
-  allowsBuild, proseSectionDate, type ProseBlock, type ProseContributor, type ProseDocument, type ProseSection,
+  allowsBuild, proseSectionDate, proseSectionEditor, type ProseBlock, type ProseContributor, type ProseDocument, type ProseSection,
 } from '../../src/content/document';
 import { proseContentKey } from '../../src/content/proseMerge';
 
@@ -44,7 +44,7 @@ export function withProseMetadata(sections: ProseSection[], current: ProseDocume
   function stamp(section: ProseSection, parent?: string[]): ProseSection {
     const old = previous.get(section.id);
     const children = section.sections.map((child) => stamp(child, section.builds ?? parent));
-    if (!old) return { ...section, sections: children };
+    if (!old) return { ...section, sections: children, editedBy: editor };
 
     const { section: previousSection, parent: previousParent } = old;
     const scope = section.builds ?? parent;
@@ -53,25 +53,39 @@ export function withProseMetadata(sections: ProseSection[], current: ProseDocume
       return {
         ...section, sections: children, updatedAt: previousSection.updatedAt,
         updatedAtForAnyBuild: previousSection.updatedAtForAnyBuild, updatedAtByBuild: previousSection.updatedAtByBuild,
+        editedBy: previousSection.editedBy ?? current.editedBy,
+        editedByForAnyBuild: previousSection.editedByForAnyBuild === undefined && !previousSection.editedBy && !current.editedBy
+          ? null : previousSection.editedByForAnyBuild,
+        editedByByBuild: previousSection.editedByByBuild,
       };
     }
-    function dateFor(build?: string) {
+    function editFor(build?: string) {
       const before = JSON.stringify(visibleSection(previousSection, build, previousParent));
       const after = JSON.stringify(visibleSection(section, build, parent));
-      return before === after ? proseSectionDate(previousSection, build) : now;
+      return before === after
+        ? { date: proseSectionDate(previousSection, build), editor: proseSectionEditor(previousSection, build, current.editedBy) ?? null }
+        : { date: now, editor };
     }
-    const anyBuildDate = dateFor();
-    const builds = new Set([...(scope ?? []), ...(oldScope ?? []), ...Object.keys(previousSection.updatedAtByBuild ?? {})]);
+    const anyBuildEdit = editFor();
+    const builds = new Set([...(scope ?? []), ...(oldScope ?? []), ...Object.keys(previousSection.updatedAtByBuild ?? {}),
+      ...Object.keys(previousSection.editedByByBuild ?? {})]);
     addBuilds(previousSection, builds);
     addBuilds(section, builds);
     const overrides = [...builds].sort().flatMap((build) => {
-      const date = dateFor(build);
-      return date === anyBuildDate ? [] : [[build, date]];
+      const { date } = editFor(build);
+      return date === anyBuildEdit.date ? [] : [[build, date]];
+    });
+    const authorOverrides = [...builds].sort().flatMap((build) => {
+      const author = editFor(build).editor;
+      return author?.id === anyBuildEdit.editor?.id && author?.login === anyBuildEdit.editor?.login ? [] : [[build, author]];
     });
     return {
       ...section, sections: children, updatedAt: now,
-      updatedAtForAnyBuild: anyBuildDate === now ? undefined : anyBuildDate,
+      updatedAtForAnyBuild: anyBuildEdit.date === now ? undefined : anyBuildEdit.date,
       updatedAtByBuild: overrides.length ? Object.fromEntries(overrides) : undefined,
+      editedBy: editor,
+      editedByForAnyBuild: anyBuildEdit.editor?.id === editor.id && anyBuildEdit.editor.login === editor.login ? undefined : anyBuildEdit.editor,
+      editedByByBuild: authorOverrides.length ? Object.fromEntries(authorOverrides) : undefined,
     };
   }
 

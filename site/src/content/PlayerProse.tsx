@@ -2,11 +2,11 @@ import { lazy, Suspense, useEffect, useState, type ReactNode } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import Markdown, { defaultUrlTransform } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import Dropdown from '../components/Dropdown';
 import { useRouteMap } from '../data/routeMap';
-import { proseSectionDate, sectionsForBuild, type PageProse, type ProseBlock, type ProseDocument, type ProseSection } from './document';
+import { proseSectionDate, proseSectionEditor, sectionsForBuild, type PageProse, type ProseBlock, type ProseContributor, type ProseDocument, type ProseSection } from './document';
 
 import { PROSE_IMAGE_KEY, WIKI_ICON_KEY } from './images';
+import ProseImage from './ProseImage';
 
 const ProseEditor = lazy(() => import('./ProseEditor'));
 
@@ -42,7 +42,37 @@ function WikiLink({ build, target, children }: { build?: string; target: string;
   return match && resolved ? <Link to={`/${build}/${match[1]}/${resolved.canonical}`}>{children}</Link> : <>{children}</>;
 }
 
-function ProseMarkdown({ build, source }: { build?: string; source: string }) {
+const sectionHeadings = ['h2', 'h3', 'h4', 'h5', 'h6'] as const;
+
+function ProseHeading({ children, depth, section, build, editor }: {
+  children: ReactNode;
+  depth: number;
+  section?: ProseSection;
+  build?: string;
+  editor?: ProseContributor;
+}) {
+  const Heading = sectionHeadings[Math.min(depth, sectionHeadings.length - 1)];
+  const date = section && proseSectionDate(section, build);
+  const author = section ? proseSectionEditor(section, build, editor) : editor;
+  const formattedDate = date && Number.isFinite(Date.parse(date)) ? new Date(date).toISOString().slice(0, 16).replace('T', ' ') : undefined;
+  return (
+    <header className="player-prose-heading">
+      <Heading>{children}</Heading>
+      <div className="player-prose-edited muted">
+        {formattedDate && <span>Edited <time dateTime={date} title="UTC">{formattedDate}</time></span>}
+        {author && <span>by <a href={`https://github.com/${encodeURIComponent(author.login)}`}>@{author.login}</a></span>}
+      </div>
+    </header>
+  );
+}
+
+function ProseMarkdown({ build, linkBuild = build, source, section, editor }: {
+  build?: string;
+  linkBuild?: string;
+  source: string;
+  section?: ProseSection;
+  editor?: ProseContributor;
+}) {
   return (
     <Markdown
       remarkPlugins={[remarkGfm]}
@@ -50,20 +80,21 @@ function ProseMarkdown({ build, source }: { build?: string; source: string }) {
       disallowedElements={['img', 'input']}
       urlTransform={(url) => (url.startsWith(WIKI_PREFIX) || url.startsWith(BUILD_LINK_PREFIX)) ? url : defaultUrlTransform(url)}
       components={{
-        h1: ({ children }) => <h2>{children}</h2>,
-        h2: ({ children }) => <h3>{children}</h3>,
-        h3: ({ children }) => <h4>{children}</h4>,
-        h4: ({ children }) => <h5>{children}</h5>,
-        h5: ({ children }) => <h6>{children}</h6>,
+        h1: ({ children }) => <ProseHeading depth={0} section={section} build={build} editor={editor}>{children}</ProseHeading>,
+        h2: ({ children }) => <ProseHeading depth={1} section={section} build={build} editor={editor}>{children}</ProseHeading>,
+        h3: ({ children }) => <ProseHeading depth={2} section={section} build={build} editor={editor}>{children}</ProseHeading>,
+        h4: ({ children }) => <ProseHeading depth={3} section={section} build={build} editor={editor}>{children}</ProseHeading>,
+        h5: ({ children }) => <ProseHeading depth={4} section={section} build={build} editor={editor}>{children}</ProseHeading>,
+        h6: ({ children }) => <ProseHeading depth={4} section={section} build={build} editor={editor}>{children}</ProseHeading>,
         blockquote: ({ children }) => <blockquote className="prose-quote">{children}</blockquote>,
         a: ({ href, children }) => {
           if (href?.startsWith(BUILD_LINK_PREFIX)) {
             const path = href.slice(BUILD_LINK_PREFIX.length);
-            return build && path.startsWith('/') && !path.startsWith('//') && !path.includes('\\')
-              ? <Link to={`/${build}${path === '/' ? '' : path}`}>{children}</Link>
+            return linkBuild && path.startsWith('/') && !path.startsWith('//') && !path.includes('\\')
+              ? <Link to={`/${linkBuild}${path === '/' ? '' : path}`}>{children}</Link>
               : <>{children}</>;
           }
-          if (href?.startsWith(WIKI_PREFIX)) return <WikiLink build={build} target={href.slice(WIKI_PREFIX.length)}>{children}</WikiLink>;
+          if (href?.startsWith(WIKI_PREFIX)) return <WikiLink build={linkBuild} target={href.slice(WIKI_PREFIX.length)}>{children}</WikiLink>;
           return href ? <a href={href} rel="noopener noreferrer ugc">{children}</a> : <>{children}</>;
         },
         table: ({ children }) => <div className="table-scroll" tabIndex={0}><table className="prose-table">{children}</table></div>,
@@ -74,103 +105,87 @@ function ProseMarkdown({ build, source }: { build?: string; source: string }) {
   );
 }
 
-const subsectionHeadings = ['h3', 'h4', 'h5', 'h6'] as const;
-
-export function ProseBlockContent({ block, build, wikiImages, localImages }: {
+export function ProseBlockContent({ block, build, linkBuild, wikiImages, localImages, section, editor }: {
   block: Exclude<ProseBlock, { kind: 'scope' }>;
   build?: string;
+  linkBuild?: string;
   wikiImages?: PageProse['wikiImages'];
   localImages?: ReadonlyMap<string, string>;
+  section?: ProseSection;
+  editor?: ProseContributor;
 }) {
-  if (block.kind === 'markdown') return <ProseMarkdown build={build} source={block.source} />;
+  if (block.kind === 'markdown') return <ProseMarkdown build={build} linkBuild={linkBuild} source={block.source} section={section} editor={editor} />;
   const local = block.image.kind === 'upload' ? localImages?.get(block.image.key) : undefined;
   const src = local ?? (block.image.kind === 'upload'
     ? PROSE_IMAGE_KEY.test(block.image.key) ? `/api/prose/images/${block.image.key}` : undefined
     : block.image.kind === 'icon' ? WIKI_ICON_KEY.test(block.image.key) ? `/icons/${block.image.key}` : undefined
     : wikiImages?.[block.image.asset]);
   if (!src || (!local && (!src.startsWith('/') || src.startsWith('//') || src.includes('\\')))) return null;
-  return (
-    <figure className="prose-figure">
-      <div className="table-scroll" tabIndex={0}><img src={src} alt={block.alt} loading="lazy" /></div>
-      {block.caption && <figcaption>{block.caption}</figcaption>}
-    </figure>
-  );
+  return <ProseImage src={src} alt={block.alt} caption={block.caption} />;
 }
 
-function Section({ section, build, linkBuild, wikiImages, localImages, preview, onEdit, depth = 0 }: {
+function Section({ section, build, linkBuild, wikiImages, localImages, editor, depth = 0 }: {
   section: ProseSection;
   build?: string;
   linkBuild?: string;
   wikiImages?: PageProse['wikiImages'];
   localImages?: ReadonlyMap<string, string>;
-  preview?: boolean;
-  onEdit?(sectionId: string): void;
+  editor?: ProseContributor;
   depth?: number;
 }) {
-  const body = (
-    <>
+  return (
+    <section className="player-prose-section" data-depth={depth}>
+      <ProseHeading depth={depth} section={section} build={build} editor={editor}>{section.title}</ProseHeading>
       {section.blocks.map((block) => block.kind !== 'scope' && (
-        <ProseBlockContent key={block.id} block={block} build={linkBuild ?? build} wikiImages={wikiImages} localImages={localImages} />
+        <ProseBlockContent key={block.id} block={block} build={build} linkBuild={linkBuild} wikiImages={wikiImages} localImages={localImages} section={section} editor={editor} />
       ))}
-      {section.sections.map((child) => <Section key={child.id} section={child} build={build} linkBuild={linkBuild} wikiImages={wikiImages} localImages={localImages} preview={preview} depth={depth + 1} />)}
-    </>
+      {section.sections.map((child) => <Section key={child.id} section={child} build={build} linkBuild={linkBuild} wikiImages={wikiImages} localImages={localImages} editor={editor} depth={depth + 1} />)}
+    </section>
   );
-
-  if (depth > 0) {
-    const Heading = subsectionHeadings[Math.min(depth - 1, subsectionHeadings.length - 1)];
-    return (
-      <section className="player-prose-subsection" data-depth={depth}>
-        <Heading>{section.title}</Heading>
-        {body}
-      </section>
-    );
-  }
-
-  const date = proseSectionDate(section, build);
-  const dropdown = (
-    <Dropdown className="player-prose-section" open={preview} summary={
-      <h2>{section.title} <small className="muted">Last edited <time dateTime={date}>{date.slice(0, 10)}</time></small></h2>
-    }>
-      <div className="player-prose-body">{body}</div>
-    </Dropdown>
-  );
-
-  return onEdit ? (
-    <div className="player-prose-row">
-      {dropdown}
-      <EditIcon onClick={() => onEdit(section.id)} />
-    </div>
-  ) : dropdown;
 }
 
-export function ProsePreview({ document, build, entityId, linkBuild, wikiImages, localImages, preview, onEdit }: {
+export function ProsePreview({ document, additionalDocument, build, entityId, linkBuild, wikiImages, localImages, preview, onEdit }: {
   document: ProseDocument;
+  additionalDocument?: ProseDocument;
   build?: string;
   entityId?: string;
   linkBuild?: string;
   wikiImages?: PageProse['wikiImages'];
   localImages?: ReadonlyMap<string, string>;
   preview?: boolean;
-  onEdit?(sectionId: string): void;
+  onEdit?(): void;
 }) {
-  const sections = sectionsForBuild(document.sections, build, entityId);
-  const contributors = document.contributors ?? (document.editedBy ? [document.editedBy] : []);
+  const documents = additionalDocument ? [document, additionalDocument] : [document];
+  const sections = documents.flatMap((doc, index) => sectionsForBuild(doc.sections, build, entityId)
+    .map((section) => ({ section, editor: doc.editedBy, key: `${index}-${section.id}` })));
+  const contributors = [...new Map(documents.flatMap((doc) => doc.contributors ?? (doc.editedBy ? [doc.editedBy] : []))
+    .map((contributor) => [contributor.id, contributor])).values()];
+  const showCredits = !preview && sections.length > 0 && contributors.length > 0;
+  if (!sections.length && !onEdit) return null;
   return (
-    <>
-      {sections.map((section) => (
-        <Section key={section.id} section={section} build={build} linkBuild={linkBuild} wikiImages={wikiImages} localImages={localImages} preview={preview} onEdit={onEdit} />
-      ))}
-      {!preview && sections.length > 0 && contributors.length > 0 && (
-        <div className="player-prose-credits muted">
-          <span>Contributors</span>
-          <ul aria-label="Prose contributors">
-            {contributors.map(({ id, login }) => (
-              <li key={id}><a href={`https://github.com/${encodeURIComponent(login)}`}>@{login}</a></li>
-            ))}
-          </ul>
+    <div className="player-prose-body">
+      {(onEdit || showCredits) && (
+        <div className="player-prose-toolbar">
+          {!preview && sections.length === 0 && (
+            <div className="player-prose-credits muted">Contribute to this Wiki page.</div>
+          )}
+          {showCredits && (
+            <div className="player-prose-credits muted">
+              <span>Contributors</span>
+              <ul aria-label="Prose contributors">
+                {contributors.map(({ id, login }) => (
+                  <li key={id}><a href={`https://github.com/${encodeURIComponent(login)}`}>@{login}</a></li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {onEdit && <EditIcon onClick={onEdit} />}
         </div>
       )}
-    </>
+      {sections.map(({ section, editor, key }) => (
+        <Section key={key} section={section} build={build} linkBuild={linkBuild} wikiImages={wikiImages} localImages={localImages} editor={editor} />
+      ))}
+    </div>
   );
 }
 
@@ -224,20 +239,17 @@ export default function PlayerProse({ build, type, route, name, entityId, childr
   const prose = result?.query === query ? result.prose : undefined;
   const editable = prose?.scopes?.includes('general');
   const activeId = prose?.entityId ?? (prose?.scopes?.includes('specific') ? entityId : undefined);
-  const proseAction = editable ? <EditIcon label="Add prose" onClick={() => setEditing({ query })} /> : null;
-  const sections = prose && (prose.general || prose.specific) ? (
+  const sections = prose && (editable || prose.general || prose.specific) ? (
     <aside className="player-prose" aria-label="Player contributions">
-      {prose.general && (
-        <ProsePreview document={prose.general} build={build} entityId={activeId} wikiImages={prose.wikiImages}
-          onEdit={editable ? (sectionId) => setEditing({ query, sectionId }) : undefined} />
-      )}
-      {prose.specific && <ProsePreview document={prose.specific} build={build} entityId={activeId} wikiImages={prose.wikiImages} />}
+      <ProsePreview document={prose.general ?? prose.specific ?? { version: 1, sections: [] }}
+        additionalDocument={prose.general ? prose.specific : undefined} build={build} entityId={activeId} wikiImages={prose.wikiImages}
+        onEdit={editable ? () => setEditing({ query }) : undefined} />
     </aside>
   ) : null;
 
   return (
     <>
-      {children({ prose: sections, proseAction })}
+      {children({ prose: sections, proseAction: null })}
       {editing?.query === query && editable && prose && (
         <Suspense fallback={<p>Loading editor…</p>}>
           <ProseEditor

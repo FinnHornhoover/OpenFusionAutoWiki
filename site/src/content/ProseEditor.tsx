@@ -31,7 +31,7 @@ interface Props {
 }
 
 const SOURCE_VERSION = 2;
-const SERVER_METADATA = new Set(['editedBy', 'contributors', 'updatedAt', 'updatedAtForAnyBuild', 'updatedAtByBuild']);
+const SERVER_METADATA = new Set(['editedBy', 'editedByForAnyBuild', 'editedByByBuild', 'contributors', 'updatedAt', 'updatedAtForAnyBuild', 'updatedAtByBuild']);
 
 interface EditorSession {
   user: { id: number; login: string } | null;
