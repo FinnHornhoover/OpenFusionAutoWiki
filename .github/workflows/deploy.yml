@@ -170,18 +170,3 @@ jobs:
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: site
           command: pages deploy dist --project-name=openfusion-auto-wiki --branch=main
-
-      - name: Request a ZIP release in the prose repository
-        if: success() && steps.publish-objects.outcome == 'success'
-        env:
-          GH_TOKEN: ${{ secrets.PROSE_RELEASE_TOKEN }}
-          PROSE_REPOSITORY: ${{ vars.PROSE_REPOSITORY || 'FinnHornhoover/OpenFusionWikiProse' }}
-        shell: bash
-        run: |
-          if [[ -z "$GH_TOKEN" ]]; then
-            echo "::error::Set the Actions secret PROSE_RELEASE_TOKEN with Contents write access to $PROSE_REPOSITORY."
-            exit 1
-          fi
-          gh api --method POST "repos/$PROSE_REPOSITORY/dispatches" \
-            --raw-field event_type=publish-wiki-prose
-          echo "Release requested. Follow the run at https://github.com/$PROSE_REPOSITORY/actions."

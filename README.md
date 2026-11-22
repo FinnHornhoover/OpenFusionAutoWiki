@@ -87,24 +87,20 @@ secret. Create `dev` from `main` if needed. The save service commits to
 
 ### Player prose releases
 
-Merge `dev` into `main` in the prose repository to approve a release snapshot.
-Review redistribution rights for the referenced images during the merge.
+The prose repository releases daily at 00:15 UTC and through
+**Actions → Release player prose → Run workflow**. It merges new prose from
+`dev` into `main` and publishes a ZIP named for the UTC release date.
+Runs skip when the branches have no new prose, attribution, or license changes.
+Additional releases on the same day receive a numeric suffix.
+Review redistribution rights for referenced images before publication.
 Optional image credits and rights can be committed in
 `image-attribution.json`. Key each record by its ZIP path
 (`images/uploads/<key>` or `images/icons/<key>`) and use fields such as
 `creator`, `sourceUrl`, and `license`.
 
-Set the `PROSE_RELEASE_TOKEN` GitHub Actions secret in OpenFusionAutoWiki to a
-fine-grained token with **Contents: Read and write** access to the prose
-repository so AutoWiki can request a release. The AutoWiki Actions variable
-`PROSE_REPOSITORY` defaults to `FinnHornhoover/OpenFusionWikiProse`.
-
-A successful Pages deploy that also published the shared 3D assets requests
-a release in the prose repository. To release on demand from OpenFusionWikiProse,
-open **Actions → Release player prose → Run workflow**. The workflow uses the
-prose repository's built-in Actions token to publish one ZIP per `main`
-snapshot. Release progress and errors appear in the prose repository's
-Actions tab.
+The prose workflow uses its own repository's built-in Actions token to
+promote the snapshot and publish the release. Release progress and errors
+appear in the prose repository's Actions tab.
 
 The exporter and local ZIP instructions live in
 [OpenFusionWikiProse](https://github.com/FinnHornhoover/OpenFusionWikiProse#zip-releases).
