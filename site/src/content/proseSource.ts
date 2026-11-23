@@ -13,7 +13,7 @@ function splitBuilds(value?: string) {
 
 function stripMarker(line: string) {
   const match = marker.exec(line);
-  return { text: match ? line.slice(0, match.index) + line.slice(match.index + match[0].length) : line, id: match?.[1] };
+  return { text: line.replace(new RegExp(marker.source, 'gi'), ''), id: match?.[1] };
 }
 
 function escaped(line: string) {
@@ -275,4 +275,8 @@ export function readProseSource(source: string, previous: ProseDocument, seed: s
 
 export function sourceMarker(line: string) {
   return marker.exec(line);
+}
+
+export function sourceMarkers(line: string) {
+  return [...line.matchAll(new RegExp(marker.source, 'gi'))];
 }

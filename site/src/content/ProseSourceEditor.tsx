@@ -1,13 +1,47 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
-import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
+import { defaultKeymap, deleteCharBackward, deleteCharForward, history, historyKeymap, insertNewlineAndIndent } from '@codemirror/commands';
 import { markdown } from '@codemirror/lang-markdown';
-import { Compartment, EditorState } from '@codemirror/state';
-import { Decoration, EditorView, keymap, lineNumbers } from '@codemirror/view';
+import { Compartment, EditorState, StateField } from '@codemirror/state';
+import { Decoration, EditorView, keymap, lineNumbers, type DecorationSet } from '@codemirror/view';
 import type { BuildEntry } from '../data/useManifest';
 import { inheritBuildScope, type ImageReference } from './document';
-import { imageSource, sourceBuildContext, sourceMarker } from './proseSource';
+import { imageSource, sourceBuildContext, sourceMarker, sourceMarkers } from './proseSource';
 
 const markerStyle = Decoration.replace({});
+
+function hiddenMarkers(state: EditorState) {
+  const ranges = [];
+  for (let number = 1; number <= state.doc.lines; number++) {
+    const line = state.doc.line(number);
+    for (const marker of sourceMarkers(line.text)) {
+      ranges.push(markerStyle.range(line.from + marker.index, line.from + marker.index + marker[0].length));
+    }
+  }
+  return Decoration.set(ranges);
+}
+
+const markerDecorations = StateField.define<DecorationSet>({
+  create: hiddenMarkers,
+  update: (value, transaction) => transaction.docChanged ? hiddenMarkers(transaction.state) : value,
+  provide: (field) => [
+    EditorView.decorations.from(field),
+    EditorView.atomicRanges.of((view) => view.state.field(field)),
+  ],
+});
+
+function skipMarker(view: EditorView, forward: boolean, command: (view: EditorView) => boolean) {
+  const { doc, selection } = view.state;
+  const { head, empty } = selection.main;
+  if (!empty) return false;
+  const line = doc.lineAt(head);
+  const marker = sourceMarkers(line.text).find((marker) => head === line.from + marker.index + (forward ? 0 : marker[0].length));
+  if (!marker) return false;
+  const start = line.from + marker.index;
+  const end = start + marker[0].length;
+  view.dispatch({ selection: { anchor: forward ? end : start } });
+  return command(view);
+}
+
 function scopeColor(key: string) {
   let hash = 2166136261;
   for (const character of key) hash = Math.imul(hash ^ character.charCodeAt(0), 16777619);
@@ -46,8 +80,6 @@ function decorations(activeScope?: string) {
         }
         ranges.push(Decoration.line({ class: classes.join(' '), attributes: { style: styles.join('; ') } }).range(line.from));
       }
-      const marker = sourceMarker(line.text);
-      if (marker) ranges.push(markerStyle.range(line.from + marker.index, line.from + marker.index + marker[0].length));
     }
     return Decoration.set(ranges, true);
   });
@@ -112,7 +144,12 @@ export default function ProseSourceEditor({ source, sectionId, onChange, builds,
       state: EditorState.create({
         doc: initialSource.current,
         extensions: [
-          scopeDecorations.of(decorations()), history(), keymap.of([...defaultKeymap, ...historyKeymap]), markdown(),
+          markerDecorations, scopeDecorations.of(decorations()), history(), keymap.of([
+            { key: 'Backspace', run: (view) => skipMarker(view, false, deleteCharBackward) },
+            { key: 'Delete', run: (view) => skipMarker(view, true, deleteCharForward) },
+            { key: 'Enter', run: (view) => skipMarker(view, true, insertNewlineAndIndent) },
+            ...defaultKeymap, ...historyKeymap,
+          ]), markdown(),
           lineNumbers(), EditorView.lineWrapping, editable.of(EditorView.editable.of(true)),
           EditorView.contentAttributes.of({ 'aria-label': 'Markdown source', 'aria-multiline': 'true', spellcheck: 'true' }),
           EditorView.updateListener.of((update) => {
