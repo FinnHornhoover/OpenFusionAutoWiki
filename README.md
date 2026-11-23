@@ -61,6 +61,11 @@ build-specific route overrides live in `site/prose-mappings/`. The generator
 merges both. No empty prose documents are created. The first save creates the
 document on `dev`.
 
+Listing pages have their own general prose above the filters and table.
+Their documents live at `pages/listings/general/<type>.json`, shared across
+builds through `prose/listings.json` mappings. Build-specific blocks apply
+to these documents as they do to individual pages.
+
 Use `::: builds beta-20100104-fixed` or `::: ids 720` followed by a closing
 `:::` to restrict a block. Previously published files under `pages/<type>/specific/`
 still display on mapped ID pages. New edits use the shared document at

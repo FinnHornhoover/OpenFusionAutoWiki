@@ -1,6 +1,7 @@
 import { Link, useParams } from 'react-router-dom';
 
 import ErrorState from '../components/ErrorState';
+import PlayerProse from '../content/PlayerProse';
 import { ENTITY_TITLES } from '../data/entityTitles';
 import type { AreaIndexEntry, CodeIndexEntry, InfectedZoneIndexEntry, InstanceIndexEntry, ItemIndexEntry, ItemSetIndexEntry, MissionIndexEntry, MobIndexEntry, NanoIndexEntry, NpcIndexEntry } from '../data/types';
 import { useBuildEntry } from '../data/useBuildEntry';
@@ -33,7 +34,7 @@ export default function EntityIndex() {
   const buildLink = build ? <Link to={`/${build}`}>{buildLabel}</Link> : buildLabel;
   useDocumentTitle(`${heading}${TITLE_SEPARATOR}${buildLabel ?? ''}`.trim());
 
-  if (!supported) {
+  if (!supported || !build || !type) {
     return (
       <section>
         <p className="breadcrumb muted">{buildLink}</p>
@@ -90,10 +91,15 @@ export default function EntityIndex() {
   })();
 
   return (
-    <section>
-      <p className="breadcrumb muted">{buildLink}</p>
-      <h1>{heading}</h1>
-      {body}
-    </section>
+    <PlayerProse build={build} type="listings" route={type} name={heading}>
+      {({ prose }) => (
+        <section>
+          <p className="breadcrumb muted">{buildLink}</p>
+          <h1>{heading}</h1>
+          {prose}
+          {body}
+        </section>
+      )}
+    </PlayerProse>
   );
 }

@@ -4,7 +4,7 @@ import { join } from 'node:path';
 
 import { chunkOf } from '../chunk.js';
 import { DATA_OUT } from '../paths.js';
-import { writeProseMapping } from './prose.js';
+import { writeListingProseMapping, writeProseMapping } from './prose.js';
 import { slugify } from './slug.js';
 import type { Npc, NpcAmbiguity } from './types.js';
 
@@ -199,5 +199,6 @@ export async function writeRouteMaps(slug: string, types: readonly EntityType[])
     totalAliases += Object.keys(routeMap).length;
   }
 
+  await writeListingProseMapping(slug);
   return { routes: totalRoutes, aliases: totalAliases };
 }

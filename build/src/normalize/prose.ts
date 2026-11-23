@@ -77,8 +77,21 @@ async function refreshProseMappings() {
       pages += await writeProseMapping(slug, file.slice(0, -5), routes);
       files++;
     }
+    pages += await writeListingProseMapping(slug);
+    files++;
   }
   console.log(`Generated ${files} prose mappings for ${pages.toLocaleString()} build routes.`);
+}
+
+export async function writeListingProseMapping(build: string): Promise<number> {
+  const files = await readdir(join(DATA_OUT, build, 'routes'));
+  const types = files.filter((file) => file.endsWith('.json')).map((file) => file.slice(0, -5)).sort();
+  if (types.some((type) => !safeKey.test(type))) throw new Error('Invalid listing prose type.');
+  const entries = Object.fromEntries(types.map((type) => [type, { general: type }]));
+  const directory = join(DATA_OUT, build, 'prose');
+  await mkdir(directory, { recursive: true });
+  await writeFile(join(directory, 'listings.json'), JSON.stringify(entries));
+  return types.length;
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
